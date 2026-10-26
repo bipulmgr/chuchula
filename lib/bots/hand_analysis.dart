@@ -80,7 +80,7 @@ class StrengthCdf {
 class HandAnalysis {
   HandAnalysis(List<PlayingCard> hand)
     : cards = List.unmodifiable(hand),
-      strength = Int64List(1 << 13) {
+      strength = Int32List(1 << 13) {
     if (hand.length != kHandSize) {
       throw ArgumentError('Expected $kHandSize cards');
     }
@@ -109,7 +109,7 @@ class HandAnalysis {
   static const int fullMask = (1 << 13) - 1;
 
   final List<PlayingCard> cards;
-  final Int64List strength;
+  final Int32List strength;
   final List<int> combos3 = [];
   final List<int> combos4 = [];
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chuchula/bots/bot_strategy.dart';
@@ -186,5 +187,46 @@ void main() {
     }
     expect(session.view.value!.ready, [false, true, true, true]);
     await session.dispose();
+  });
+
+  group('bots never get stuck arranging', () {
+    Future<void> expectBotsReady(BotRunner runner, {Duration? budget}) async {
+      final engine = ChuchulaGameEngine(random: SeededRandomSource(7));
+      final session = AuthorityGameSession(
+        engine: engine,
+        initialState: OfflineGame.newMatch(
+          engine: engine,
+          playerName: 'You',
+          botNames: ['A', 'B', 'C'],
+        ),
+        localSeat: 0,
+        bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+        timing: const BotTiming.instant(),
+        botRunner: runner,
+        botTimeout: budget ?? const Duration(seconds: 5),
+      );
+      final deadline = DateTime.now().add(const Duration(seconds: 20));
+      while (session.view.value!.ready.skip(1).any((r) => !r)) {
+        if (DateTime.now().isAfter(deadline)) fail('bots never arranged');
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(session.thinking.value, isEmpty);
+      await session.dispose();
+    }
+
+    test('when the background runner throws (e.g. no isolates on web)', () {
+      return expectBotsReady(
+        (bot, view) => Future.error(UnsupportedError('Isolate.run')),
+      );
+    });
+
+    test('when the background runner never answers', () {
+      return expectBotsReady(
+        (bot, view) => Completer<Arrangement>().future,
+        budget: const Duration(milliseconds: 200),
+      );
+    });
+
+    test('with the default runner', () => expectBotsReady(isolateBotRunner));
   });
 }

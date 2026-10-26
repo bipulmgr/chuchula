@@ -18,8 +18,33 @@ typedef BotRunner = Future<Arrangement> Function(
   PlayerView view,
 );
 
-Future<Arrangement> isolateBotRunner(BotStrategy bot, PlayerView view) =>
-    Isolate.run(() => bot.arrange(view));
+Future<Arrangement> isolateBotRunner(BotStrategy bot, PlayerView view) {
+  // Isolates are not available on the web; think on the main thread there,
+  // after the current frame so the UI updates first.
+  if (kIsWeb) return Future(() => _lighterForWeb(bot).arrange(view));
+  return Isolate.run(() => bot.arrange(view));
+}
+
+/// Smaller searches for the web build, where bots share the UI thread.
+BotStrategy _lighterForWeb(BotStrategy bot) => switch (bot) {
+  HardBot(:final seed) => HardBot(
+    seed: seed,
+    simulations: 8,
+    quadCandidates: 50,
+  ),
+  MediumBot() => const MediumBot(quadCandidates: 30),
+  _ => bot,
+};
+
+/// A quick, always-legal arrangement used when a bot's normal search fails
+/// or takes too long, so a seat can never stay stuck "arranging".
+Arrangement fallbackArrangement(PlayerView view) {
+  try {
+    return const MediumBot(quadCandidates: 12).arrange(view);
+  } catch (_) {
+    return Arrangement.fromOrderedCards(List.of(view.myHand)..sort());
+  }
+}
 
 Future<Arrangement> inlineBotRunner(BotStrategy bot, PlayerView view) async =>
     bot.arrange(view);
@@ -71,6 +96,7 @@ class AuthorityGameSession extends BaseGameSession {
     this.botRunner = isolateBotRunner,
     this.onStateChanged,
     this.disconnectGrace = const Duration(seconds: 45),
+    this.botTimeout = const Duration(seconds: 8),
   }) : _state = initialState,
        _bots = Map.of(bots),
        _remotes = Map.of(remoteSeats) {
@@ -93,6 +119,9 @@ class AuthorityGameSession extends BaseGameSession {
 
   /// How long a disconnected remote seat is held before a bot takes over.
   final Duration disconnectGrace;
+
+  /// Longest a bot may think before it falls back to a quick arrangement.
+  final Duration botTimeout;
 
   GameState _state;
   final Map<int, BotStrategy> _bots;
@@ -234,7 +263,16 @@ class AuthorityGameSession extends BaseGameSession {
     thinkingNotifier.value = {...thinkingNotifier.value, seat};
     final started = DateTime.now();
     final bot = _bots[seat]!;
-    final arrangement = await botRunner(bot, PlayerView.of(_state, seat));
+    final view = PlayerView.of(_state, seat);
+    Arrangement arrangement;
+    try {
+      arrangement = await botRunner(bot, view).timeout(botTimeout);
+    } catch (e) {
+      debugPrint(
+        'Bot $seat could not arrange ($e); using a quick arrangement.',
+      );
+      arrangement = fallbackArrangement(view);
+    }
     final spread = timing.maxThink - timing.minThink;
     final target =
         timing.minThink +
