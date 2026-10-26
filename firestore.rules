@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Online play is server-authoritative: clients never write. Every change
+// goes through Cloud Functions (functions/src/index.ts), which use the
+// Admin SDK and bypass these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Lobby info (code, seat names, status). No cards live here.
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      // The full game state, including every hand. Never readable.
+      match /private/{doc} {
+        allow read, write: if false;
+      }
+
+      // Each player's own view: their hand plus public table state.
+      match /views/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -30,6 +30,35 @@ jobs:
       - run: flutter analyze
       - run: flutter test --reporter expanded
 
+  functions:
+    name: Cloud Functions and Firestore rules
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('functions/package-lock.json') }}
+      - run: npm ci
+      - name: Engine, parity, rooms and bot tests
+        run: npm test
+      - name: Security rules (Firestore emulator)
+        run: npm run test:rules
+      - name: Full online match (Functions, Firestore and Auth emulators)
+        run: npm run test:e2e
+
   android:
     name: Build APKs
     runs-on: ubuntu-latest

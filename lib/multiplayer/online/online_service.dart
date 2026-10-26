@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -179,10 +180,12 @@ class OnlineService {
       .collection('views')
       .doc(uid)
       .snapshots()
-      .where((s) => s.exists && s.data()?['view'] != null)
+      .where((s) => s.exists && s.data()?['view'] is String)
+      // Stored as JSON text: Firestore cannot hold nested arrays.
       .map(
         (s) => PlayerView.fromJson(
-          (s.data()!['view'] as Map).cast<String, dynamic>(),
+          (jsonDecode(s.data()!['view'] as String) as Map)
+              .cast<String, dynamic>(),
         ),
       );
 }
