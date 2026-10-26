@@ -78,8 +78,19 @@ class _TableScreenState extends ConsumerState<TableScreen>
     session.view.addListener(_onView);
     _events = session.events.listen(_onEvent);
     _deal.addListener(_onDealTick);
-    final v = session.view.value;
-    if (v != null) _onView();
+  }
+
+  bool _initialViewShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The first view reads localizations and media settings, which are not
+    // available in initState.
+    if (!_initialViewShown) {
+      _initialViewShown = true;
+      if (session.view.value != null) _onView();
+    }
   }
 
   @override

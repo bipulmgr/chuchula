@@ -1,0 +1,123 @@
+import 'dart:async';
+
+import 'package:chuchula/app/app.dart';
+import 'package:chuchula/app/providers.dart';
+import 'package:chuchula/audio/audio_service.dart';
+import 'package:chuchula/multiplayer/bluetooth/bluetooth_platform.dart';
+import 'package:chuchula/multiplayer/local/line_connection.dart';
+import 'package:chuchula/persistence/settings_repository.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class FakeBluetooth implements BluetoothPlatform {
+  FakeBluetooth({
+    this.supported = true,
+    this.enabled = true,
+    this.granted = false,
+    this.grantOnRequest = false,
+  });
+
+  bool supported;
+  bool enabled;
+  bool granted;
+  bool grantOnRequest;
+  int permissionRequests = 0;
+  int settingsOpened = 0;
+
+  @override
+  Future<BtState> state() async => BtState(
+    supported: supported,
+    enabled: enabled,
+    permissionsGranted: granted,
+  );
+
+  @override
+  Future<bool> requestPermissions() async {
+    permissionRequests++;
+    granted = grantOnRequest;
+    return granted;
+  }
+
+  @override
+  Future<bool> requestEnable() async => enabled = true;
+
+  @override
+  Future<bool> makeDiscoverable({int seconds = 300}) async => true;
+
+  @override
+  Future<List<BtDevice>> pairedDevices() async => const [
+    BtDevice(name: 'Friend phone', address: '00:11', paired: true),
+  ];
+
+  final _discovered = StreamController<BtDevice>.broadcast();
+  @override
+  Stream<BtDevice> get discovered => _discovered.stream;
+  @override
+  Future<void> startDiscovery() async {}
+  @override
+  Future<void> stopDiscovery() async {}
+
+  final hosted = StreamController<LineConnection>.broadcast();
+  @override
+  Stream<LineConnection> host() => hosted.stream;
+  @override
+  Future<void> stopHosting() async {}
+
+  @override
+  Future<LineConnection> connect(String address) =>
+      Completer<LineConnection>().future;
+
+  @override
+  Future<void> openAppSettings() async => settingsOpened++;
+}
+
+class TestEnv {
+  TestEnv(this.store, this.audio, this.bluetooth);
+  final LocalStore store;
+  final SilentAudioService audio;
+  final FakeBluetooth bluetooth;
+  late ProviderContainer container;
+}
+
+/// Pumps the app with in-memory storage, silent audio and fake Bluetooth.
+Future<TestEnv> pumpApp(
+  WidgetTester tester, {
+  Map<String, Object> prefs = const {},
+  Widget? home,
+  FakeBluetooth? bluetooth,
+  bool reducedMotion = true,
+}) async {
+  // A phone-sized portrait screen.
+  tester.view.physicalSize = const Size(1080, 2340);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  SharedPreferences.setMockInitialValues({
+    if (reducedMotion) 'settings.v1': '{"reducedMotion":true,"musicOn":false}',
+    ...prefs,
+  });
+  final store = await LocalStore.open();
+  final env = TestEnv(
+    store,
+    SilentAudioService(),
+    bluetooth ?? FakeBluetooth(),
+  );
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        audioServiceProvider.overrideWithValue(env.audio),
+        bluetoothPlatformProvider.overrideWithValue(env.bluetooth),
+      ],
+      child: Consumer(
+        builder: (context, ref, _) {
+          env.container = ProviderScope.containerOf(context);
+          return ChuchulaApp(home: home);
+        },
+      ),
+    ),
+  );
+  await tester.pump();
+  return env;
+}

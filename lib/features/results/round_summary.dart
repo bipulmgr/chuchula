@@ -89,6 +89,7 @@ class RoundSummaryPanel extends StatelessWidget {
                 const SizedBox(height: 10),
                 if (onNext != null)
                   GoldButton(
+                    key: const Key('nextRoundButton'),
                     theme: theme,
                     label: l.nextRound,
                     icon: Icons.style,
@@ -253,10 +254,11 @@ class _MiniGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final step = width * 0.55;
+    final groupWidth = width + step * (cards.length - 1);
     return Column(
       children: [
         SizedBox(
-          width: width + step * (cards.length - 1),
+          width: groupWidth,
           height: width / kCardAspect,
           child: Stack(
             children: [
@@ -273,11 +275,21 @@ class _MiniGroup extends StatelessWidget {
             ],
           ),
         ),
-        Text(
-          won ? '★ $label' : label,
-          style: TextStyle(
-            fontSize: 10,
-            color: won ? theme.glow : theme.onSurface.withValues(alpha: 0.7),
+        // Category names are wider than a small group; shrink to fit.
+        SizedBox(
+          width: groupWidth,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              won ? '★ $label' : label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 10,
+                color: won
+                    ? theme.glow
+                    : theme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
           ),
         ),
       ],

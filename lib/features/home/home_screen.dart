@@ -255,11 +255,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       color: theme.glow,
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      l.offlineReady,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: theme.onSurface,
+                                    Flexible(
+                                      child: Text(
+                                        l.offlineReady,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.onSurface,
+                                        ),
                                       ),
                                     ),
                                   ],

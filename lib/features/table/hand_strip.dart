@@ -248,6 +248,9 @@ class _HandStripState extends State<HandStrip> {
             ),
           );
           if (widget.mode == StripMode.arranging) {
+            // Captured as a final: the builder closure below must not see
+            // the reassigned variable (that recursed forever).
+            final tappable = cardWidget;
             cardWidget = DragTarget<int>(
               onWillAcceptWithDetails: (d) {
                 if (d.data == slot) return false;
@@ -278,7 +281,7 @@ class _HandStripState extends State<HandStrip> {
                   ),
                 ),
                 childWhenDragging: _GhostCard(width: w, theme: widget.theme),
-                child: cardWidget,
+                child: tappable,
               ),
             );
           }

@@ -115,19 +115,21 @@ class GoldPanel extends StatelessWidget {
           ),
         ],
       ),
-      child: Container(
-        padding: padding,
-        decoration: BoxDecoration(
-          color: theme.surface,
+      // A Material (not a decorated box) so list tiles and ink splashes
+      // inside the panel paint on it.
+      child: Material(
+        color: theme.surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: theme.accent.withValues(alpha: 0.4),
-            width: 1,
-          ),
+          side: BorderSide(color: theme.accent.withValues(alpha: 0.4)),
         ),
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: theme.onSurface),
-          child: child,
+        child: Padding(
+          padding: padding,
+          child: DefaultTextStyle.merge(
+            style: TextStyle(color: theme.onSurface),
+            child: child,
+          ),
         ),
       ),
     );

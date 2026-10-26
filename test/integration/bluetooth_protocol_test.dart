@@ -167,7 +167,9 @@ void main() {
       connect: radio.dial,
       clientId: 'same-id',
       playerName: 'Maya',
-      reconnectDelay: const Duration(milliseconds: 5),
+      // Long enough that the "reconnecting" state is observable even on a
+      // busy machine, before the client redials.
+      reconnectDelay: const Duration(milliseconds: 300),
     );
     await pump();
     final host = lobby.start(
@@ -187,7 +189,7 @@ void main() {
     await pump();
     expect(host.connections.value[1], SeatConnection.reconnecting);
     expect(lobby.players.value[1]!.connected, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
     await pump();
     expect(radio.clientEnds.length, 2, reason: 'client redialled');
     expect(lobby.players.value[1]!.connected, isTrue);
