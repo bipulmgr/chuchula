@@ -203,9 +203,11 @@ void main() {
     // Sorted by rank, the 4-card group is J-Q-K-A: a run, too strong.
     await tester.tap(find.byTooltip('Sort by rank'));
     await _settle(tester);
+    final groups = tester.widget<HandStrip>(find.byType(HandStrip)).groups;
+    expect(groups.last.map((c) => c.code), ['JS', 'QS', 'KC', 'AC']);
     await tester.tap(find.byKey(const Key('readyButton')));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.textContaining('must be your weakest'), findsOneWidget);
+    expect(find.textContaining('Rearrange it, or tap Suggest'), findsOneWidget);
     expect(session.view.value!.ready[0], isFalse);
     await _settle(tester);
     await session.dispose();
