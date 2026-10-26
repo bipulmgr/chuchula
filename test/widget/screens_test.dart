@@ -21,6 +21,62 @@ void main() {
     expect(find.text('Offline play is always available'), findsOneWidget);
   });
 
+  group('cash points', () {
+    testWidgets('home shows the balance and an ad adds 50', (tester) async {
+      final ads = FakeAds();
+      await pumpApp(tester, ads: ads);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('walletBalance'))).data,
+        '100',
+      );
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      expect(ads.shown, 1);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('walletBalance'))).data,
+        '150',
+      );
+      expect(find.text('+50 cash points added!'), findsOneWidget);
+    });
+
+    testWidgets('an ad closed early gives nothing', (tester) async {
+      await pumpApp(tester, ads: FakeAds(earn: false));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('walletBalance'))).data,
+        '100',
+      );
+      expect(find.textContaining('No reward this time'), findsOneWidget);
+    });
+
+    testWidgets('without ads support the player is told why', (tester) async {
+      await pumpApp(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Android app'), findsOneWidget);
+    });
+
+    testWidgets('below 50 a new match asks for an ad first', (tester) async {
+      final ads = FakeAds();
+      await pumpApp(tester, ads: ads, prefs: {'wallet.v1': '{"balance":30}'});
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('playOfflineButton')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('needCashDialog')), findsOneWidget);
+      await tester.tap(find.text('Watch an ad for +50'));
+      await tester.pumpAndSettle();
+      expect(ads.shown, 1);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('walletBalance'))).data,
+        '80',
+      );
+    });
+  });
+
   testWidgets('home navigates to rules and settings', (tester) async {
     await pumpApp(tester);
     await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ import '../../bots/bot_strategy.dart';
 import '../../core/localization/l10n.dart';
 import '../../core/theme/table_themes.dart';
 import '../../game/models/card.dart';
+import '../../game/scoring/cash_points.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
 import '../lobby/bluetooth_lobby_screen.dart';
@@ -76,8 +77,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (mounted) _loadSaved();
   }
 
+  /// Shows a rewarded ad and reports the outcome.
+  Future<void> _watchAd() async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    ref.read(audioServiceProvider).play(Sfx.button);
+    if (!ref.read(rewardedAdsProvider).supported) {
+      messenger.showSnackBar(SnackBar(content: Text(l.adsAndroidOnly)));
+      return;
+    }
+    final earned = await ref.read(walletProvider.notifier).watchAd();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          earned ? l.adRewarded(CashPoints.adReward) : l.adUnavailable,
+        ),
+      ),
+    );
+  }
+
   Future<void> _newOffline() async {
     ref.read(audioServiceProvider).play(Sfx.button);
+    if (!ref.read(walletProvider.notifier).canPlay) {
+      final l = context.l10n;
+      final watch = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          key: const Key('needCashDialog'),
+          title: Text(l.cashPoints),
+          content: Text(
+            l.needCash(CashPoints.minimumToPlay, CashPoints.adReward),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(l.watchAd(CashPoints.adReward)),
+            ),
+          ],
+        ),
+      );
+      if (watch == true && mounted) await _watchAd();
+      return;
+    }
+    if (!mounted) return;
     final start = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -186,8 +232,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _WalletChip(
+                                    theme: theme,
+                                    balance: ref.watch(walletProvider).balance,
+                                    onWatchAd: _watchAd,
+                                  ),
+                                ),
+                              ),
                               IconButton(
                                 key: const Key('rulesButton'),
                                 tooltip: l.howToPlay,
@@ -291,6 +346,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The player's cash points, with a button to earn more from an ad.
+class _WalletChip extends StatelessWidget {
+  const _WalletChip({
+    required this.theme,
+    required this.balance,
+    required this.onWatchAd,
+  });
+
+  final TableTheme theme;
+  final int balance;
+  final VoidCallback onWatchAd;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Semantics(
+      label: l.cashBalance(balance),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
+        decoration: BoxDecoration(
+          color: theme.surface.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: theme.accent.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.monetization_on, size: 20, color: theme.accent),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '$balance',
+                key: const Key('walletBalance'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Mukta',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: theme.accent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Tooltip(
+              message: l.watchAd(CashPoints.adReward),
+              child: TextButton.icon(
+                key: const Key('watchAdButton'),
+                onPressed: onWatchAd,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: const Size(0, 36),
+                  shape: const StadiumBorder(),
+                  backgroundColor: theme.accent.withValues(alpha: 0.18),
+                ),
+                icon: Icon(
+                  Icons.ondemand_video,
+                  size: 18,
+                  color: theme.accentSoft,
+                ),
+                label: Text(
+                  '+${CashPoints.adReward}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: theme.accentSoft,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

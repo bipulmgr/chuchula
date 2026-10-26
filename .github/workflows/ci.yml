@@ -113,7 +113,7 @@ jobs:
           done
           # Fail if the merged manifest gains a permission that is not
           # documented in docs/ANDROID_PERMISSIONS.md.
-          allowed='INTERNET|ACCESS_NETWORK_STATE|WAKE_LOCK|BLUETOOTH|BLUETOOTH_ADMIN|ACCESS_FINE_LOCATION|BLUETOOTH_SCAN|BLUETOOTH_CONNECT|BLUETOOTH_ADVERTISE|com.bipulmgr.chuchula.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+          allowed='INTERNET|ACCESS_NETWORK_STATE|WAKE_LOCK|BLUETOOTH|BLUETOOTH_ADMIN|ACCESS_FINE_LOCATION|BLUETOOTH_SCAN|BLUETOOTH_CONNECT|BLUETOOTH_ADVERTISE|com.bipulmgr.chuchula.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION|com.google.android.gms.permission.AD_ID|ACCESS_ADSERVICES_AD_ID|ACCESS_ADSERVICES_ATTRIBUTION'
           "$BT/aapt2" dump badging dist/chuchula-release.apk | sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" \
             | sed 's/^android\.permission\.//' > perms.txt
           cat perms.txt

@@ -37,6 +37,48 @@
       }
     }
   },
+  "cashPoints": "Cash points",
+  "cashBalance": "Cash points: {points}",
+  "@cashBalance": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "watchAd": "Watch an ad for +{points}",
+  "@watchAd": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "adRewarded": "+{points} cash points added!",
+  "@adRewarded": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "adUnavailable": "No reward this time. The ad was not available or was closed early.",
+  "adsAndroidOnly": "Ads for cash points are available in the Android app.",
+  "needCash": "You need {min} cash points to start a match. Watch an ad to get {reward} more.",
+  "@needCash": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "reward": {
+        "type": "int"
+      }
+    }
+  },
+  "pointsTable": "Points table",
+  "roundColumn": "Round",
+  "totalColumn": "Total",
+  "noRoundsYet": "No rounds finished yet.",
   "newMatch": "New match",
   "yourName": "Your name",
   "defaultPlayerName": "You",
@@ -408,7 +450,7 @@
   "tutRankTitle": "Ranking",
   "tutRank3": "Four of a kind > Trail (three of a kind) > Double run (run in one suit) > Run > Color (same suit) > Two pair > Pair > High card. A-K-Q is the top run, then A-2-3.",
   "tutRank4Title": "The 4-card group",
-  "tutRank4": "It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color, so three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
+  "tutRank4": "It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
   "tutTieTitle": "Ties",
   "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
   "tutScoreTitle": "Scoring",

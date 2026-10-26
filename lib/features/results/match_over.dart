@@ -6,6 +6,7 @@ import '../../core/localization/l10n.dart';
 import '../../core/theme/table_themes.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
+import '../../game/scoring/cash_points.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
 
@@ -17,6 +18,8 @@ class MatchOverPanel extends StatelessWidget {
     required this.reducedMotion,
     required this.onHome,
     this.onPlayAgain,
+    this.onPointsTable,
+    this.cashBalance,
   });
 
   final PlayerView view;
@@ -24,6 +27,11 @@ class MatchOverPanel extends StatelessWidget {
   final bool reducedMotion;
   final VoidCallback onHome;
   final VoidCallback? onPlayAgain;
+  final VoidCallback? onPointsTable;
+
+  /// The player's cash points after this match was settled, or null when
+  /// the match had no stakes.
+  final int? cashBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +39,10 @@ class MatchOverPanel extends StatelessWidget {
     final result = view.result!;
     final iWon = result.winnerSeat == view.mySeat;
     final winnerName = view.seats[result.winnerSeat].name;
+    final places = CashPoints.places(result);
     final order = List.generate(kSeatCount, (i) => i)
-      ..sort((a, b) => view.scores[b].compareTo(view.scores[a]));
+      ..sort((a, b) => places[a].compareTo(places[b]));
+    final cash = cashBalance == null ? null : CashPoints.settle(result);
     final instant = result.reason == MatchEndReason.instantWin;
     final hand = view.lastRound?.instantWinHand;
 
@@ -91,7 +101,7 @@ class MatchOverPanel extends StatelessWidget {
                             SizedBox(
                               width: 28,
                               child: Text(
-                                '${i + 1}.',
+                                '${places[order[i]]}.',
                                 style: TextStyle(color: theme.accentSoft),
                               ),
                             ),
@@ -113,10 +123,48 @@ class MatchOverPanel extends StatelessWidget {
                                 color: theme.accent,
                               ),
                             ),
+                            if (cash != null)
+                              SizedBox(
+                                width: 56,
+                                child: Text(
+                                  cash[order[i]] > 0
+                                      ? '+${cash[order[i]]}'
+                                      : '${cash[order[i]]}',
+                                  key: Key('cash-${order[i]}'),
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: cash[order[i]] > 0
+                                        ? theme.glow
+                                        : const Color(0xFFFF9A8A),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                    const SizedBox(height: 16),
+                    if (cashBalance != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        l.cashBalance(cashBalance!),
+                        key: const Key('cashBalance'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: theme.accentSoft,
+                        ),
+                      ),
+                    ],
+                    if (onPointsTable != null)
+                      TextButton.icon(
+                        key: const Key('matchPointsTable'),
+                        onPressed: onPointsTable,
+                        icon: Icon(Icons.leaderboard, color: theme.accentSoft),
+                        label: Text(
+                          l.pointsTable,
+                          style: TextStyle(color: theme.accentSoft),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
                     if (onPlayAgain != null) ...[
                       GoldButton(
                         theme: theme,

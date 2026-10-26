@@ -4,6 +4,12 @@
 
 First version.
 
+- Points table: every round's points per player and the totals, from the
+  table's top bar and the round and match summaries.
+- Cash points (virtual, no money value) for offline matches: start with
+  100, +50 for watching a rewarded ad, at least 50 to start a match. At
+  the end, 2nd pays the winner 20, 3rd pays 30 and last pays 50.
+
 - Rules engine for 4 players: 13 cards in 3/3/3/4 groups, Teen Patti
   style ranking, sweeps, hand bonuses, instant win, 20-point match. Rules
   that still need confirmation are switches (see docs/GAME_RULES.md).

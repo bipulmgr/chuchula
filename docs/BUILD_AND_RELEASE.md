@@ -52,6 +52,29 @@ published or updated on Google Play.
 Never commit keystores, `key.properties`, `.env` or any service-account
 JSON. `.gitignore` excludes them.
 
+## Rewarded ads (cash points)
+
+Cash points can be topped up by watching a Google AdMob rewarded ad. Out
+of the box the app uses Google's public **test** ids, which only show
+test ads and earn nothing. For real ads, create an AdMob app and a
+rewarded ad unit, then build with both ids:
+
+```sh
+flutter build apk --release \
+  -PadmobAppId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY \
+  --dart-define=ADMOB_REWARDED_ID=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+```
+
+- The app id goes into the manifest through `admobAppId` in
+  `android/app/build.gradle.kts` (a Gradle property, so it can also live
+  in `~/.gradle/gradle.properties`).
+- The ad unit id is read in `lib/ads/rewarded_ads.dart`
+  (`ADMOB_REWARDED_ID`).
+- Before publishing, declare ads and the advertising id in the Play
+  Console (see docs/ANDROID_PERMISSIONS.md).
+
+Ads are Android only; on other platforms the +50 button explains that.
+
 ## Releases from CI
 
 Every push builds debug and release APKs in GitHub Actions and uploads

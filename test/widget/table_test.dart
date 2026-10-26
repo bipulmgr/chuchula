@@ -1,10 +1,13 @@
 import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/bots/bot_strategy.dart';
+import 'package:chuchula/core/theme/table_themes.dart';
+import 'package:chuchula/features/results/match_over.dart';
 import 'package:chuchula/features/table/hand_strip.dart';
 import 'package:chuchula/features/table/seat_plate.dart';
 import 'package:chuchula/features/table/table_screen.dart';
 import 'package:chuchula/game/models/card.dart';
 import 'package:chuchula/game/models/game_state.dart';
+import 'package:chuchula/game/models/player_view.dart';
 import 'package:chuchula/game/rules/hand_evaluator.dart';
 import 'package:chuchula/game/state/authority_session.dart';
 import 'package:chuchula/widgets/card_widgets.dart';
@@ -278,6 +281,21 @@ void main() {
       expect(plate.score, v.scores[seat]);
     }
     if (v.phase == GamePhase.roundOver) {
+      // The points table lists the round and the totals.
+      await tester.tap(find.byKey(const Key('summaryPointsTable')));
+      await tester.pumpAndSettle();
+      final table = find.byKey(const Key('pointsTable'));
+      expect(table, findsOneWidget);
+      expect(
+        find.descendant(of: table, matching: find.text('Round 1')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: table, matching: find.text('Total')),
+        findsOneWidget,
+      );
+      Navigator.of(tester.element(table)).pop();
+      await tester.pumpAndSettle();
       expect(find.byKey(const Key('nextRoundButton')), findsOneWidget);
       await tester.tap(find.byKey(const Key('nextRoundButton')));
       await _settle(tester);
@@ -285,6 +303,50 @@ void main() {
       expect(session.view.value!.phase, GamePhase.arranging);
     }
     await session.dispose();
+  });
+
+  testWidgets('the points table opens from the top bar', (tester) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('pointsTableButton')));
+    await _settle(tester);
+    expect(find.byKey(const Key('pointsTable')), findsOneWidget);
+    expect(find.text('No rounds finished yet.'), findsOneWidget);
+    await session.dispose();
+  });
+
+  testWidgets('match over shows each player\'s cash points', (tester) async {
+    final engine = fixedEngine([deckFor(_deal)]);
+    final state = start(engine).copyWith(
+      phase: GamePhase.matchOver,
+      scores: [21, 4, 12, 9],
+      result: () => const MatchResult(
+        winnerSeat: 0,
+        reason: MatchEndReason.targetReached,
+        finalScores: [21, 4, 12, 9],
+      ),
+    );
+    await pumpApp(
+      tester,
+      home: Builder(
+        builder: (context) => MatchOverPanel(
+          view: PlayerView.of(state, 0),
+          theme: TableTheme.of(TableThemeId.emerald),
+          reducedMotion: true,
+          onHome: () {},
+          cashBalance: 200,
+        ),
+      ),
+    );
+    await tester.pump();
+    String cash(int seat) =>
+        tester.widget<Text>(find.byKey(Key('cash-$seat'))).data!;
+    expect(
+      [for (var s = 0; s < 4; s++) cash(s)],
+      ['+100', '-50', '-20', '-30'],
+    );
+    expect(find.text('Cash points: 200'), findsOneWidget);
   });
 
   testWidgets('a rejected move is shown to the player', (tester) async {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chuchula/ads/rewarded_ads.dart';
 import 'package:chuchula/app/app.dart';
 import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/audio/audio_service.dart';
@@ -73,6 +74,22 @@ class FakeBluetooth implements BluetoothPlatform {
   Future<void> openAppSettings() async => settingsOpened++;
 }
 
+/// Rewarded ads that finish instantly.
+class FakeAds implements RewardedAds {
+  FakeAds({this.supported = true, this.earn = true});
+
+  @override
+  final bool supported;
+  bool earn;
+  int shown = 0;
+
+  @override
+  Future<bool> show() async {
+    shown++;
+    return earn;
+  }
+}
+
 class TestEnv {
   TestEnv(this.store, this.audio, this.bluetooth);
   final LocalStore store;
@@ -87,6 +104,7 @@ Future<TestEnv> pumpApp(
   Map<String, Object> prefs = const {},
   Widget? home,
   FakeBluetooth? bluetooth,
+  RewardedAds ads = const NoRewardedAds(),
   bool reducedMotion = true,
 }) async {
   // A phone-sized portrait screen.
@@ -109,6 +127,7 @@ Future<TestEnv> pumpApp(
         localStoreProvider.overrideWithValue(store),
         audioServiceProvider.overrideWithValue(env.audio),
         bluetoothPlatformProvider.overrideWithValue(env.bluetooth),
+        rewardedAdsProvider.overrideWithValue(ads),
       ],
       child: Consumer(
         builder: (context, ref, _) {

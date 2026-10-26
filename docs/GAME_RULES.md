@@ -119,6 +119,33 @@ Details *(interim)*:
 - If the highest totals are tied, another round is played.
 - As a safety valve the match stops after 100 rounds (highest score wins).
 
+## Cash points
+
+Cash points are a virtual balance for offline matches against bots. They
+have no money value: they cannot be bought, sold or cashed out.
+
+- Every player starts with **100**.
+- Watching a rewarded ad to the end adds **50** (Android app only). An ad
+  that fails to load or is closed early adds nothing.
+- Starting a new match needs at least **50**, the largest payment, so
+  every payment can always be covered. Below that, the app offers an ad.
+- At the end of a match the losers pay the winner by finishing place:
+  **2nd pays 20, 3rd pays 30, last pays 50**, so the winner gains 100.
+  Places after the winner follow final scores. Players tied on score
+  split the payments of the places they span evenly, rounded down (two
+  tied for 2nd and 3rd pay 25 each); the winner receives exactly what is
+  paid.
+- A match is settled once, when it ends. The match-over screen shows each
+  player's gain or loss and your new balance. Bots' balances are not kept
+  between matches.
+- Online and Bluetooth matches are not played for cash points yet.
+
+## Points table
+
+The points table (the 📊 button at the top of the table, or **Points
+table** on the round and match summaries) lists each round's points per
+player and the running totals.
+
 ## Open questions for confirmation
 
 These follow the interim answers above until confirmed:

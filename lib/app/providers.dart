@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/rewarded_ads.dart';
 import '../audio/audio_service.dart';
 import '../core/theme/table_themes.dart';
+import '../game/scoring/cash_points.dart';
 import '../multiplayer/bluetooth/bluetooth_platform.dart';
 import '../persistence/settings_repository.dart';
 
@@ -57,3 +59,48 @@ class StatsNotifier extends Notifier<PlayerStats> {
 final bluetoothPlatformProvider = Provider<BluetoothPlatform>(
   (ref) => MethodChannelBluetooth(),
 );
+
+/// Overridden in `main()` on Android with AdMob.
+final rewardedAdsProvider = Provider<RewardedAds>(
+  (ref) => const NoRewardedAds(),
+);
+
+final walletProvider = NotifierProvider<WalletNotifier, Wallet>(
+  WalletNotifier.new,
+);
+
+class WalletNotifier extends Notifier<Wallet> {
+  @override
+  Wallet build() => ref.read(localStoreProvider).loadWallet();
+
+  bool get canPlay => state.balance >= CashPoints.minimumToPlay;
+
+  void _save(Wallet next) {
+    state = next;
+    ref.read(localStoreProvider).saveWallet(next);
+  }
+
+  /// Shows a rewarded ad and adds [CashPoints.adReward] if it was watched
+  /// to the end. Returns whether the reward was given.
+  Future<bool> watchAd() async {
+    final earned = await ref.read(rewardedAdsProvider).show();
+    if (earned) {
+      _save(state.copyWith(balance: state.balance + CashPoints.adReward));
+    }
+    return earned;
+  }
+
+  /// Applies the local player's share of a finished match, once per match.
+  void settle(String matchId, int delta) {
+    if (state.settledMatches.contains(matchId)) return;
+    final recent = [...state.settledMatches, matchId];
+    _save(
+      Wallet(
+        balance: (state.balance + delta).clamp(0, 1 << 31),
+        settledMatches: recent.length > 20
+            ? recent.sublist(recent.length - 20)
+            : recent,
+      ),
+    );
+  }
+}

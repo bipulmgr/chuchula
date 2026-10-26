@@ -33,6 +33,19 @@ s('resumeMatch', 'Resume match', 'खेल जारी राख्नुह�
 s('resumeMatchSub', 'Round {round} · you have {score} points', 'राउन्ड {round} · तपाईंसँग {score} अंक', round='int', score='int')
 s('offlineReady', 'Offline play is always available', 'अफलाइन खेल सधैं उपलब्ध छ')
 s('statsLine', '{won} wins from {played} matches · {sweeps} sweeps', '{played} खेलमा {won} जित · {sweeps} पूर्ण जित', won='int', played='int', sweeps='int')
+# Cash points
+s('cashPoints', 'Cash points', 'क्यास अंक')
+s('cashBalance', 'Cash points: {points}', 'क्यास अंक: {points}', points='int')
+s('watchAd', 'Watch an ad for +{points}', 'विज्ञापन हेरेर +{points}', points='int')
+s('adRewarded', '+{points} cash points added!', '+{points} क्यास अंक थपियो!', points='int')
+s('adUnavailable', 'No reward this time. The ad was not available or was closed early.', 'यस पटक इनाम भएन। विज्ञापन उपलब्ध थिएन वा चाँडै बन्द भयो।')
+s('adsAndroidOnly', 'Ads for cash points are available in the Android app.', 'क्यास अंकका लागि विज्ञापन एन्ड्रोइड एपमा उपलब्ध छ।')
+s('needCash', 'You need {min} cash points to start a match. Watch an ad to get {reward} more.', 'खेल सुरु गर्न {min} क्यास अंक चाहिन्छ। {reward} थप पाउन विज्ञापन हेर्नुहोस्।', min='int', reward='int')
+# Points table
+s('pointsTable', 'Points table', 'अंक तालिका')
+s('roundColumn', 'Round', 'राउन्ड')
+s('totalColumn', 'Total', 'जम्मा')
+s('noRoundsYet', 'No rounds finished yet.', 'अहिलेसम्म कुनै राउन्ड सकिएको छैन।')
 # Setup
 s('newMatch', 'New match', 'नयाँ खेल')
 s('yourName', 'Your name', 'तपाईंको नाम')
@@ -215,7 +228,7 @@ s('tutPlay', "Once everyone is Ready, the groups are revealed automatically: eve
 s('tutRankTitle', 'Ranking', 'क्रम')
 s('tutRank3', 'Four of a kind > Trail (three of a kind) > Double run (run in one suit) > Run > Color (same suit) > Two pair > Pair > High card. A-K-Q is the top run, then A-2-3.', 'चार एकै > ट्रायल (तीन एकै) > डबल रन (एकै रङको क्रम) > रन > कलर (एकै रङ) > दुई जोडी > जोडी > उच्च कार्ड। A-K-Q सबैभन्दा माथिको क्रम, त्यसपछि A-2-3।')
 s('tutRank4Title', 'The 4-card group', '४ कार्डको समूह')
-s('tutRank4', 'It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color, so three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.', 'यो सधैं अन्तिममा खेलिन्छ र तपाईंको सबैभन्दा कमजोर समूह हुनुपर्छ। यसमा भित्रको सबैभन्दा राम्रो हात गनिन्छ; हातमा नपर्ने चौथो कार्डले केही थप्दैन। त्यसैले तीन हुकुम भए कलर हुन्छ। चारै कार्डले हात बनाए (४ कार्डको कलर वा रन), त्यसले त्यही किसिमको कुनै पनि ३ कार्डको हातलाई जित्छ: ८ ठूलो भएको ४ कार्डको कलरले A भएको ३ कार्डको कलरलाई जित्छ। यसलाई जित्न अझ बलियो ४ कार्डको कलर, वा रन, डबल रन वा ट्रायल चाहिन्छ।')
+s('tutRank4', 'It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.', 'यो सधैं अन्तिममा खेलिन्छ र तपाईंको सबैभन्दा कमजोर समूह हुनुपर्छ। यसमा भित्रको सबैभन्दा राम्रो हात गनिन्छ; हातमा नपर्ने चौथो कार्डले केही थप्दैन। त्यसैले तीन हुकुम भए कलर हुन्छ। चारै कार्डले हात बनाए (४ कार्डको कलर वा रन), त्यसले त्यही किसिमको कुनै पनि ३ कार्डको हातलाई जित्छ: ८ ठूलो भएको ४ कार्डको कलरले A भएको ३ कार्डको कलरलाई जित्छ। यसलाई जित्न अझ बलियो ४ कार्डको कलर, वा रन, डबल रन वा ट्रायल चाहिन्छ।')
 s('tutTieTitle', 'Ties', 'बराबरी')
 s('tutTie', 'Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.', 'बराबर समूहमा उच्च कार्डबाट क्रमशः तुलना हुन्छ। सबै अङ्क मिले उच्च कार्डको रङले छिन्छ: हुकुम, पान, इँटा, चिडी।')
 s('tutScoreTitle', 'Scoring', 'अंक')

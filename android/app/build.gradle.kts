@@ -39,6 +39,12 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // AdMob app id for rewarded ads. Pass -PadmobAppId=... (or set it
+        // in ~/.gradle/gradle.properties) for real ads; otherwise Google's
+        // public test app id is used, which only serves test ads.
+        manifestPlaceholders["admobAppId"] =
+            (project.findProperty("admobAppId") as String?)
+                ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {

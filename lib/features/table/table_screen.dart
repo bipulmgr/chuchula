@@ -18,6 +18,7 @@ import '../../game/state/game_session.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
 import '../results/match_over.dart';
+import '../results/points_table.dart';
 import '../results/round_summary.dart';
 import '../tutorial/how_to_play_screen.dart';
 import 'center_area.dart';
@@ -33,6 +34,7 @@ class TableScreen extends ConsumerStatefulWidget {
     this.isOffline = true,
     this.onPlayAgain,
     this.onMatchFinished,
+    this.cashStakes = false,
   });
 
   final GameSession session;
@@ -43,6 +45,9 @@ class TableScreen extends ConsumerStatefulWidget {
 
   /// Called once when the match ends (statistics, clearing the save).
   final void Function(PlayerView finalView)? onMatchFinished;
+
+  /// Whether this match is played for cash points (offline matches).
+  final bool cashStakes;
 
   @override
   ConsumerState<TableScreen> createState() => _TableScreenState();
@@ -588,6 +593,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
               view: v,
               theme: theme,
               onBack: _confirmLeave,
+              onPoints: () => showPointsTable(context, v, theme),
               onRules: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const HowToPlayScreen(),
@@ -699,6 +705,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
                 theme: theme,
                 reducedMotion: reduced,
                 onNext: session.canStartNextRound ? _next : null,
+                onPointsTable: () => showPointsTable(context, v, theme),
               ),
             ),
           ),
@@ -712,6 +719,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
                 reducedMotion: reduced,
                 onHome: () => Navigator.of(context).pop(),
                 onPlayAgain: widget.onPlayAgain,
+                onPointsTable: () => showPointsTable(context, v, theme),
+                cashBalance: widget.cashStakes
+                    ? ref.watch(walletProvider).balance
+                    : null,
               ),
             ),
           ),
@@ -945,12 +956,14 @@ class _TopBar extends StatelessWidget {
     required this.view,
     required this.theme,
     required this.onBack,
+    required this.onPoints,
     required this.onRules,
   });
 
   final PlayerView view;
   final TableTheme theme;
   final VoidCallback onBack;
+  final VoidCallback onPoints;
   final VoidCallback onRules;
 
   @override
@@ -995,6 +1008,12 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          IconButton(
+            key: const Key('pointsTableButton'),
+            tooltip: l.pointsTable,
+            onPressed: onPoints,
+            icon: Icon(Icons.leaderboard, color: theme.accentSoft),
+          ),
           IconButton(
             tooltip: l.rules,
             onPressed: onRules,

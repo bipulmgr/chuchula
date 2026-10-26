@@ -21,6 +21,7 @@ class RoundSummaryPanel extends StatelessWidget {
     required this.theme,
     required this.onNext,
     required this.reducedMotion,
+    this.onPointsTable,
   });
 
   final PlayerView view;
@@ -29,6 +30,7 @@ class RoundSummaryPanel extends StatelessWidget {
   /// Null when only the host may deal the next round.
   final VoidCallback? onNext;
   final bool reducedMotion;
+  final VoidCallback? onPointsTable;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +88,18 @@ class RoundSummaryPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                if (onPointsTable != null)
+                  TextButton.icon(
+                    key: const Key('summaryPointsTable'),
+                    onPressed: onPointsTable,
+                    icon: Icon(Icons.leaderboard, color: theme.accentSoft),
+                    label: Text(
+                      l.pointsTable,
+                      style: TextStyle(color: theme.accentSoft),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 10),
                 if (onNext != null)
                   GoldButton(
                     key: const Key('nextRoundButton'),

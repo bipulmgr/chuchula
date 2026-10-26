@@ -6,6 +6,7 @@ import '../../bots/bot_strategy.dart';
 import '../../game/engine/game_engine.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
+import '../../game/scoring/cash_points.dart';
 import '../../game/state/authority_session.dart';
 import '../../persistence/settings_repository.dart';
 import '../table/table_screen.dart';
@@ -125,6 +126,7 @@ class OfflineGame {
           pageBuilder: (_, _, _) => TableScreen(
             session: session,
             onMatchFinished: (v) => _recordStats(ref, v),
+            cashStakes: true,
             onPlayAgain: () {
               again = true;
               navigator.pop();
@@ -147,6 +149,12 @@ class OfflineGame {
   }
 
   static void _recordStats(WidgetRef ref, PlayerView v) {
+    final result = v.result;
+    if (result != null) {
+      ref
+          .read(walletProvider.notifier)
+          .settle(v.matchId, CashPoints.settle(result)[v.mySeat]);
+    }
     final groups = v.history
         .expand((r) => r.groupWinners)
         .where((w) => w == v.mySeat)

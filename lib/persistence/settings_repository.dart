@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../bots/bot_strategy.dart';
 import '../core/theme/table_themes.dart';
+import '../game/scoring/cash_points.dart';
 
 /// Background music tracks.
 enum MusicTrack {
@@ -161,6 +162,7 @@ class LocalStore {
   static const _savedMatchKey = 'savedMatch.v1';
   static const _statsKey = 'stats.v1';
   static const _clientIdKey = 'clientId.v1';
+  static const _walletKey = 'wallet.v1';
 
   static Future<LocalStore> open() async =>
       LocalStore(await SharedPreferences.getInstance());
@@ -197,6 +199,19 @@ class LocalStore {
       _prefs.setString(_savedMatchKey, jsonEncode(json));
 
   Future<void> clearSavedMatch() => _prefs.remove(_savedMatchKey);
+
+  Wallet loadWallet() {
+    final raw = _prefs.getString(_walletKey);
+    if (raw == null) return const Wallet();
+    try {
+      return Wallet.fromJson((jsonDecode(raw) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return const Wallet();
+    }
+  }
+
+  Future<void> saveWallet(Wallet w) =>
+      _prefs.setString(_walletKey, jsonEncode(w.toJson()));
 
   /// A random id identifying this install to Bluetooth hosts, so a dropped
   /// player can reclaim their seat.
@@ -262,5 +277,34 @@ class PlayerStats {
     won: j['won'] as int? ?? 0,
     groupsWon: j['groupsWon'] as int? ?? 0,
     sweeps: j['sweeps'] as int? ?? 0,
+  );
+}
+
+/// The player's cash points (virtual, no money value).
+class Wallet {
+  const Wallet({
+    this.balance = CashPoints.startingBalance,
+    this.settledMatches = const [],
+  });
+
+  final int balance;
+
+  /// Recently settled match ids, so a match is never paid out twice.
+  final List<String> settledMatches;
+
+  Wallet copyWith({int? balance, List<String>? settledMatches}) => Wallet(
+    balance: balance ?? this.balance,
+    settledMatches: settledMatches ?? this.settledMatches,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'balance': balance,
+    'settledMatches': settledMatches,
+  };
+
+  factory Wallet.fromJson(Map<String, dynamic> json) => Wallet(
+    balance: (json['balance'] as num).toInt(),
+    settledMatches: (json['settledMatches'] as List? ?? const [])
+        .cast<String>(),
   );
 }

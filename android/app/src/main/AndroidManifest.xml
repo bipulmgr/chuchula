@@ -22,6 +22,9 @@
          messaging. Removed so the app asks only for what it needs. -->
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" tools:node="remove" />
     <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" tools:node="remove" />
+    <!-- Merged in by Google Mobile Ads: interest-based ad topics, not
+         needed for rewarded ads. -->
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove" />
 
     <!-- Bluetooth is optional: the app installs on devices without it. -->
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
@@ -52,6 +55,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- AdMob app id (rewarded ads for cash points), set in
+             android/app/build.gradle.kts. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
