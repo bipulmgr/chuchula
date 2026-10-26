@@ -206,7 +206,16 @@ void main() {
         botTimeout: budget ?? const Duration(seconds: 5),
       );
       final deadline = DateTime.now().add(const Duration(seconds: 20));
-      while (session.view.value!.ready.skip(1).any((r) => !r)) {
+      // Done when every bot is ready, or one ended the round by showing a
+      // special hand.
+      bool waiting() {
+        final v = session.view.value!;
+        return (v.phase == GamePhase.arranging &&
+                v.ready.skip(1).any((r) => !r)) ||
+            session.thinking.value.isNotEmpty;
+      }
+
+      while (waiting()) {
         if (DateTime.now().isAfter(deadline)) fail('bots never arranged');
         await Future<void>.delayed(const Duration(milliseconds: 10));
       }

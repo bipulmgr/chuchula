@@ -29,6 +29,8 @@ export interface RoundResult {
   sweepSeat: number | null;
   instantWinSeat: number | null;
   instantWinHand: string[] | null;
+  /** Seat that ended the round by showing a special hand. */
+  shownSeat: number | null;
 }
 
 export interface MatchResult {
@@ -60,7 +62,8 @@ export interface GameState {
 export type GameMove =
   | { type: 'arrange'; seat: number; arrangement: ArrangementJson }
   | { type: 'play'; seat: number; group: number }
-  | { type: 'next'; seat: number };
+  | { type: 'next'; seat: number }
+  | { type: 'show'; seat: number };
 
 export type RuleError =
   | 'wrongPhase'
@@ -73,6 +76,7 @@ export type RuleError =
   | 'cardNotOwned'
   | 'missingCards'
   | 'wrongGroup'
+  | 'nothingToShow'
   | 'matchOver';
 
 export interface PlayerView {
@@ -146,6 +150,8 @@ export function parseMove(json: unknown): GameMove {
       return { type: 'play', seat, group: m.group };
     case 'next':
       return { type: 'next', seat };
+    case 'show':
+      return { type: 'show', seat };
     default:
       throw new Error('unknown move type');
   }

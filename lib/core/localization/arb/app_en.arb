@@ -88,6 +88,31 @@
     }
   },
   "ready": "Ready",
+  "showHand": "Show {hand} +{points}",
+  "@showHand": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      },
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "showAllRanks": "Show all thirteen ranks and win",
+  "showHint": "You hold a special hand. Show it to end the round with its points, or arrange and play on.",
+  "handShown": "{name} showed {hand}",
+  "@handShown": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "revealing": "Revealing groups…",
   "readyCheck": "Ready",
   "waitingForOthers": "Waiting for the other players…",
   "thinking": "Arranging…",
@@ -356,7 +381,7 @@
   "tutArrangeTitle": "Arrange",
   "tutArrange": "Your hand sits along the bottom, already split into the four groups. Drag a card onto another card to swap them, or tap two cards. Drag a group by its label to swap whole groups. Tap Ready when you are happy. Nobody sees your groups until they are played.",
   "tutPlayTitle": "Play",
-  "tutPlay": "Everyone plays their strongest group first, then their next strongest, and so on. The 4-card group goes wherever it ranks. The app puts your groups in this order when you tap Ready. The strongest group in each turn wins it, and its owner leads the next one.",
+  "tutPlay": "Once everyone is Ready, the groups are revealed automatically: everyone's strongest group first, then the next strongest, and so on. The 4-card group goes wherever it ranks. The strongest group in each turn wins it, and its owner leads the next one.",
   "tutRankTitle": "Ranking",
   "tutRank3": "Four of a kind > Trail (three of a kind) > Double run (run in one suit) > Run > Color (same suit) > Two pair > Pair > High card. A-K-Q is the top run, then A-2-3.",
   "tutRank4Title": "The 4-card group",
@@ -364,7 +389,7 @@
   "tutTieTitle": "Ties",
   "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
   "tutScoreTitle": "Scoring",
-  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Bonuses from your dealt hand: four of a kind +4, six pairs +6, three trails +9. One card of every rank (A to K) wins the match instantly.",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show to end the round with four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
   "tutEndTitle": "Winning",
   "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
   "@tutEnd": {

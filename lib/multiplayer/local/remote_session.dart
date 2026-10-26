@@ -172,6 +172,9 @@ class RemoteGameSession extends BaseGameSession {
       _send(PlayGroup(localSeat, viewNotifier.value?.groupIndex ?? 0));
 
   @override
+  Future<void> showHand() => _send(ShowHand(localSeat));
+
+  @override
   Future<void> startNextRound() async {}
 
   @override

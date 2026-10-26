@@ -147,6 +147,9 @@ class AuthorityGameSession extends BaseGameSession {
       _applyLocal(PlayGroup(localSeat, _state.groupIndex));
 
   @override
+  Future<void> showHand() async => _applyLocal(ShowHand(localSeat));
+
+  @override
   Future<void> startNextRound() async => _applyLocal(StartNextRound(localSeat));
 
   void _applyLocal(GameMove move) {
@@ -264,14 +267,19 @@ class AuthorityGameSession extends BaseGameSession {
     final started = DateTime.now();
     final bot = _bots[seat]!;
     final view = PlayerView.of(_state, seat);
-    Arrangement arrangement;
-    try {
-      arrangement = await botRunner(bot, view).timeout(botTimeout);
-    } catch (e) {
-      debugPrint(
-        'Bot $seat could not arrange ($e); using a quick arrangement.',
-      );
-      arrangement = fallbackArrangement(view);
+    // Bots always show a special hand: it ends the round in their favour.
+    final show = ShowHand(seat);
+    final canShow = engine.validateMove(_state, show).isValid;
+    Arrangement? arrangement;
+    if (!canShow) {
+      try {
+        arrangement = await botRunner(bot, view).timeout(botTimeout);
+      } catch (e) {
+        debugPrint(
+          'Bot $seat could not arrange ($e); using a quick arrangement.',
+        );
+        arrangement = fallbackArrangement(view);
+      }
     }
     final spread = timing.maxThink - timing.minThink;
     final target =
@@ -288,7 +296,9 @@ class AuthorityGameSession extends BaseGameSession {
     _arranging.remove(seat);
     if (disposed) return;
     thinkingNotifier.value = {...thinkingNotifier.value}..remove(seat);
-    final move = SubmitArrangement(seat, arrangement);
+    final GameMove move = arrangement == null
+        ? show
+        : SubmitArrangement(seat, arrangement);
     if (_state.round == round && engine.validateMove(_state, move).isValid) {
       _commit(engine.applyMove(_state, move));
     }

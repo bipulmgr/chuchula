@@ -158,16 +158,24 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
       case GamePhase.arranging:
         tryInvalid(PlayGroup(0, 0));
         tryInvalid(const StartNextRound(1));
+        var shown = false;
         for (var seat = 0; seat < 4; seat++) {
+          // A seat with a special hand shows it, ending the round.
+          if (ChuchulaGameEngine.showable(s, seat).isNotEmpty) {
+            apply(ShowHand(seat));
+            shown = true;
+            break;
+          }
+          tryInvalid(ShowHand(seat));
           final a = bot.arrange(PlayerView.of(s, seat));
-          // Weakest triple first keeps the ascending-strength rule happy.
-          final triples = a.groups.sublist(0, 3).toList()
-            ..sort(
+          // Weakest first, so the engine has to reorder (or keep) them.
+          final sorted = Arrangement(
+            a.groups.toList()..sort(
               (x, y) =>
                   HandEvaluator.evaluate(x)
                       .compareTo(HandEvaluator.evaluate(y)),
-            );
-          final sorted = Arrangement([...triples, a.groups[3]]);
+            ),
+          );
           if (seat == 0) {
             tryInvalid(
               SubmitArrangement(
@@ -188,7 +196,7 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
           }
           apply(SubmitArrangement(seat, sorted));
         }
-        tryInvalid(SubmitArrangement(0, s.arrangements[0]!));
+        if (!shown) tryInvalid(SubmitArrangement(0, s.arrangements[0]!));
       case GamePhase.playing:
         final turn = s.turnSeat!;
         tryInvalid(PlayGroup((turn + 1) % 4, s.groupIndex));
@@ -234,6 +242,7 @@ Map<String, Object?> buildFixtures() => {
         sweepReplacesGroupPoints: false,
         bonusesStackWithGroupPoints: false,
         strongestFirst: false,
+        declareBonuses: false,
       ),
     ),
     matchFixture(

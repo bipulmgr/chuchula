@@ -118,7 +118,9 @@ describe('rooms', () => {
     // The host keeps beating; Maya went quiet.
     const beat = rooms.heartbeat(started.room!, started.state!, 'host', later, engine);
     assert.equal(beat.room!.seats[1].away, true);
-    assert.equal(beat.state!.arrangements[1] !== null, true, 'bot arranged for Maya');
+    // The bot arranged for her, or a bot showed a special hand and ended the round.
+    const acted = beat.state!.arrangements[1] !== null || beat.state!.phase !== 'arranging';
+    assert.equal(acted, true, 'bot acted for Maya');
     const back = rooms.heartbeat(beat.room!, beat.state!, 'maya', later + 5, engine);
     assert.equal(back.room!.seats[1].away, false);
   });
@@ -134,7 +136,7 @@ describe('rooms', () => {
     const started = rooms.startMatch(lobby(), 'host', 5, engine, 'm');
     const left = rooms.leaveRoom(started.room!, started.state!, 'maya', 6, engine);
     assert.equal(left.room!.seats[1].isBot, true);
-    assert.equal(left.state!.arrangements[1] !== null, true);
+    assert.equal(left.state!.arrangements[1] !== null || left.state!.phase !== 'arranging', true);
     const { state } = playOut(left.room!, left.state!);
     assert.equal(state.phase, 'matchOver');
   });

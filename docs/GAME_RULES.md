@@ -21,8 +21,8 @@ interpretations**. Each one is a switch in
    goes wherever it ranks (a 4-card trail goes first). The app puts the
    groups in this order when Ready is pressed, and the engine and server
    enforce it.
-4. **Play.** Once all four players are ready, everyone's group 1 is
-   played. The player after the dealer reveals first, then the others in
+4. **Play.** Once all four players are ready, the groups are revealed
+   automatically, with no taps: everyone's group 1 is played. The player after the dealer reveals first, then the others in
    turn. The strongest group wins the point and its owner leads the next
    group. This repeats for groups 2, 3 and 4. A turn can mix 3-card and
    4-card groups; they compare on the one ladder below.
@@ -80,20 +80,26 @@ top; two pair sits between Color and Pair; the extra-card kicker rule.)*
 |---|---|
 | Win a group | 1 |
 | Win all four groups in a round (sweep) | 5 in total *(interim: replaces the four 1-point wins)* |
-| Four of a kind in your 13 cards | 4 (each one) |
-| Six pairs in your 13 cards | 6 |
-| Three trails ("three trials") in your 13 cards | 9 |
-| One card of every rank, A to K ("all thirteen different") | Instant match win |
+| Show four of a kind | 4 (each one), round ends |
+| Show six pairs | 6, round ends |
+| Show three trails ("three trials") | 9, round ends |
+| Show one card of every rank, A to K ("all thirteen different") | Match win |
 
-Bonus details *(interim)*:
+**Showing a special hand.** While arranging (before the groups are
+played), a player holding one of these hands can tap **Show**. The round
+ends at once: the shower scores the points, nobody else scores, and the
+next round is dealt. Showing all thirteen ranks wins the whole match.
+Bots always show. A special hand that is not shown scores nothing.
 
-- Bonuses are judged on the **dealt hand**, not on how it is arranged,
-  and they **stack** with group points.
+Details *(interim)*:
+
+- Special hands are judged on the **dealt** 13 cards.
+- A hand with more than one special scores all of them together (for
+  example four of a kind and three trails: 4 + 9).
+- The first player to show ends the round; nobody else can show after.
 - For six pairs, a four of a kind counts as two pairs and a trail as one.
 - "Three trials" is read as three *trails* (three separate
   three-of-a-kinds).
-- If two players are dealt all thirteen ranks in the same deal, the deal
-  is void and redealt.
 
 ## Winning *(interim)*
 
@@ -106,15 +112,18 @@ Bonus details *(interim)*:
 
 These follow the interim answers above until confirmed:
 
-1. "Three trials": is it three trails (three of a kind)? Is 9 the right value?
-2. "All thirteen different": one of every rank, instant win?
+1. "Three trials": is it three trails (three of a kind)?
+2. A hand with two specials (say four of a kind and three trails): both, or the best one?
 3. Does a sweep's 5 points replace the four group points or add to them?
-4. Do bonuses stack with group points, and are they judged on the dealt hand?
+4. If two players could show, does the first to show win, or the bigger special?
 5. Is the target "20 or more"? What happens with a tie above 20?
 6. Are exact ties broken by suit, or is the point split?
 7. Where do two pair and the 4-card group's extra card rank (see above)?
 
-Confirmed by Bipul on 2026-10-26: groups are played strongest first with
+Confirmed by Bipul on 2026-10-26: groups are revealed automatically
+once everyone is ready; special hands are shown during arranging and end
+the round (4, 6, 9 points) or the match (all thirteen ranks); groups are
+played strongest first with
 the 4-card group anywhere; a 4-card group is named by the best hand in
 it; a full 4-card hand beats a 3-card hand of the same kind.
 
@@ -130,7 +139,8 @@ it; a full 4-card hand beats a 3-card hand of the same kind.
 | `fourOfAKindPoints` | 4 | Bonus per four of a kind |
 | `sixPairsPoints` | 6 | Six pairs bonus |
 | `threeTrailsPoints` | 9 | Three trails bonus |
-| `bonusesStackWithGroupPoints` | true | If false, a player gets the larger of bonus or group points |
+| `bonusesStackWithGroupPoints` | true | Only with `declareBonuses` off: if false, a player gets the larger of bonus or group points |
 | `allRanksInstantWin` | true | All thirteen ranks wins the match |
 | `strongestFirst` | true | Groups are played strongest first (the engine orders them) |
+| `declareBonuses` | true | Special hands score only when shown, which ends the round. If false, they score automatically at round end and all-ranks wins at the deal |
 | `maxRounds` | 100 | Safety limit |

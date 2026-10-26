@@ -16,11 +16,15 @@ import 'test_app.dart';
 // Seat 0's dealt hand. No 10, so it is not an all-ranks instant win.
 const _hand = '2C 2D 5H 9S KC 3D 7H JS AC 4D 8H QS 6C';
 
+// Bot hands with no special hand to show, so the round is played out.
+const _deal = [
+  _hand,
+  'AH KH QH JH 10H 9H 3H 2H 3S 4S 5S 6S 7S',
+  'AD KD QD JD 10D 9D 8D 6D 5D 2S 8S 10S KS',
+];
+
 AuthorityGameSession _session() {
-  final engine = fixedEngine([
-    deckFor([_hand]),
-    deckFor([_hand]),
-  ]);
+  final engine = fixedEngine([deckFor(_deal), deckFor(_deal)]);
   return AuthorityGameSession(
     engine: engine,
     initialState: start(engine),
@@ -143,6 +147,34 @@ void main() {
     await session.dispose();
   });
 
+  testWidgets('a special hand can be shown to end the round', (tester) async {
+    final engine = fixedEngine([
+      deckFor([
+        '9S 9H 9D 9C 2S 3S 4S 5S 6S 7S 8S 10C JC',
+        'AH KH QH JH 10H 8H 7H 6H 5H 4H 3H 2H AS',
+        'AD KD QD JD 10D 8D 7D 6D 5D 4D 3D 2D KS',
+      ]),
+    ]);
+    final session = AuthorityGameSession(
+      engine: engine,
+      initialState: start(engine),
+      localSeat: 0,
+      bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+      timing: const BotTiming.instant(),
+      botRunner: inlineBotRunner,
+    );
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    expect(find.textContaining('Four of a kind +4'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('showHandButton')));
+    await _settle(tester);
+    final v = session.view.value!;
+    expect(v.phase, GamePhase.roundOver);
+    expect(v.scores[0], 4);
+    expect(v.lastRound!.shownSeat, 0);
+    await session.dispose();
+  });
+
   testWidgets('ready puts my groups strongest first', (tester) async {
     final session = _session();
     await pumpApp(tester, home: TableScreen(session: session));
@@ -157,7 +189,7 @@ void main() {
     await session.dispose();
   });
 
-  testWidgets('ready, play every group, and see the round scored', (
+  testWidgets('ready, groups reveal by themselves, and the round is scored', (
     tester,
   ) async {
     final session = _session();
@@ -166,15 +198,12 @@ void main() {
     await tester.tap(find.byKey(const Key('readyButton')));
     await _settle(tester);
     expect(session.view.value!.ready[0], isTrue);
-    expect(session.view.value!.phase, GamePhase.playing);
+    expect(session.view.value!.phase, isNot(GamePhase.arranging));
 
-    // Play whenever it is my turn until the round is over.
-    for (var i = 0; i < 4; i++) {
-      final v = session.view.value!;
-      if (v.phase != GamePhase.playing) break;
-      expect(v.isMyTurn, isTrue, reason: 'bots wait for me');
-      expect(find.byKey(const Key('playGroupButton')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('playGroupButton')));
+    // Groups are revealed without any taps.
+    expect(find.byKey(const Key('playGroupButton')), findsNothing);
+    for (var i = 0; i < 10; i++) {
+      if (session.view.value!.phase != GamePhase.playing) break;
       await _settle(tester);
     }
     final v = session.view.value!;

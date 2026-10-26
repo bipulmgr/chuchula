@@ -228,6 +228,18 @@ class _SeatRow extends StatelessWidget {
                 );
               },
             ),
+          ] else if (rr.shownSeat == seat && rr.instantWinHand != null) ...[
+            // The special hand this player showed.
+            const SizedBox(height: 4),
+            LayoutBuilder(
+              builder: (context, c) => _MiniGroup(
+                cards: rr.instantWinHand!,
+                width: math.min(34.0, c.maxWidth / 7.8),
+                won: true,
+                label: rr.bonuses[seat].map((b) => l.bonus(b.type)).join(' + '),
+                theme: theme,
+              ),
+            ),
           ],
         ],
       ),

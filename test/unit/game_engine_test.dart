@@ -292,11 +292,12 @@ void main() {
       expect(larger.total, 4);
     });
 
-    test('four of a kind bonus is awarded once per four of a kind', () {
+    test('automatic bonuses: four of a kind scores at round end', () {
       final e = fixedEngine([
         deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
       ]);
-      var s = playRound(e, arrangeAll(e, start(e)));
+      const auto = RuleConfig(declareBonuses: false);
+      var s = playRound(e, arrangeAll(e, start(e, rules: auto)));
       expect(
         s.lastRound!.bonuses[0],
         contains(const Bonus(BonusType.fourOfAKind, 4)),
@@ -324,12 +325,76 @@ void main() {
     });
   });
 
+  group('showing special hands', () {
+    test('four of a kind: shown during arranging, +4, round ends', () {
+      final e = fixedEngine([
+        deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
+      ]);
+      final s = start(e);
+      expect(ChuchulaGameEngine.showable(s, 0), [
+        const Bonus(BonusType.fourOfAKind, 4),
+      ]);
+      expect(
+        e.validateMove(s, const ShowHand(1)).error,
+        RuleError.nothingToShow,
+      );
+      final next = e.applyMove(s, const ShowHand(0));
+      expect(next.phase, GamePhase.roundOver);
+      expect(next.scores, [4, 0, 0, 0]);
+      expect(next.lastRound!.shownSeat, 0);
+      expect(next.lastRound!.instantWinHand!.toSet(), s.hands[0].toSet());
+      expect(next.lastRound!.groupWinners, isEmpty);
+      // Nothing more can be shown or arranged in that round.
+      expect(
+        e.validateMove(next, const ShowHand(0)).error,
+        RuleError.wrongPhase,
+      );
+    });
+
+    test('six pairs +6 and three trails +9', () {
+      final pairs = fixedEngine([
+        deckFor(['2S 2H 3S 3H 4S 4H 5S 5H 6S 6H 7S 7H 9D']),
+      ]);
+      expect(pairs.applyMove(start(pairs), const ShowHand(0)).scores[0], 6);
+      final trails = fixedEngine([
+        deckFor(['2S 2H 2D 3S 3H 3D 4S 4H 4D 6S 7H 9C JD']),
+      ]);
+      expect(trails.applyMove(start(trails), const ShowHand(0)).scores[0], 9);
+    });
+
+    test('all thirteen ranks: showing wins the match', () {
+      final e = fixedEngine([
+        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
+      ]);
+      final s = start(e);
+      expect(s.phase, GamePhase.arranging, reason: 'not automatic');
+      final next = e.applyMove(s, const ShowHand(1));
+      expect(next.phase, GamePhase.matchOver);
+      expect(next.result!.winnerSeat, 1);
+      expect(next.result!.reason, MatchEndReason.instantWin);
+    });
+
+    test('unshown bonuses do not score at round end', () {
+      final e = fixedEngine([
+        deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
+      ]);
+      final s = playRound(e, arrangeAll(e, start(e)));
+      expect(s.lastRound!.bonuses[0], isEmpty);
+    });
+
+    test('a show move survives a JSON round trip', () {
+      final m = GameMove.fromJson(const ShowHand(2).toJson());
+      expect(m, isA<ShowHand>());
+      expect(m.seat, 2);
+    });
+  });
+
   group('match end', () {
     test('instant win when a seat holds all thirteen ranks', () {
       final e = fixedEngine([
         deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
-      final s = start(e);
+      final s = start(e, rules: const RuleConfig(declareBonuses: false));
       expect(s.phase, GamePhase.matchOver);
       expect(s.result!.winnerSeat, 1);
       expect(s.result!.reason, MatchEndReason.instantWin);
@@ -340,8 +405,15 @@ void main() {
       final e = fixedEngine([
         deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
-      final s = start(e, rules: const RuleConfig(allRanksInstantWin: false));
+      final s = start(
+        e,
+        rules: const RuleConfig(
+          allRanksInstantWin: false,
+          declareBonuses: false,
+        ),
+      );
       expect(s.phase, GamePhase.arranging);
+      expect(ChuchulaGameEngine.showable(s, 1), isEmpty);
     });
 
     test('two instant winners void the deal and redeal', () {
@@ -352,7 +424,7 @@ void main() {
         ]),
         deckFor([strongHand]),
       ]);
-      final s = start(e);
+      final s = start(e, rules: const RuleConfig(declareBonuses: false));
       expect(s.phase, GamePhase.arranging);
       expect(s.hands[0].toSet(), parseCards(strongHand).toSet());
     });

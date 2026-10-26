@@ -13,6 +13,7 @@ export interface RuleConfig {
   bonusesStackWithGroupPoints: boolean;
   allRanksInstantWin: boolean;
   strongestFirst: boolean;
+  declareBonuses: boolean;
   maxRounds: number;
 }
 
@@ -28,6 +29,7 @@ export const STANDARD_RULES: RuleConfig = Object.freeze({
   bonusesStackWithGroupPoints: true,
   allRanksInstantWin: true,
   strongestFirst: true,
+  declareBonuses: true,
   maxRounds: 100,
 });
 

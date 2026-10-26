@@ -98,7 +98,7 @@ class ChuchulaGameEngine {
       final hands = dealHands(shuffleAndDeal(), nextDealer);
       final round = s.round + 1;
       final instant = <int>[
-        if (s.rules.allRanksInstantWin)
+        if (s.rules.allRanksInstantWin && !s.rules.declareBonuses)
           for (var i = 0; i < kSeatCount; i++)
             if (BonusDetector.hasAllRanks(hands[i])) i,
       ];
@@ -115,36 +115,80 @@ class ChuchulaGameEngine {
         roundPlays: const [],
         groupWinners: const [],
       );
-      if (instant.length == 1) {
-        final seat = instant.single;
-        final rr = RoundResult(
-          round: round,
-          groupWinners: const [],
-          arrangements: List.filled(kSeatCount, null),
-          bonuses: [
-            for (var i = 0; i < kSeatCount; i++)
-              i == seat
-                  ? const [Bonus(BonusType.allRanks, 0)]
-                  : const <Bonus>[],
-          ],
-          points: List.filled(kSeatCount, 0),
-          instantWinSeat: seat,
-          instantWinHand: hands[seat],
-        );
-        return dealt.copyWith(
-          phase: GamePhase.matchOver,
-          history: [...s.history, rr],
-          result: () => MatchResult(
-            winnerSeat: seat,
-            reason: MatchEndReason.instantWin,
-            finalScores: s.scores,
-          ),
-        );
-      }
+      if (instant.length == 1) return _instantWin(dealt, instant.single);
       return dealt;
     }
     throw StateError('Could not produce a valid deal');
   }
+
+  /// Ends the match: [seat] holds one card of every rank.
+  GameState _instantWin(GameState s, int seat) {
+    final rr = RoundResult(
+      round: s.round,
+      groupWinners: const [],
+      arrangements: List.filled(kSeatCount, null),
+      bonuses: [
+        for (var i = 0; i < kSeatCount; i++)
+          i == seat ? const [Bonus(BonusType.allRanks, 0)] : const <Bonus>[],
+      ],
+      points: List.filled(kSeatCount, 0),
+      instantWinSeat: seat,
+      instantWinHand: s.hands[seat],
+    );
+    return s.copyWith(
+      phase: GamePhase.matchOver,
+      turnSeat: () => null,
+      history: [...s.history, rr],
+      result: () => MatchResult(
+        winnerSeat: seat,
+        reason: MatchEndReason.instantWin,
+        finalScores: s.scores,
+      ),
+    );
+  }
+
+  /// Ends the round: [seat] showed the special hands in its dealt cards.
+  GameState _showHand(GameState s, int seat) {
+    final bonuses = BonusDetector.detect(s.hands[seat], s.rules);
+    if (bonuses.any((b) => b.type == BonusType.allRanks)) {
+      return _instantWin(s, seat);
+    }
+    final total = bonuses.fold<int>(0, (t, b) => t + b.points);
+    final points = [
+      for (var i = 0; i < kSeatCount; i++)
+        i == seat ? RoundScorer.applyTarget(s.scores[i], total, s.rules) : 0,
+    ];
+    final rr = RoundResult(
+      round: s.round,
+      groupWinners: const [],
+      arrangements: List.filled(kSeatCount, null),
+      bonuses: [
+        for (var i = 0; i < kSeatCount; i++)
+          i == seat ? bonuses : const <Bonus>[],
+      ],
+      points: points,
+      instantWinHand: s.hands[seat],
+      shownSeat: seat,
+    );
+    var next = s.copyWith(
+      scores: [for (var i = 0; i < kSeatCount; i++) s.scores[i] + points[i]],
+      phase: GamePhase.roundOver,
+      turnSeat: () => null,
+      history: [...s.history, rr],
+    );
+    final match = checkMatchResult(next);
+    if (match != null) {
+      next = next.copyWith(phase: GamePhase.matchOver, result: () => match);
+    }
+    return next;
+  }
+
+  /// Special hands [seat] could show now (empty if none, or if bonuses
+  /// are scored automatically).
+  static List<Bonus> showable(GameState s, int seat) =>
+      s.rules.declareBonuses && s.phase == GamePhase.arranging
+      ? BonusDetector.detect(s.hands[seat], s.rules)
+      : const [];
 
   // ---------------------------------------------------------------------
   // Validation
@@ -218,6 +262,14 @@ class ChuchulaGameEngine {
           return const ValidationResult.fail(RuleError.wrongPhase);
         }
         return const ValidationResult.ok();
+      case ShowHand(:final seat):
+        if (state.phase != GamePhase.arranging) {
+          return const ValidationResult.fail(RuleError.wrongPhase);
+        }
+        if (showable(state, seat).isEmpty) {
+          return const ValidationResult.fail(RuleError.nothingToShow);
+        }
+        return const ValidationResult.ok();
     }
   }
 
@@ -281,6 +333,9 @@ class ChuchulaGameEngine {
           ),
         );
 
+      case ShowHand(:final seat):
+        return _showHand(state, seat);
+
       case StartNextRound():
         return _dealRound(
           state,
@@ -300,12 +355,15 @@ class ChuchulaGameEngine {
     if (state.groupWinners.length != kGroupCount) {
       throw StateError('Round is not complete');
     }
+    // With declared bonuses, only a shown hand scores them.
     final bonuses = [
       for (var i = 0; i < kSeatCount; i++)
-        BonusDetector.detect(
-          state.hands[i],
-          state.rules,
-        ).where((b) => b.type != BonusType.allRanks).toList(),
+        state.rules.declareBonuses
+            ? const <Bonus>[]
+            : BonusDetector.detect(
+                state.hands[i],
+                state.rules,
+              ).where((b) => b.type != BonusType.allRanks).toList(),
     ];
     final seatScores = [
       for (var i = 0; i < kSeatCount; i++)

@@ -18,6 +18,7 @@ sealed class GameMove {
       ),
       'play' => PlayGroup(seat, json['group'] as int),
       'next' => StartNextRound(seat),
+      'show' => ShowHand(seat),
       final t => throw FormatException('Unknown move type $t'),
     };
   }
@@ -53,6 +54,16 @@ class PlayGroup extends GameMove {
   };
 }
 
+/// Shows the seat's special hand (four of a kind, six pairs, three trails
+/// or all thirteen ranks) during arranging. This ends the round, or the
+/// match for all thirteen ranks.
+class ShowHand extends GameMove {
+  const ShowHand(super.seat);
+
+  @override
+  Map<String, dynamic> toJson() => {'type': 'show', 'seat': seat};
+}
+
 /// Deals the next round after the round summary.
 class StartNextRound extends GameMove {
   const StartNextRound(super.seat);
@@ -74,6 +85,7 @@ enum RuleError {
   cardNotOwned,
   missingCards,
   wrongGroup,
+  nothingToShow,
   matchOver,
 }
 

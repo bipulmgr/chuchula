@@ -86,6 +86,7 @@ class RoundResult {
     this.sweepSeat,
     this.instantWinSeat,
     this.instantWinHand,
+    this.shownSeat,
   });
 
   final int round;
@@ -104,7 +105,12 @@ class RoundResult {
 
   final int? sweepSeat;
   final int? instantWinSeat;
+
+  /// The hand revealed by [instantWinSeat] or [shownSeat].
   final List<PlayingCard>? instantWinHand;
+
+  /// Seat that ended the round by showing a special hand.
+  final int? shownSeat;
 
   Map<String, dynamic> toJson() => {
     'round': round,
@@ -117,6 +123,7 @@ class RoundResult {
     'sweepSeat': sweepSeat,
     'instantWinSeat': instantWinSeat,
     'instantWinHand': instantWinHand == null ? null : _codes(instantWinHand!),
+    'shownSeat': shownSeat,
   };
 
   factory RoundResult.fromJson(Map<String, dynamic> json) => RoundResult(
@@ -139,6 +146,7 @@ class RoundResult {
     instantWinHand: json['instantWinHand'] == null
         ? null
         : _cards(json['instantWinHand']),
+    shownSeat: json['shownSeat'] as int?,
   );
 }
 

@@ -16,6 +16,10 @@ First version.
   position. 3- and 4-card groups rank on one ladder: a 4-card group is
   named by the best hand in it, and a full 4-card color, run or double
   run beats any 3-card hand of that kind.
+- Once everyone is Ready, groups are revealed automatically.
+- Special hands are shown with a Show button while arranging: four of a
+  kind +4, six pairs +6, three trails +9 end the round; all thirteen
+  ranks wins the match. Bots show theirs too.
 - Table with drag-and-drop or tap-to-swap arranging (single cards or
   whole groups), suggestions, undo, sort, animations, sounds, music and
   haptics.

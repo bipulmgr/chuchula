@@ -116,7 +116,7 @@ export class ChuchulaEngine {
       const hands = dealHands(this.nextDeck(), nextDealer);
       const round = s.round + 1;
       const instant: number[] = [];
-      if (s.rules.allRanksInstantWin) {
+      if (s.rules.allRanksInstantWin && !s.rules.declareBonuses) {
         for (let i = 0; i < SEAT_COUNT; i++) if (hasAllRanks(cards(hands[i]))) instant.push(i);
       }
       if (instant.length > 1) continue; // Void deal: redeal.
@@ -132,27 +132,59 @@ export class ChuchulaEngine {
         roundPlays: [],
         groupWinners: [],
       });
-      if (instant.length === 1) {
-        const seat = instant[0];
-        const rr: RoundResult = {
-          round,
-          groupWinners: [],
-          arrangements: [null, null, null, null],
-          bonuses: [0, 1, 2, 3].map((i) => (i === seat ? [{ type: 'allRanks', points: 0 }] : [])),
-          points: [0, 0, 0, 0],
-          sweepSeat: null,
-          instantWinSeat: seat,
-          instantWinHand: hands[seat],
-        };
-        return bump(dealt, {
-          phase: 'matchOver',
-          history: [...s.history, rr],
-          result: { winnerSeat: seat, reason: 'instantWin', finalScores: s.scores },
-        });
-      }
+      if (instant.length === 1) return this.instantWin(dealt, instant[0]);
       return dealt;
     }
     throw new Error('Could not produce a valid deal');
+  }
+
+  /** Ends the match: [seat] holds one card of every rank. */
+  private instantWin(s: GameState, seat: number): GameState {
+    const rr: RoundResult = {
+      round: s.round,
+      groupWinners: [],
+      arrangements: [null, null, null, null],
+      bonuses: [0, 1, 2, 3].map((i) => (i === seat ? [{ type: 'allRanks', points: 0 }] : [])),
+      points: [0, 0, 0, 0],
+      sweepSeat: null,
+      instantWinSeat: seat,
+      instantWinHand: s.hands[seat],
+      shownSeat: null,
+    };
+    return bump(s, {
+      phase: 'matchOver',
+      turnSeat: null,
+      history: [...s.history, rr],
+      result: { winnerSeat: seat, reason: 'instantWin', finalScores: s.scores },
+    });
+  }
+
+  /** Ends the round: [seat] showed the special hands in its dealt cards. */
+  private showHand(s: GameState, seat: number): GameState {
+    const bonuses = detectBonuses(cards(s.hands[seat]), s.rules);
+    if (bonuses.some((b) => b.type === 'allRanks')) return this.instantWin(s, seat);
+    const total = bonuses.reduce((t, b) => t + b.points, 0);
+    const points = [0, 1, 2, 3].map((i) => (i === seat ? applyTarget(s.scores[i], total, s.rules) : 0));
+    const rr: RoundResult = {
+      round: s.round,
+      groupWinners: [],
+      arrangements: [null, null, null, null],
+      bonuses: [0, 1, 2, 3].map((i) => (i === seat ? bonuses : [])),
+      points,
+      sweepSeat: null,
+      instantWinSeat: null,
+      instantWinHand: s.hands[seat],
+      shownSeat: seat,
+    };
+    let next = bump(s, {
+      scores: s.scores.map((x, i) => x + points[i]),
+      phase: 'roundOver',
+      turnSeat: null,
+      history: [...s.history, rr],
+    });
+    const match = checkMatchResult(next);
+    if (match) next = bump(next, { phase: 'matchOver', result: match });
+    return next;
   }
 
   validateArrangement(state: GameState, seat: number, groups: string[][]): Validation | null {
@@ -197,6 +229,10 @@ export class ChuchulaEngine {
       case 'next':
         if (state.phase !== 'roundOver') return { error: 'wrongPhase' };
         return null;
+      case 'show':
+        if (state.phase !== 'arranging') return { error: 'wrongPhase' };
+        if (showable(state, move.seat).length === 0) return { error: 'nothingToShow' };
+        return null;
     }
   }
 
@@ -240,6 +276,8 @@ export class ChuchulaEngine {
         }
         return this.finishRound(bump(state, { roundPlays: plays, groupWinners: winners, turnSeat: null }));
       }
+      case 'show':
+        return this.showHand(state, move.seat);
       case 'next':
         return this.dealRound(state, (state.dealerSeat + 1) % SEAT_COUNT);
     }
@@ -296,8 +334,11 @@ export function matchWinner(scores: number[], rules: RuleConfig): number | null 
 
 export function resolveRound(state: GameState): RoundResult {
   if (state.groupWinners.length !== GROUP_COUNT) throw new Error('Round is not complete');
+  // With declared bonuses, only a shown hand scores them.
   const bonuses = state.hands.map((h) =>
-    detectBonuses(cards(h), state.rules).filter((b) => b.type !== 'allRanks'),
+    state.rules.declareBonuses
+      ? []
+      : detectBonuses(cards(h), state.rules).filter((b) => b.type !== 'allRanks'),
   );
   const seatScores = bonuses.map((b, i) => scoreSeat(i, state.groupWinners, b, state.rules));
   const points = seatScores.map((s, i) => applyTarget(state.scores[i], s.total, state.rules));
@@ -311,7 +352,13 @@ export function resolveRound(state: GameState): RoundResult {
     sweepSeat: sweep < 0 ? null : sweep,
     instantWinSeat: null,
     instantWinHand: null,
+    shownSeat: null,
   };
+}
+
+/** Special hands [seat] could show now (empty if none, or if bonuses are scored automatically). */
+export function showable(s: GameState, seat: number): Bonus[] {
+  return s.rules.declareBonuses && s.phase === 'arranging' ? detectBonuses(cards(s.hands[seat]), s.rules) : [];
 }
 
 export function checkMatchResult(state: GameState): MatchResult | null {

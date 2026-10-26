@@ -14,6 +14,7 @@ class RuleConfig {
     this.bonusesStackWithGroupPoints = true,
     this.allRanksInstantWin = true,
     this.strongestFirst = true,
+    this.declareBonuses = true,
     this.maxRounds = 100,
   });
 
@@ -52,6 +53,11 @@ class RuleConfig {
   /// in that order. If false, groups are played in the order submitted.
   final bool strongestFirst;
 
+  /// If true, hand bonuses (and the all-ranks win) count only when the
+  /// player shows them during arranging, which ends the round at once.
+  /// If false, they are scored automatically from the dealt hand.
+  final bool declareBonuses;
+
   /// Safety valve against endless matches (e.g. with [targetIsExact]).
   final int maxRounds;
 
@@ -69,6 +75,7 @@ class RuleConfig {
     'bonusesStackWithGroupPoints': bonusesStackWithGroupPoints,
     'allRanksInstantWin': allRanksInstantWin,
     'strongestFirst': strongestFirst,
+    'declareBonuses': declareBonuses,
     'maxRounds': maxRounds,
   };
 
@@ -93,6 +100,7 @@ class RuleConfig {
       allRanksInstantWin:
           json['allRanksInstantWin'] as bool? ?? d.allRanksInstantWin,
       strongestFirst: json['strongestFirst'] as bool? ?? d.strongestFirst,
+      declareBonuses: json['declareBonuses'] as bool? ?? d.declareBonuses,
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
     );
   }

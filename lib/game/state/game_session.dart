@@ -50,6 +50,9 @@ abstract class GameSession {
 
   Future<void> playGroup();
 
+  /// Shows this seat's special hand, ending the round.
+  Future<void> showHand();
+
   Future<void> startNextRound();
 
   /// Called by the app lifecycle observer.

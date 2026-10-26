@@ -11,7 +11,9 @@ import '../../core/theme/table_themes.dart';
 import '../../game/models/card.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
+import '../../game/rules/bonuses.dart';
 import '../../game/rules/hand_evaluator.dart';
+import '../../game/rules/rule_config.dart';
 import '../../game/state/game_session.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
@@ -65,6 +67,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
   Timer? _bannerTimer;
   bool _showSummary = false;
   Timer? _summaryTimer;
+  Timer? _autoPlayTimer;
   bool _reportedFinish = false;
   int _lastDealTick = -1;
   StreamSubscription<SessionEvent>? _events;
@@ -101,6 +104,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     _events?.cancel();
     _bannerTimer?.cancel();
     _summaryTimer?.cancel();
+    _autoPlayTimer?.cancel();
     _deal.dispose();
     _entrance.dispose();
     super.dispose();
@@ -220,6 +224,8 @@ class _TableScreenState extends ConsumerState<TableScreen>
       }
     }
 
+    _scheduleAutoPlay(v);
+
     if (v.phase == GamePhase.matchOver && !_reportedFinish) {
       _reportedFinish = true;
       widget.onMatchFinished?.call(v);
@@ -328,6 +334,35 @@ class _TableScreenState extends ConsumerState<TableScreen>
   Future<void> _play() async {
     audio.haptic(HapticKind.medium);
     await session.playGroup();
+  }
+
+  /// Once everyone is ready, groups are revealed without a tap: my group
+  /// goes out shortly after my turn comes, paced like the bots.
+  void _scheduleAutoPlay(PlayerView v) {
+    if (_autoPlayTimer != null || !v.isMyTurn) return;
+    final fresh =
+        v.groupIndex > 0 && v.roundPlays[v.groupIndex].every((p) => p == null);
+    final delay = _reducedMotion
+        ? const Duration(milliseconds: 300)
+        : Duration(milliseconds: fresh ? 1700 : 800);
+    final round = v.round;
+    final group = v.groupIndex;
+    _autoPlayTimer = Timer(delay, () {
+      _autoPlayTimer = null;
+      final now = session.view.value;
+      if (!mounted || now == null) return;
+      if (now.isMyTurn && now.round == round && now.groupIndex == group) {
+        _play();
+      } else {
+        _scheduleAutoPlay(now);
+      }
+    });
+  }
+
+  Future<void> _show() async {
+    audio.play(Sfx.achievement);
+    audio.haptic(HapticKind.heavy);
+    await session.showHand();
   }
 
   Future<void> _next() async {
@@ -636,7 +671,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
       status = v.myArrangement == null ? l.arrangeHint : l.waitingForOthers;
     } else if (v.phase == GamePhase.playing) {
       status = v.isMyTurn
-          ? l.yourTurn
+          ? l.revealing
           : l.turnOf(v.seats[v.turnSeat ?? 0].name);
     } else {
       status = '';
@@ -714,16 +749,40 @@ class _TableScreenState extends ConsumerState<TableScreen>
           ),
         ],
       );
-    } else if (v.isMyTurn) {
-      bar = GoldButton(
-        key: const Key('playGroupButton'),
-        theme: theme,
-        label: l.playGroup(v.groupIndex + 1),
-        icon: Icons.front_hand,
-        onPressed: _play,
-      );
     } else {
       bar = const SizedBox(height: 50);
+    }
+    final special = v.phase == GamePhase.arranging
+        ? BonusDetector.detect(v.myHand, RuleConfig.standard)
+        : const <Bonus>[];
+    if (special.isNotEmpty) {
+      final allRanks = special.any((b) => b.type == BonusType.allRanks);
+      final label = allRanks
+          ? l.showAllRanks
+          : l.showHand(
+              special.map((b) => l.bonus(b.type)).join(' + '),
+              special.fold<int>(0, (t, b) => t + b.points),
+            );
+      bar = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            l.showHint,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: theme.onSurface),
+          ),
+          const SizedBox(height: 4),
+          GoldButton(
+            key: const Key('showHandButton'),
+            theme: theme,
+            label: label,
+            icon: Icons.auto_awesome,
+            onPressed: _show,
+          ),
+          const SizedBox(height: 6),
+          bar,
+        ],
+      );
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),

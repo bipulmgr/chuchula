@@ -109,8 +109,13 @@ void main() {
     await pump();
     final view = received.lastWhere((m) => m['t'] == 'view')['view'] as Map;
     final text = jsonEncode(view);
+    // A seat that showed its special hand has revealed it on purpose.
+    final shown = {
+      for (final r in host.state.history)
+        if (r.round == host.state.round) ?r.shownSeat,
+    };
     for (var seat = 0; seat < 4; seat++) {
-      if (seat == 1) continue;
+      if (seat == 1 || shown.contains(seat)) continue;
       for (final c in host.state.hands[seat]) {
         expect(
           text.contains('"${c.code}"'),
