@@ -26,7 +26,8 @@ Firebase also asks for `com.google.android.c2dm.permission.RECEIVE` and
 `READ_GSERVICES` (push messaging). The app does not use push, so the
 manifest removes both. Google Mobile Ads also asks for
 `ACCESS_ADSERVICES_TOPICS` (interest-based ad topics), which rewarded ads
-do not need, so the manifest removes it too. CI fails if the release APK gains any permission
+do not need, and WorkManager (pulled in by the ads library) asks for
+`FOREGROUND_SERVICE`, which the app never uses; the manifest removes both. CI fails if the release APK gains any permission
 not listed on this page.
 
 `android.hardware.bluetooth` is declared `required="false"`, so the app

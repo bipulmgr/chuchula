@@ -25,6 +25,10 @@
     <!-- Merged in by Google Mobile Ads: interest-based ad topics, not
          needed for rewarded ads. -->
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove" />
+    <!-- Merged in by WorkManager (pulled in by Google Mobile Ads) for
+         long-running foreground work. The app never starts a foreground
+         service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <!-- Bluetooth is optional: the app installs on devices without it. -->
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
