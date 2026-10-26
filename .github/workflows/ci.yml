@@ -81,8 +81,21 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Limit Gradle memory
+        # The project's 8 GB Gradle heap plus the Kotlin daemon and R8 can
+        # exhaust the runner, which then shuts down mid-build. The user
+        # Gradle properties take precedence over the project's.
+        run: |
+          mkdir -p ~/.gradle
+          cat >> ~/.gradle/gradle.properties <<'PROPS'
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError
+          kotlin.daemon.jvmargs=-Xmx2g
+          PROPS
       - name: Build debug APK
-        run: flutter build apk --debug
+        run: |
+          flutter build apk --debug
+          # Free the debug build's daemons before the release build.
+          (cd android && ./gradlew --stop)
       - name: Build release APK
         # Signed with the release keystore when the ANDROID_KEYSTORE_* secrets
         # exist; otherwise android/app/build.gradle.kts falls back to the
