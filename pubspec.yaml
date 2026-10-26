@@ -1,0 +1,35 @@
+name: chuchula
+description: "Chuchula - a four-player Nepali card game."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  flutter_riverpod: ^3.4.3
+  shared_preferences: ^2.5.6
+  audioplayers: ^6.8.1
+  permission_handler: ^13.0.2
+  firebase_core: 4.15.0
+  firebase_auth: 6.7.0
+  cloud_firestore: 6.10.0
+  cloud_functions: 6.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/audio/
