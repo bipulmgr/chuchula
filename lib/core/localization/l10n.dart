@@ -25,6 +25,14 @@ extension L10nNames on AppLocalizations {
     HandCategory.fourOfAKind => catFourOfAKind,
   };
 
+  /// Name of an evaluated group, e.g. "Color" or "4-card Color".
+  String handName(HandValue v) =>
+      v.fourCard &&
+          v.category != HandCategory.twoPair &&
+          v.category != HandCategory.fourOfAKind
+      ? catFourCard(category(v.category))
+      : category(v.category);
+
   String bonus(BonusType b) => switch (b) {
     BonusType.fourOfAKind => bonusFourOfAKind,
     BonusType.sixPairs => bonusSixPairs,
@@ -34,7 +42,6 @@ extension L10nNames on AppLocalizations {
 
   String ruleError(RuleError e) => switch (e) {
     RuleError.notYourTurn => errNotYourTurn,
-    RuleError.notAscending => errNotAscending,
     RuleError.wrongGroupCount ||
     RuleError.wrongGroupSize ||
     RuleError.duplicateCard ||

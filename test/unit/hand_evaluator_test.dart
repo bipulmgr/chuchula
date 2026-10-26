@@ -78,32 +78,59 @@ void main() {
     });
   });
 
-  group('four-card categories', () {
-    test('detects every category', () {
+  group('four-card groups', () {
+    test('are named after the best hand inside them', () {
       expect(v('9S 9H 9D 9C').category, HandCategory.fourOfAKind);
       expect(v('5H 6H 7H 8H').category, HandCategory.pureSequence);
       expect(v('5H 5S 5D 8H').category, HandCategory.trail);
       expect(v('5H 6S 7D 8H').category, HandCategory.sequence);
+      expect(v('5H 6S 7D KC').category, HandCategory.sequence);
       expect(v('2H 6H 9H KH').category, HandCategory.color);
       expect(v('2H 2S KD KC').category, HandCategory.twoPair);
       expect(v('2H 2S 9D KC').category, HandCategory.pair);
       expect(v('2H 5S 9D KC').category, HandCategory.highCard);
+      // Three spades and a heart: a Color, not High card.
+      expect(v('8S JS KH AS').category, HandCategory.color);
+      expect(v('AH 2S 3D 5C').category, HandCategory.sequence);
     });
 
-    test('rarity order for four cards', () {
-      expectStronger('2S 2H 2D 2C', 'AS KS QS JS');
-      expectStronger('2S 3S 4S 5S', 'AS AH AD KC');
-      expectStronger('2S 2H 2D 3C', 'AS KH QD JC');
-      expectStronger('2S 3H 4D 5C', 'AS KS 9S 7S');
-      expectStronger('2S 5S 7S 9S', 'AS AH KD KC');
-      expectStronger('2S 2H 3D 3C', 'AS AH KD QC');
-      expectStronger('2S 2H 3D 4C', 'AS KH QD 9C');
+    test('mark when all four cards make the hand', () {
+      expect(v('2H 6H 9H KH').fourCard, isTrue);
+      expect(v('5H 6S 7D 8H').fourCard, isTrue);
+      expect(v('5H 6H 7H 8H').fourCard, isTrue);
+      expect(v('8S JS KH AS').fourCard, isFalse);
+      expect(v('5H 6S 7D KC').fourCard, isFalse);
+      expect(v('5H 5S 5D 8H').fourCard, isFalse);
+    });
+
+    test('a 4-card hand beats a 3-card hand of the same kind', () {
+      // 4-card color with 8 high beats a 3-card color with A.
+      expectStronger('8S 6S 4S 2S', 'AH 9H 5H');
+      expectStronger('8S 6S 4S 2S', '8C JC AC 3D');
+      expectStronger('2S 3H 4D 5C', 'QS KH AD');
+      expectStronger('2H 3H 4H 5H', 'QS KS AS');
+      // To beat it: a stronger 4-card color, or a higher kind.
+      expectStronger('9D 6D 4D 2D', '8S 7S 4S 2S');
+      expectStronger('2C 3D 4H', '8S 6S 4S 2S');
+      expectStronger('2C 3C 4C', '8S 6S 4S 2S');
+      expectStronger('2C 2D 2H', '8S 6S 4S 2S');
+    });
+
+    test('one ladder for 3 and 4 cards', () {
+      expectStronger('2S 2H 2D 2C', 'AS AH AD');
+      expectStronger('2S 2H 2D', 'AS KS QS JS');
+      expectStronger('2S 3S 4S', 'AS KH QD JC');
+      expectStronger('2S 3H 4D', 'AS KS 9S 7S');
+      expectStronger('2S 5S 7S', 'AS AH KD KC');
+      expectStronger('2S 2H 3D 3C', 'AS AH KD');
+      expectStronger('2S 2H 5D', 'AS KH 9D 7C');
+      // Same best three cards: the fourth card decides.
+      expectStronger('AS JS 8S KH', 'AD JD 8D');
     });
 
     test('four-card sequences with aces', () {
       expectStronger('AS KH QD JC', 'AH 2S 3D 4C');
       expectStronger('AH 2S 3D 4C', 'KS QH JD 10C');
-      expect(v('AH 2S 3D 5C').category, HandCategory.highCard);
     });
 
     test('two pair and trail kickers', () {
@@ -113,11 +140,25 @@ void main() {
     });
   });
 
+  test('strongestFirst orders groups for play', () {
+    final groups = [
+      parseCards('2S 5H 9D'),
+      parseCards('5C 5S 5D 8H'),
+      parseCards('3H 7H JH'),
+      parseCards('QC KD AS'),
+    ];
+    expect(HandEvaluator.strongestFirst(groups).map((g) => g.first.code), [
+      '5C',
+      'QC',
+      '3H',
+      '2S',
+    ]);
+  });
+
   test('rejects wrong sizes and duplicates', () {
     expect(() => v('AS KS'), throwsArgumentError);
     expect(() => v('AS KS QS JS 10S'), throwsArgumentError);
     expect(() => v('AS AS KS'), throwsArgumentError);
-    expect(() => v('3S 4S').compareTo(v('3S 4S 5S')), throwsArgumentError);
   });
 
   test('disjoint groups never tie', () {

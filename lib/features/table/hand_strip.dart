@@ -3,19 +3,30 @@ import 'package:flutter/material.dart';
 import '../../core/localization/l10n.dart';
 import '../../core/theme/table_themes.dart';
 import '../../game/models/card.dart';
-import '../../game/models/game_state.dart';
 import '../../game/rules/hand_evaluator.dart';
 import '../../widgets/card_widgets.dart';
 
-/// Geometry of the 13-card hand: four groups (3, 3, 3, 4), laid out in one
-/// row on wide screens and two rows (groups 1-2, 3-4) on phones so cards
-/// stay large enough to read.
+/// Geometry of the 13-card hand: four groups (one of 4 cards, three of 3,
+/// in any position), laid out in one row on wide screens and two rows
+/// (groups 1-2, 3-4) on phones so cards stay large enough to read.
 class HandLayout {
-  HandLayout._(this.cardWidth, this.positions, this.groupRects, this.size);
+  HandLayout._(
+    this.cardWidth,
+    this.positions,
+    this.groupRects,
+    this.slotGroups,
+    this.size,
+  );
 
-  factory HandLayout.compute(double maxWidth, {double maxHeight = 300}) {
+  static const labelHeight = 18.0;
+
+  factory HandLayout.compute(
+    double maxWidth,
+    List<int> sizes, {
+    double maxHeight = 300,
+  }) {
     const gap = 12.0;
-    const labelH = 18.0;
+    const labelH = labelHeight;
     const overlap = 0.52; // visible fraction of a covered card
     final singleRow = maxWidth >= 620;
     double w;
@@ -35,8 +46,9 @@ class HandLayout {
 
     final positions = <Offset>[];
     final groupRects = <Rect>[];
+    final slotGroups = <int>[];
     double rowWidth(List<int> groups) =>
-        groups.fold<double>(0, (t, g) => t + w + (kGroupSizes[g] - 1) * step) +
+        groups.fold<double>(0, (t, g) => t + w + (sizes[g] - 1) * step) +
         (groups.length - 1) * gap;
 
     final layoutRows = singleRow
@@ -52,16 +64,23 @@ class HandLayout {
     for (final row in layoutRows) {
       var x = (width - rowWidth(row)) / 2;
       for (final g in row) {
-        final gw = w + (kGroupSizes[g] - 1) * step;
+        final gw = w + (sizes[g] - 1) * step;
         groupRects.add(Rect.fromLTWH(x, y, gw, labelH + cardH));
-        for (var i = 0; i < kGroupSizes[g]; i++) {
+        for (var i = 0; i < sizes[g]; i++) {
           positions.add(Offset(x + i * step, y + labelH));
+          slotGroups.add(g);
         }
         x += gw + gap;
       }
       y += labelH + cardH + 8;
     }
-    return HandLayout._(w, positions, groupRects, Size(width, y - 8));
+    return HandLayout._(
+      w,
+      positions,
+      groupRects,
+      slotGroups,
+      Size(width, y - 8),
+    );
   }
 
   final double cardWidth;
@@ -71,42 +90,34 @@ class HandLayout {
 
   /// Bounding box (label + cards) of each group.
   final List<Rect> groupRects;
+
+  /// Group index of each slot.
+  final List<int> slotGroups;
   final Size size;
-
-  static int groupOfSlot(int slot) {
-    var start = 0;
-    for (var g = 0; g < kGroupSizes.length; g++) {
-      start += kGroupSizes[g];
-      if (slot < start) return g;
-    }
-    return kGroupSizes.length - 1;
-  }
-
-  static List<List<PlayingCard>> split(List<PlayingCard> order) {
-    final groups = <List<PlayingCard>>[];
-    var start = 0;
-    for (final n in kGroupSizes) {
-      groups.add(order.sublist(start, start + n));
-      start += n;
-    }
-    return groups;
-  }
 }
 
 enum StripMode { arranging, locked, playing }
 
+/// Data carried while a whole group is dragged by its label.
+class _GroupDrag {
+  const _GroupDrag(this.group);
+  final int group;
+}
+
 /// The local player's thirteen cards. While arranging, cards can be dragged
 /// onto each other to swap places, or tapped in pairs (accessible
-/// alternative). Every arrangement is a valid 3-3-3-4 split by
-/// construction, so cards can never be lost or duplicated.
+/// alternative); whole groups swap the same way by their labels. Every
+/// arrangement is a valid 3-3-3-4 split by construction, so cards can never
+/// be lost or duplicated.
 class HandStrip extends StatefulWidget {
   const HandStrip({
     super.key,
-    required this.order,
+    required this.groups,
     required this.mode,
     required this.theme,
     required this.reducedMotion,
     this.onSwap,
+    this.onSwapGroups,
     this.onPlayGroup,
     this.playedGroups = 0,
     this.activeGroup,
@@ -115,11 +126,16 @@ class HandStrip extends StatefulWidget {
     this.revealProgress = 1,
   });
 
-  final List<PlayingCard> order;
+  final List<List<PlayingCard>> groups;
   final StripMode mode;
   final TableTheme theme;
   final bool reducedMotion;
+
+  /// Swaps two cards, by slot in the flattened hand.
   final void Function(int from, int to)? onSwap;
+
+  /// Swaps two whole groups.
+  final void Function(int from, int to)? onSwapGroups;
 
   /// Called when the player taps the active group (playing mode).
   final VoidCallback? onPlayGroup;
@@ -142,22 +158,29 @@ class HandStrip extends StatefulWidget {
 class _HandStripState extends State<HandStrip> {
   int? _selected;
   int? _hoverTarget;
+  int? _selectedGroup;
+  int? _draggingGroup;
+  int? _hoverGroup;
 
   @override
   void didUpdateWidget(HandStrip old) {
     super.didUpdateWidget(old);
-    if (widget.mode != StripMode.arranging) _selected = null;
+    if (widget.mode != StripMode.arranging) {
+      _selected = null;
+      _selectedGroup = null;
+      _draggingGroup = null;
+      _hoverGroup = null;
+    }
   }
 
-  void _tap(int slot) {
+  void _tap(int slot, int group) {
     if (widget.mode == StripMode.playing) {
-      if (HandLayout.groupOfSlot(slot) == widget.activeGroup) {
-        widget.onPlayGroup?.call();
-      }
+      if (group == widget.activeGroup) widget.onPlayGroup?.call();
       return;
     }
     if (widget.mode != StripMode.arranging) return;
     setState(() {
+      _selectedGroup = null;
       if (_selected == null) {
         _selected = slot;
       } else if (_selected == slot) {
@@ -169,30 +192,53 @@ class _HandStripState extends State<HandStrip> {
     });
   }
 
+  void _tapGroup(int g) {
+    if (widget.mode != StripMode.arranging) return;
+    setState(() {
+      _selected = null;
+      if (_selectedGroup == null) {
+        _selectedGroup = g;
+      } else if (_selectedGroup == g) {
+        _selectedGroup = null;
+      } else {
+        widget.onSwapGroups?.call(_selectedGroup!, g);
+        _selectedGroup = null;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
+        final groups = widget.groups;
+        final order = [for (final g in groups) ...g];
         final layout = HandLayout.compute(
           constraints.maxWidth,
+          [for (final g in groups) g.length],
           maxHeight: constraints.maxHeight.isFinite
               ? constraints.maxHeight
               : 300,
         );
         final w = layout.cardWidth;
-        final groups = HandLayout.split(widget.order);
         final duration = widget.reducedMotion
             ? Duration.zero
             : const Duration(milliseconds: 260);
+        final arranging = widget.mode == StripMode.arranging;
 
         final children = <Widget>[];
-        for (var g = 0; g < kGroupCount; g++) {
+        for (var g = 0; g < groups.length; g++) {
           final rect = layout.groupRects[g];
           final value = HandEvaluator.evaluate(groups[g]);
           final played = g < widget.playedGroups;
-          final active = widget.activeGroup == g;
+          final active =
+              widget.activeGroup == g ||
+              _selectedGroup == g ||
+              _hoverGroup == g;
           final invalid = widget.invalidGroups.contains(g);
+          final name = l.handName(value);
+          final label = '${g + 1} · ${played ? '✓' : name}';
           children.add(
             Positioned(
               left: rect.left - 4,
@@ -201,19 +247,58 @@ class _HandStripState extends State<HandStrip> {
               height: rect.height + 4,
               child: _GroupFrame(
                 theme: widget.theme,
-                label:
-                    '${g + 1} · ${played ? '✓' : l.category(value.category)}',
+                label: label,
+                handle: arranging,
                 active: active,
                 invalid: invalid,
                 played: played,
               ),
             ),
           );
+          if (arranging) {
+            // The label strip is the handle for moving the whole group.
+            final chip = _GroupChip(theme: widget.theme, label: label);
+            children.add(
+              Positioned(
+                left: rect.left - 4,
+                top: rect.top,
+                width: rect.width + 8,
+                height: HandLayout.labelHeight,
+                child: Semantics(
+                  button: true,
+                  selected: _selectedGroup == g,
+                  label: l.swapGroupLabel(g + 1, name),
+                  onTap: () => _tapGroup(g),
+                  child: Draggable<_GroupDrag>(
+                    key: Key('groupHandle$g'),
+                    data: _GroupDrag(g),
+                    onDragStarted: () {
+                      setState(() {
+                        _selected = null;
+                        _selectedGroup = null;
+                        _draggingGroup = g;
+                      });
+                      widget.onDragStart?.call();
+                    },
+                    onDragEnd: (_) => setState(() {
+                      _draggingGroup = null;
+                      _hoverGroup = null;
+                    }),
+                    feedback: chip,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _tapGroup(g),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
         }
 
-        for (var slot = 0; slot < widget.order.length; slot++) {
-          final card = widget.order[slot];
-          final g = HandLayout.groupOfSlot(slot);
+        for (var slot = 0; slot < order.length; slot++) {
+          final card = order[slot];
+          final g = layout.slotGroups[slot];
           final pos = layout.positions[slot];
           final selected = _selected == slot;
           final played = g < widget.playedGroups;
@@ -222,7 +307,7 @@ class _HandStripState extends State<HandStrip> {
           Widget face = CardFace(
             card: card,
             width: w,
-            dimmed: played,
+            dimmed: played || (_draggingGroup == g),
             highlight: selected
                 ? widget.theme.glow
                 : (_hoverTarget == slot ? widget.theme.accent : null),
@@ -240,14 +325,14 @@ class _HandStripState extends State<HandStrip> {
             button: true,
             selected: selected,
             label: l.cardInGroup(_cardName(card), g + 1),
-            onTap: () => _tap(slot),
+            onTap: () => _tap(slot, g),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => _tap(slot),
+              onTap: () => _tap(slot, g),
               child: face,
             ),
           );
-          if (widget.mode == StripMode.arranging) {
+          if (arranging) {
             // Captured as a final: the builder closure below must not see
             // the reassigned variable (that recursed forever).
             final tappable = cardWidget;
@@ -268,7 +353,10 @@ class _HandStripState extends State<HandStrip> {
               builder: (context, candidate, rejected) => Draggable<int>(
                 data: slot,
                 onDragStarted: () {
-                  setState(() => _selected = null);
+                  setState(() {
+                    _selected = null;
+                    _selectedGroup = null;
+                  });
                   widget.onDragStart?.call();
                 },
                 feedback: Transform.scale(
@@ -299,6 +387,39 @@ class _HandStripState extends State<HandStrip> {
           );
         }
 
+        // While a group is being dragged, every group's whole area becomes
+        // a drop target, above the cards.
+        if (_draggingGroup != null) {
+          for (var g = 0; g < groups.length; g++) {
+            final rect = layout.groupRects[g];
+            children.add(
+              Positioned(
+                left: rect.left - 4,
+                top: rect.top,
+                width: rect.width + 8,
+                height: rect.height + 4,
+                child: DragTarget<_GroupDrag>(
+                  onWillAcceptWithDetails: (d) {
+                    if (d.data.group == g) return false;
+                    setState(() => _hoverGroup = g);
+                    return true;
+                  },
+                  onLeave: (_) => setState(() => _hoverGroup = null),
+                  onAcceptWithDetails: (d) {
+                    setState(() {
+                      _hoverGroup = null;
+                      _draggingGroup = null;
+                    });
+                    widget.onSwapGroups?.call(d.data.group, g);
+                  },
+                  builder: (context, candidate, rejected) =>
+                      const SizedBox.expand(),
+                ),
+              ),
+            );
+          }
+        }
+
         return Center(
           child: SizedBox(
             width: layout.size.width,
@@ -313,6 +434,45 @@ class _HandStripState extends State<HandStrip> {
   String _cardName(PlayingCard c) => '${c.rank.label}${c.suit.symbol}';
 }
 
+/// What follows the finger while a group is dragged.
+class _GroupChip extends StatelessWidget {
+  const _GroupChip({required this.theme, required this.label});
+  final TableTheme theme;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.glow, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: theme.glow.withValues(alpha: 0.5), blurRadius: 12),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.swap_horiz, size: 16, color: theme.glow),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Mukta',
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: theme.accentSoft,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _GroupFrame extends StatelessWidget {
   const _GroupFrame({
     required this.theme,
@@ -320,10 +480,14 @@ class _GroupFrame extends StatelessWidget {
     required this.active,
     required this.invalid,
     required this.played,
+    this.handle = false,
   });
 
   final TableTheme theme;
   final String label;
+
+  /// Shows a drag-handle icon: the label moves the whole group.
+  final bool handle;
   final bool active;
   final bool invalid;
   final bool played;
@@ -352,17 +516,27 @@ class _GroupFrame extends StatelessWidget {
       ),
       alignment: Alignment.topLeft,
       padding: const EdgeInsets.only(left: 6, top: 1),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontFamily: 'Mukta',
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-          height: 1.2,
-          color: color,
-        ),
+      child: Row(
+        children: [
+          if (handle) ...[
+            Icon(Icons.drag_indicator, size: 13, color: color),
+            const SizedBox(width: 1),
+          ],
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Mukta',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                height: 1.2,
+                color: color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

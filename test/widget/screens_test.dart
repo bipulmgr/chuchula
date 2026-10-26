@@ -27,11 +27,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(HowToPlayScreen), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Ranking (3 cards)'),
+      find.text('The 4-card group'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Ranking (3 cards)'), findsOneWidget);
+    expect(find.text('The 4-card group'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settingsButton')));

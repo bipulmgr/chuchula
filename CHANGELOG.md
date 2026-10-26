@@ -12,8 +12,13 @@ First version.
   taking over a seat that does not come back.
 - Online play through Firebase: anonymous sign-in, room codes, server
   authoritative Cloud Functions, private per-player views.
-- Table with drag-and-drop or tap-to-swap arranging, suggestions, undo,
-  sort, animations, sounds, music and haptics.
+- Groups are played strongest first, and the 4-card group can sit in any
+  position. 3- and 4-card groups rank on one ladder: a 4-card group is
+  named by the best hand in it, and a full 4-card color, run or double
+  run beats any 3-card hand of that kind.
+- Table with drag-and-drop or tap-to-swap arranging (single cards or
+  whole groups), suggestions, undo, sort, animations, sounds, music and
+  haptics.
 - Four table themes, four card backs, English and Nepali, reduced motion.
 - Tests for the engine, bots, offline matches, the Bluetooth protocol,
   screens, the table, engine parity, security rules and a full online

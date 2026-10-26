@@ -4,6 +4,7 @@ import 'package:chuchula/features/table/seat_plate.dart';
 import 'package:chuchula/features/table/table_screen.dart';
 import 'package:chuchula/game/models/card.dart';
 import 'package:chuchula/game/models/game_state.dart';
+import 'package:chuchula/game/rules/hand_evaluator.dart';
 import 'package:chuchula/game/state/authority_session.dart';
 import 'package:chuchula/widgets/card_widgets.dart';
 import 'package:flutter/material.dart';
@@ -30,8 +31,9 @@ AuthorityGameSession _session() {
   );
 }
 
-List<PlayingCard> _order(WidgetTester tester) =>
-    tester.widget<HandStrip>(find.byType(HandStrip)).order;
+List<PlayingCard> _order(WidgetTester tester) => [
+  ...tester.widget<HandStrip>(find.byType(HandStrip)).groups.expand((g) => g),
+];
 
 Finder _cardAt(WidgetTester tester, int slot) {
   final card = _order(tester)[slot];
@@ -101,6 +103,57 @@ void main() {
     expect(after[1], before[10]);
     expect(after[10], before[1]);
     expect(after.length, 13);
+    await session.dispose();
+  });
+
+  testWidgets('whole groups swap by dragging or tapping their labels', (
+    tester,
+  ) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    List<List<PlayingCard>> groups() =>
+        tester.widget<HandStrip>(find.byType(HandStrip)).groups;
+    final before = groups();
+
+    // Drag group 1's label onto group 4: the 4-card group moves to front.
+    final from = tester.getCenter(find.byKey(const Key('groupHandle0')));
+    final to = tester.getCenter(find.byKey(const Key('groupHandle3')));
+    final gesture = await tester.startGesture(from);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveTo(Offset.lerp(from, to, 0.5)!);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveTo(to);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.up();
+    await _settle(tester);
+    var after = groups();
+    expect(after[0], before[3]);
+    expect(after[3], before[0]);
+    expect(after[0].length, 4);
+
+    // Tap two labels: groups 2 and 3 trade places.
+    await tester.tap(find.byKey(const Key('groupHandle1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('groupHandle2')));
+    await _settle(tester);
+    after = groups();
+    expect(after[1], before[2]);
+    expect(after[2], before[1]);
+    await session.dispose();
+  });
+
+  testWidgets('ready puts my groups strongest first', (tester) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('readyButton')));
+    await _settle(tester);
+    final mine = session.view.value!.myArrangement!.groups;
+    final strengths = [
+      for (final g in mine) HandEvaluator.evaluate(g).strength,
+    ];
+    expect(strengths, [...strengths]..sort((a, b) => b.compareTo(a)));
     await session.dispose();
   });
 

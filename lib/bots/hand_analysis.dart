@@ -5,16 +5,22 @@ import '../game/models/card.dart';
 import '../game/models/game_state.dart';
 import '../game/rules/hand_evaluator.dart';
 
+/// How likely a group of a given strength is to beat one opponent's group.
+abstract class GroupDistribution {
+  /// Probability that an opponent's group is weaker than [strength]
+  /// (ties count half).
+  double probabilityBeats(int strength);
+}
+
 /// Empirical cumulative distribution of group strengths.
-class StrengthCdf {
+class StrengthCdf implements GroupDistribution {
   StrengthCdf(List<int> samples) : _sorted = (List.of(samples)..sort());
 
   final List<int> _sorted;
 
   int get sampleCount => _sorted.length;
 
-  /// Probability that a random group from this distribution is weaker
-  /// than [strength] (ties count half).
+  @override
   double probabilityBeats(int strength) {
     if (_sorted.isEmpty) return 0.5;
     final lo = _lowerBound(strength);
@@ -73,6 +79,43 @@ class StrengthCdf {
     }
     return StrengthCdf(samples);
   }();
+}
+
+/// Strength of the group an opponent plays in one position, when their
+/// four groups (three random triples and one random quad) are played
+/// strongest first. A cheap stand-in for real arrangements.
+class PositionDistribution implements GroupDistribution {
+  PositionDistribution(this.position);
+
+  /// 0 for the strongest group, 3 for the weakest.
+  final int position;
+
+  @override
+  double probabilityBeats(int strength) {
+    final p3 = StrengthCdf.random3.probabilityBeats(strength);
+    final p4 = StrengthCdf.random4.probabilityBeats(strength);
+    // Distribution of how many of the four groups are weaker than us.
+    var below = [1.0];
+    for (final p in [p3, p3, p3, p4]) {
+      final next = List<double>.filled(below.length + 1, 0);
+      for (var k = 0; k < below.length; k++) {
+        next[k] += below[k] * (1 - p);
+        next[k + 1] += below[k] * p;
+      }
+      below = next;
+    }
+    // Their group in this position is weaker than ours when at least
+    // 4 - position of their groups are.
+    var sum = 0.0;
+    for (var k = 4 - position; k <= 4; k++) {
+      sum += below[k];
+    }
+    return sum;
+  }
+
+  static final randomGroups = [
+    for (var i = 0; i < kGroupCount; i++) PositionDistribution(i),
+  ];
 }
 
 /// Pre-evaluates every 3- and 4-card subset of a 13-card hand, indexed by
@@ -146,6 +189,7 @@ class HandAnalysis {
       if (mask & (1 << i) != 0) i,
   ];
 
-  Arrangement toArrangement(List<int> tripleMasks, int quadMask) =>
-      Arrangement([for (final m in tripleMasks) cardsOf(m), cardsOf(quadMask)]);
+  /// The arrangement for group [masks], in the order given.
+  Arrangement toArrangement(List<int> masks) =>
+      Arrangement([for (final m in masks) cardsOf(m)]);
 }

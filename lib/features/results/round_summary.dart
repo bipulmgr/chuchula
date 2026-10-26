@@ -219,9 +219,8 @@ class _SeatRow extends StatelessWidget {
                         cards: arrangement.groups[g],
                         width: w,
                         won: rr.groupWinners[g] == seat,
-                        label: l.category(
-                          HandEvaluator.evaluate(arrangement.groups[g])
-                              .category,
+                        label: l.handName(
+                          HandEvaluator.evaluate(arrangement.groups[g]),
                         ),
                         theme: theme,
                       ),

@@ -12,7 +12,7 @@ export interface RuleConfig {
   threeTrailsPoints: number;
   bonusesStackWithGroupPoints: boolean;
   allRanksInstantWin: boolean;
-  requireAscendingStrength: boolean;
+  strongestFirst: boolean;
   maxRounds: number;
 }
 
@@ -27,7 +27,7 @@ export const STANDARD_RULES: RuleConfig = Object.freeze({
   threeTrailsPoints: 9,
   bonusesStackWithGroupPoints: true,
   allRanksInstantWin: true,
-  requireAscendingStrength: false,
+  strongestFirst: true,
   maxRounds: 100,
 });
 

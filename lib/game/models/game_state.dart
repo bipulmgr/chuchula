@@ -6,7 +6,8 @@ const int kSeatCount = 4;
 const int kHandSize = 13;
 const int kGroupCount = 4;
 
-/// Sizes of groups 1..4. The four-card group is always played last.
+/// Group sizes in a hand, ascending. Groups may sit in any position: they
+/// are played strongest first, so the four-card group can come anywhere.
 const List<int> kGroupSizes = [3, 3, 3, 4];
 
 enum GamePhase { arranging, playing, roundOver, matchOver }

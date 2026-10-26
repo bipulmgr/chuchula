@@ -52,6 +52,28 @@ describe('engine', () => {
     assert.equal(engine.validateArrangement(s, 0, bogus)?.error, 'cardNotOwned');
   });
 
+  it('accepts the 4-card group anywhere and plays groups strongest first', () => {
+    const engine = new ChuchulaEngine();
+    const s = engine.startGame({ matchId: 'm', seats });
+    const h = s.hands[0];
+    const groups = [h.slice(0, 4), h.slice(4, 7), h.slice(7, 10), h.slice(10, 13)];
+    const next = engine.applyMove(s, { type: 'arrange', seat: 0, arrangement: groups });
+    const stored = next.arrangements[0]!;
+    assert.deepEqual(stored.map((g) => g.length).sort(), [3, 3, 3, 4]);
+    const strengths = stored.map((g) => evaluate(parseCards(g.join(' '))).strength);
+    assert.deepEqual(strengths, [...strengths].sort((x, y) => y - x));
+    const wrong = [h.slice(0, 4), h.slice(4, 8), h.slice(8, 11), h.slice(11, 13)];
+    assert.equal(engine.validateArrangement(s, 0, wrong)?.error, 'wrongGroupSize');
+  });
+
+  it('ranks 3- and 4-card groups on one ladder', () => {
+    const v = (codes: string) => evaluate(parseCards(codes));
+    assert.equal(v('8S JS KH AS').category, 'color');
+    assert.ok(v('8S 6S 4S 2S').strength > v('AH 9H 5H').strength);
+    assert.ok(v('2C 3D 4H').strength > v('8S 6S 4S 2S').strength);
+    assert.ok(v('2C 2D 2H').strength > v('5H 6H 7H 8H').strength);
+  });
+
   it('plays a whole match with server bots', () => {
     const engine = new ChuchulaEngine();
     let s: GameState = engine.startGame({ matchId: 'm', seats });
@@ -71,13 +93,15 @@ describe('engine', () => {
 });
 
 describe('server bot', () => {
-  it('uses every card exactly once in a 3-3-3-4 split', () => {
+  it('uses every card exactly once in a 3-3-3-4 split, strongest first', () => {
     const deck = fullDeck();
     for (let i = 0; i < 10; i++) {
       const hand = deck.slice(i * 4, i * 4 + 13).map(cardCode);
       const a = arrangeHand(hand);
-      assert.deepEqual(a.map((g) => g.length), [3, 3, 3, 4]);
+      assert.deepEqual(a.map((g) => g.length).sort(), [3, 3, 3, 4]);
       assert.deepEqual([...a.flat()].sort(), [...hand].sort());
+      const strengths = a.map((g) => evaluate(parseCards(g.join(' '))).strength);
+      assert.deepEqual(strengths, [...strengths].sort((x, y) => y - x));
     }
   });
 

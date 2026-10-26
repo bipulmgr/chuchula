@@ -13,43 +13,51 @@ interpretations**. Each one is a switch in
    the player after the dealer. Each player gets 13 cards. The dealer
    rotates one seat each round.
 2. **Arrange.** Each player secretly splits their 13 cards into four
-   groups: three groups of 3 cards and one group of 4 cards. Groups 1 to 3
-   can be in any order. The 4-card group is always played last. Press
-   **Ready** to lock the arrangement.
-3. **Play.** Once all four players are ready, group 1 is played. The
-   player after the dealer reveals first, then the others in turn. The
-   strongest group wins the point and its owner leads the next group.
-   This repeats for groups 2, 3 and the 4-card group.
-4. **Score.** Points are added (see below) and the next round is dealt.
+   groups: three groups of 3 cards and one group of 4 cards. Cards can be
+   swapped one at a time, and whole groups can be swapped by dragging (or
+   tapping) a group's label. Press **Ready** to lock the arrangement.
+3. **Order.** Groups are always played **strongest first**: group 1 is
+   the player's strongest group, group 4 the weakest. The 4-card group
+   goes wherever it ranks (a 4-card trail goes first). The app puts the
+   groups in this order when Ready is pressed, and the engine and server
+   enforce it.
+4. **Play.** Once all four players are ready, everyone's group 1 is
+   played. The player after the dealer reveals first, then the others in
+   turn. The strongest group wins the point and its owner leads the next
+   group. This repeats for groups 2, 3 and 4. A turn can mix 3-card and
+   4-card groups; they compare on the one ladder below.
+5. **Score.** Points are added (see below) and the next round is dealt.
 
 The match ends when a player reaches the target score (20).
 
-## Ranking a 3-card group (strongest first)
+## Ranking groups (strongest first)
 
-| Rank | Name | Example |
-|---|---|---|
-| 1 | Trail (three of a kind) | A♠ A♥ A♦ |
-| 2 | Pure sequence (run in one suit) | Q♥ J♥ 10♥ |
-| 3 | Sequence (run) | 9♣ 8♦ 7♠ |
-| 4 | Color (same suit) | K♠ 9♠ 4♠ |
-| 5 | Pair | 8♥ 8♣ K♦ |
-| 6 | High card | A♦ 10♣ 6♥ |
-
-## Ranking a 4-card group (strongest first)
+3-card and 4-card groups are ranked on one ladder. A 4-card group counts
+as the best hand inside it: three spades and a heart make a Color, and
+5-6-7 with a K is a Run.
 
 | Rank | Name | Example |
 |---|---|---|
 | 1 | Four of a kind | 7♠ 7♥ 7♦ 7♣ |
-| 2 | Pure sequence | J♦ 10♦ 9♦ 8♦ |
-| 3 | Trail | Q♠ Q♥ Q♣ 3♦ |
-| 4 | Sequence | 6♣ 5♥ 4♠ 3♦ |
-| 5 | Color | A♣ J♣ 8♣ 2♣ |
-| 6 | Two pair | K♠ K♦ 4♥ 4♣ |
-| 7 | Pair | 9♠ 9♦ A♥ 5♣ |
-| 8 | High card | A♠ Q♦ 8♥ 3♣ |
+| 2 | Trail (three of a kind) | A♠ A♥ A♦ |
+| 3 | Double run (pure sequence: a run in one suit) | Q♥ J♥ 10♥ |
+| 4 | Run (sequence) | 9♣ 8♦ 7♠ |
+| 5 | Color (same suit) | K♠ 9♠ 4♠ |
+| 6 | Two pair (4 cards only) | K♠ K♦ 4♥ 4♣ |
+| 7 | Pair | 8♥ 8♣ K♦ |
+| 8 | High card | A♦ 10♣ 6♥ |
 
-The 4-card ranking follows how rare each hand is. Four of a kind is
-rarer than a pure sequence, which is rarer than a trail.
+**4-card hands.** When all four cards make the hand (a 4-card double
+run, run or color), it beats every 3-card hand of the same kind,
+whatever the high card. A 4-card color with 8 high beats a 3-card color
+with A high. To beat a 4-card color you need a stronger 4-card color, or
+a higher kind: a run, double run, trail or four of a kind. The same
+holds for 4-card runs and double runs. The app labels these "4-card
+Color", "4-card Run" and so on.
+
+**Within a kind.** Compare the deciding ranks of the hand. If those are
+equal, a 4-card group's extra card counts as one more kicker, so it beats
+a 3-card group with the same three cards.
 
 **Sequences.** Aces are high or low. A-K-Q (A-K-Q-J) is the highest run,
 A-2-3 (A-2-3-4) is second, then K-Q-J and so on down to 4-3-2. Runs do not
@@ -62,6 +70,9 @@ the run's position.
 **Exact ties.** If two groups have identical ranks, the suit of the
 highest card decides: spades > hearts > diamonds > clubs. Every card is
 unique, so there is always a winner. *(Interim.)*
+
+*(Interim: the order of kinds follows Teen Patti with four of a kind on
+top; two pair sits between Color and Pair; the extra-card kicker rule.)*
 
 ## Scoring
 
@@ -100,8 +111,12 @@ These follow the interim answers above until confirmed:
 3. Does a sweep's 5 points replace the four group points or add to them?
 4. Do bonuses stack with group points, and are they judged on the dealt hand?
 5. Is the target "20 or more"? What happens with a tie above 20?
-6. Must groups 1 to 3 be in a set order (for example weakest first)?
-7. Are exact ties broken by suit, or is the point split?
+6. Are exact ties broken by suit, or is the point split?
+7. Where do two pair and the 4-card group's extra card rank (see above)?
+
+Confirmed by Bipul on 2026-10-26: groups are played strongest first with
+the 4-card group anywhere; a 4-card group is named by the best hand in
+it; a full 4-card hand beats a 3-card hand of the same kind.
 
 ## Rule switches
 
@@ -117,5 +132,5 @@ These follow the interim answers above until confirmed:
 | `threeTrailsPoints` | 9 | Three trails bonus |
 | `bonusesStackWithGroupPoints` | true | If false, a player gets the larger of bonus or group points |
 | `allRanksInstantWin` | true | All thirteen ranks wins the match |
-| `requireAscendingStrength` | false | Groups 1 to 3 must not get weaker |
+| `strongestFirst` | true | Groups are played strongest first (the engine orders them) |
 | `maxRounds` | 100 | Safety limit |

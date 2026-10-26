@@ -25,7 +25,7 @@ class HowToPlayScreen extends ConsumerWidget {
         l.tutRank3,
         ['7S 7H 7D', 'QH KH AH', '4C 5D 6S', '2D 9D KD', 'JS JC 3H'],
       ),
-      (l.tutRank4Title, l.tutRank4, ['9S 9H 9D 9C', '5H 6H 7H 8H']),
+      (l.tutRank4Title, l.tutRank4, ['8S 6S 4S 2S', 'AH 9H 5H 3C']),
       (l.tutTieTitle, l.tutTie, null),
       (l.tutScoreTitle, l.tutScore, null),
       (l.tutEndTitle, l.tutEnd(target), null),

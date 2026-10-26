@@ -165,13 +165,10 @@ class ChuchulaGameEngine {
         '${groups.length}',
       );
     }
-    for (var i = 0; i < kGroupCount; i++) {
-      if (groups[i].length != kGroupSizes[i]) {
-        return ValidationResult.fail(
-          RuleError.wrongGroupSize,
-          'group ${i + 1} has ${groups[i].length} cards',
-        );
-      }
+    // One group of 4 and three of 3, in any position.
+    final sizes = [for (final g in groups) g.length]..sort();
+    if (sizes.join(',') != kGroupSizes.join(',')) {
+      return ValidationResult.fail(RuleError.wrongGroupSize, sizes.join('-'));
     }
     final all = arrangement.allCards;
     if (all.toSet().length != all.length) {
@@ -185,14 +182,6 @@ class ChuchulaGameEngine {
     }
     if (all.length != hand.length) {
       return const ValidationResult.fail(RuleError.missingCards);
-    }
-    if (state.rules.requireAscendingStrength) {
-      for (var i = 1; i < 3; i++) {
-        if (HandEvaluator.evaluate(groups[i]) <
-            HandEvaluator.evaluate(groups[i - 1])) {
-          return const ValidationResult.fail(RuleError.notAscending);
-        }
-      }
     }
     return const ValidationResult.ok();
   }
@@ -244,7 +233,11 @@ class ChuchulaGameEngine {
     switch (move) {
       case SubmitArrangement(:final seat, :final arrangement):
         final arrangements = List<Arrangement?>.of(state.arrangements);
-        arrangements[seat] = arrangement;
+        // Groups are always played strongest first, whatever order the
+        // player left them in.
+        arrangements[seat] = state.rules.strongestFirst
+            ? Arrangement(HandEvaluator.strongestFirst(arrangement.groups))
+            : arrangement;
         var next = state.copyWith(arrangements: arrangements);
         if (next.allReady) {
           next = next.copyWith(

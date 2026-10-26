@@ -6,7 +6,7 @@ import { randomInt } from 'node:crypto';
 import {
   Card, cardCode, cardId, compareCards, fromId, parseCard,
 } from './card';
-import { bestIndex, evaluate } from './evaluator';
+import { bestIndex, evaluate, strongestFirst } from './evaluator';
 import { Bonus, RuleConfig, STANDARD_RULES, detectBonuses, hasAllRanks } from './rules';
 import {
   GROUP_COUNT, GROUP_SIZES, GameMove, GameState, MatchResult, RoundResult,
@@ -158,10 +158,10 @@ export class ChuchulaEngine {
   validateArrangement(state: GameState, seat: number, groups: string[][]): Validation | null {
     if (seat < 0 || seat >= SEAT_COUNT) return { error: 'invalidSeat' };
     if (groups.length !== GROUP_COUNT) return { error: 'wrongGroupCount', detail: `${groups.length}` };
-    for (let i = 0; i < GROUP_COUNT; i++) {
-      if (groups[i].length !== GROUP_SIZES[i]) {
-        return { error: 'wrongGroupSize', detail: `group ${i + 1} has ${groups[i].length} cards` };
-      }
+    // One group of 4 and three of 3, in any position.
+    const sizes = groups.map((g) => (Array.isArray(g) ? g.length : -1)).sort((a, b) => a - b);
+    if (sizes.join(',') !== GROUP_SIZES.join(',')) {
+      return { error: 'wrongGroupSize', detail: sizes.join('-') };
     }
     let all: Card[];
     try {
@@ -176,13 +176,6 @@ export class ChuchulaEngine {
       if (!hand.has(cardId(c))) return { error: 'cardNotOwned', detail: cardCode(c) };
     }
     if (all.length !== hand.size) return { error: 'missingCards' };
-    if (state.rules.requireAscendingStrength) {
-      for (let i = 1; i < 3; i++) {
-        if (evaluate(cards(groups[i])).strength < evaluate(cards(groups[i - 1])).strength) {
-          return { error: 'notAscending' };
-        }
-      }
-    }
     return null;
   }
 
@@ -215,8 +208,11 @@ export class ChuchulaEngine {
     switch (move.type) {
       case 'arrange': {
         const arrangements = [...state.arrangements];
-        // Store canonical codes (e.g. "10H" not "10h").
-        arrangements[move.seat] = move.arrangement.map((g) => codes(cards(g)));
+        // Store canonical codes (e.g. "10H" not "10h"). Groups are played
+        // strongest first, whatever order the player left them in.
+        const groups = move.arrangement.map((g) => cards(g));
+        arrangements[move.seat] = (state.rules.strongestFirst ? strongestFirst(groups) : groups)
+          .map(codes);
         let next = bump(state, { arrangements });
         if (next.arrangements.every((a) => a !== null)) {
           next = bump(next, {

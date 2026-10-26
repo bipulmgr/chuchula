@@ -13,7 +13,7 @@ class RuleConfig {
     this.threeTrailsPoints = 9,
     this.bonusesStackWithGroupPoints = true,
     this.allRanksInstantWin = true,
-    this.requireAscendingStrength = false,
+    this.strongestFirst = true,
     this.maxRounds = 100,
   });
 
@@ -47,9 +47,10 @@ class RuleConfig {
   /// One card of each of the thirteen ranks wins the match immediately.
   final bool allRanksInstantWin;
 
-  /// If true, groups 1..3 must be non-decreasing in strength (the 4-card
-  /// group is compared separately). Default false: any order is allowed.
-  final bool requireAscendingStrength;
+  /// If true, each player's groups are played strongest first (the 4-card
+  /// group included, wherever it ranks). The engine puts submitted groups
+  /// in that order. If false, groups are played in the order submitted.
+  final bool strongestFirst;
 
   /// Safety valve against endless matches (e.g. with [targetIsExact]).
   final int maxRounds;
@@ -67,7 +68,7 @@ class RuleConfig {
     'threeTrailsPoints': threeTrailsPoints,
     'bonusesStackWithGroupPoints': bonusesStackWithGroupPoints,
     'allRanksInstantWin': allRanksInstantWin,
-    'requireAscendingStrength': requireAscendingStrength,
+    'strongestFirst': strongestFirst,
     'maxRounds': maxRounds,
   };
 
@@ -91,9 +92,7 @@ class RuleConfig {
           d.bonusesStackWithGroupPoints,
       allRanksInstantWin:
           json['allRanksInstantWin'] as bool? ?? d.allRanksInstantWin,
-      requireAscendingStrength:
-          json['requireAscendingStrength'] as bool? ??
-          d.requireAscendingStrength,
+      strongestFirst: json['strongestFirst'] as bool? ?? d.strongestFirst,
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
     );
   }

@@ -73,7 +73,6 @@ enum RuleError {
   duplicateCard,
   cardNotOwned,
   missingCards,
-  notAscending,
   wrongGroup,
   matchOver,
 }

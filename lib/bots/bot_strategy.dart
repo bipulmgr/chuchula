@@ -4,6 +4,7 @@ import '../game/engine/random_source.dart';
 import '../game/models/card.dart';
 import '../game/models/game_state.dart';
 import '../game/models/player_view.dart';
+import '../game/rules/hand_evaluator.dart';
 import 'hand_analysis.dart';
 
 enum BotDifficulty { easy, medium, hard }
@@ -39,11 +40,13 @@ class EasyBot extends BotStrategy {
   Arrangement arrange(PlayerView view) {
     final hand = List<PlayingCard>.of(view.myHand);
     if (_random.nextInt(3) == 0) {
-      return Arrangement.fromOrderedCards(_random.shuffled(hand));
+      hand.setAll(0, _random.shuffled(hand));
+    } else {
+      // Sorted by rank: pairs and trails tend to stay together.
+      hand.sort();
     }
-    // Sorted by rank: pairs and trails tend to stay together.
-    hand.sort();
-    return Arrangement.fromOrderedCards(hand);
+    final groups = Arrangement.fromOrderedCards(hand).groups;
+    return Arrangement(HandEvaluator.strongestFirst(groups));
   }
 }
 
@@ -81,14 +84,15 @@ class ArrangementObjective {
 }
 
 class ArrangementCandidate {
-  ArrangementCandidate(this.triples, this.quad, this.score);
-  final List<int> triples;
-  final int quad;
+  ArrangementCandidate(this.groups, this.score);
+
+  /// Group masks, strongest first (the order they are played in).
+  final List<int> groups;
   final double score;
 }
 
-/// Evaluates combinations against the distribution of random groups and
-/// balances the four groups with a greedy-plus-search approach.
+/// Evaluates combinations against the strength opponents are likely to
+/// field in each position (strongest group first, and so on).
 class MediumBot extends BotStrategy {
   const MediumBot({this.quadCandidates = 60});
 
@@ -106,73 +110,53 @@ class MediumBot extends BotStrategy {
     ArrangementObjective objective,
   ) {
     final a = HandAnalysis(hand);
-    final c3 = StrengthCdf.random3;
-    final c4 = StrengthCdf.random4;
     final best = searchArrangements(
       a,
       objective,
-      tripleCdfs: [c3, c3, c3],
-      quadCdf: c4,
+      positions: PositionDistribution.randomGroups,
       quadCandidates: quadCandidates,
     );
-    return a.toArrangement(best.triples, best.quad);
+    return a.toArrangement(best.groups);
   }
 
-  /// Searches four-card groups (strongest [quadCandidates] first), every
-  /// split of the rest into triples, and every order of those triples.
+  /// Searches four-card groups (the strongest [quadCandidates], plus the
+  /// weakest few as a place to dump low cards) and every split of the rest
+  /// into triples. Groups are played strongest first, so each candidate is
+  /// sorted and scored position by position.
   static ArrangementCandidate searchArrangements(
     HandAnalysis a,
     ArrangementObjective objective, {
-    required List<StrengthCdf> tripleCdfs,
-    required StrengthCdf quadCdf,
+    required List<GroupDistribution> positions,
     required int quadCandidates,
   }) {
     final quads = List<int>.of(a.combos4)
       ..sort((x, y) => a.strength[y].compareTo(a.strength[x]));
-    final consider = quads.take(quadCandidates);
+    final dumps = math.max(1, quadCandidates ~/ 5);
+    final consider = {
+      ...quads.take(quadCandidates),
+      ...quads.reversed.take(dumps),
+    };
     ArrangementCandidate? best;
-    // With one shared distribution the order of the triples cannot change
-    // the score, so only one order is searched (then sorted strongest
-    // first below).
-    final sameCdf =
-        identical(tripleCdfs[0], tripleCdfs[1]) &&
-        identical(tripleCdfs[1], tripleCdfs[2]);
-    const allOrders = [
-      [0, 1, 2],
-      [0, 2, 1],
-      [1, 0, 2],
-      [1, 2, 0],
-      [2, 0, 1],
-      [2, 1, 0],
-    ];
-    final orders = sameCdf
-        ? const [
-            [0, 1, 2],
-          ]
-        : allOrders;
+    final masks = List<int>.filled(4, 0);
+    final probs = List<double>.filled(4, 0);
     for (final q in consider) {
-      final pq = quadCdf.probabilityBeats(a.strength[q]);
       for (final part in HandAnalysis.triplePartitions(
         HandAnalysis.fullMask & ~q,
       )) {
-        for (final o in orders) {
-          final t = [part[o[0]], part[o[1]], part[o[2]]];
-          final s = objective.score([
-            tripleCdfs[0].probabilityBeats(a.strength[t[0]]),
-            tripleCdfs[1].probabilityBeats(a.strength[t[1]]),
-            tripleCdfs[2].probabilityBeats(a.strength[t[2]]),
-            pq,
-          ]);
-          if (best == null || s > best.score) {
-            best = ArrangementCandidate(t, q, s);
-          }
+        masks
+          ..[0] = part[0]
+          ..[1] = part[1]
+          ..[2] = part[2]
+          ..[3] = q;
+        masks.sort((x, y) => a.strength[y].compareTo(a.strength[x]));
+        for (var i = 0; i < 4; i++) {
+          probs[i] = positions[i].probabilityBeats(a.strength[masks[i]]);
+        }
+        final s = objective.score(probs);
+        if (best == null || s > best.score) {
+          best = ArrangementCandidate(List.of(masks), s);
         }
       }
-    }
-    if (sameCdf) {
-      final sorted = List.of(best!.triples)
-        ..sort((x, y) => a.strength[y].compareTo(a.strength[x]));
-      best = ArrangementCandidate(sorted, best.quad, best.score);
     }
     return best!;
   }
@@ -204,6 +188,7 @@ class HardBot extends BotStrategy {
     ];
 
     const model = MediumBot(quadCandidates: 30);
+    // Strength each opponent fields in each position (strongest first).
     final samples = List.generate(kGroupCount, (_) => <int>[]);
     for (var i = 0; i < simulations; i++) {
       final hand = random.shuffled(unseen).take(kHandSize).toList();
@@ -225,10 +210,9 @@ class HardBot extends BotStrategy {
     final best = MediumBot.searchArrangements(
       a,
       ArrangementObjective.fromView(view),
-      tripleCdfs: cdfs.sublist(0, 3),
-      quadCdf: cdfs[3],
+      positions: cdfs,
       quadCandidates: quadCandidates,
     );
-    return a.toArrangement(best.triples, best.quad);
+    return a.toArrangement(best.groups);
   }
 }

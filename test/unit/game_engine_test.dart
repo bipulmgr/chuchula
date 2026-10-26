@@ -83,9 +83,9 @@ void main() {
       final h = s.hands[0];
       final a = Arrangement([
         h.sublist(0, 4),
-        h.sublist(4, 7),
-        h.sublist(7, 10),
-        h.sublist(10),
+        h.sublist(4, 8),
+        h.sublist(8, 11),
+        h.sublist(11),
       ]);
       expect(e.validateArrangement(s, 0, a).error, RuleError.wrongGroupSize);
     });
@@ -108,22 +108,36 @@ void main() {
       expect(e.validateArrangement(s, 0, a).error, RuleError.cardNotOwned);
     });
 
-    test('optional ascending-strength rule', () {
+    test('the 4-card group may sit anywhere; groups play strongest first', () {
       final e2 = fixedEngine([
         deckFor([strongHand]),
       ]);
-      final s2 = start(
-        e2,
-        rules: const RuleConfig(requireAscendingStrength: true),
-      );
-      final desc = Arrangement.fromOrderedCards(
-        parseCards('AS AH AD KS KH KD QS QH QD JS JH JD JC'),
-      );
-      expect(e2.validateArrangement(s2, 0, desc).error, RuleError.notAscending);
-      final asc = Arrangement.fromOrderedCards(
-        parseCards('QS QH QD KS KH KD AS AH AD JS JH JD JC'),
-      );
-      expect(e2.validateArrangement(s2, 0, asc).isValid, isTrue);
+      final s2 = start(e2);
+      // Weakest first, with the 4-card group in front.
+      final weakFirst = Arrangement([
+        parseCards('JS JH JD JC'),
+        parseCards('QS QH QD'),
+        parseCards('KS KH KD'),
+        parseCards('AS AH AD'),
+      ]);
+      expect(e2.validateArrangement(s2, 0, weakFirst).isValid, isTrue);
+      final next = e2.applyMove(s2, SubmitArrangement(0, weakFirst));
+      expect(next.arrangements[0]!.groups.map((g) => g.length), [4, 3, 3, 3]);
+      expect(next.arrangements[0]!.groups.map((g) => g.first.code), [
+        'JS',
+        'AS',
+        'KS',
+        'QS',
+      ]);
+
+      // With the switch off, groups keep the submitted order.
+      final e3 = fixedEngine([
+        deckFor([strongHand]),
+      ]);
+      final s3 = start(e3, rules: const RuleConfig(strongestFirst: false));
+      final kept = e3.applyMove(s3, SubmitArrangement(0, weakFirst));
+      expect(kept.arrangements[0]!.groups.first.length, 4);
+      expect(kept.arrangements[0]!.groups[1].first.code, 'QS');
     });
   });
 

@@ -3,30 +3,24 @@
 // Dart engine exactly (checked by the parity fixtures).
 import { Card, cardId } from './card';
 
-export type HandCategory =
-  | 'highCard'
-  | 'pair'
-  | 'twoPair'
-  | 'color'
-  | 'sequence'
-  | 'trail'
-  | 'pureSequence'
-  | 'fourOfAKind';
+/** Combination categories, weakest first; one ladder for 3 and 4 cards. */
+export const CATEGORIES = [
+  'highCard', 'pair', 'twoPair', 'color', 'sequence', 'pureSequence',
+  'trail', 'fourOfAKind',
+] as const;
 
-/** Three-card ranking, strongest last. */
-export const CATEGORY_ORDER_3: HandCategory[] = [
-  'highCard', 'pair', 'color', 'sequence', 'pureSequence', 'trail',
-];
+export type HandCategory = (typeof CATEGORIES)[number];
 
-/** Four-card ranking, strongest last. */
-export const CATEGORY_ORDER_4: HandCategory[] = [
-  'highCard', 'pair', 'twoPair', 'color', 'sequence', 'trail',
-  'pureSequence', 'fourOfAKind',
-];
+/** Categories a full four-card group can make. */
+const FOUR_CARD_CATEGORIES = new Set<HandCategory>([
+  'twoPair', 'color', 'sequence', 'pureSequence', 'fourOfAKind',
+]);
 
 export interface HandValue {
   size: number;
   category: HandCategory;
+  /** All four cards make the category (4-card color, run, ...). */
+  fourCard: boolean;
   keys: number[];
   tieBreakSuit: number;
   strength: number;
@@ -43,14 +37,8 @@ function sequenceKey(desc: number[]): number | null {
   return null;
 }
 
-export function evaluate(cards: Card[]): HandValue {
-  const size = cards.length;
-  if (size !== 3 && size !== 4) {
-    throw new Error(`A group must contain 3 or 4 cards, got ${size}`);
-  }
-  if (new Set(cards.map(cardId)).size !== size) {
-    throw new Error('A group cannot contain duplicate cards');
-  }
+/** Category and deciding ranks of exactly these cards. */
+function classify(cards: Card[]): [HandCategory, number[]] {
   const values = cards.map((c) => c.rank).sort((a, b) => b - a);
   const counts = new Map<number, number>();
   for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -61,44 +49,57 @@ export function evaluate(cards: Card[]): HandValue {
   const isFlush = cards.every((c) => c.suit === cards[0].suit);
   const seq = sequenceKey(values);
   const top = counts.get(grouped[0])!;
+  if (top === 4) return ['fourOfAKind', [grouped[0]]];
+  if (top === 3) return ['trail', grouped];
+  if (seq !== null && isFlush) return ['pureSequence', [seq]];
+  if (seq !== null) return ['sequence', [seq]];
+  if (isFlush) return ['color', values];
+  if (top === 2 && counts.get(grouped[1]) === 2) return ['twoPair', grouped];
+  if (top === 2) return ['pair', grouped];
+  return ['highCard', values];
+}
 
-  let category: HandCategory;
-  let keys: number[];
-  if (top === 4) {
-    category = 'fourOfAKind';
-    keys = [grouped[0]];
-  } else if (top === 3) {
-    category = 'trail';
-    keys = grouped;
-  } else if (seq !== null && isFlush) {
-    category = 'pureSequence';
-    keys = [seq];
-  } else if (seq !== null) {
-    category = 'sequence';
-    keys = [seq];
-  } else if (isFlush) {
-    category = 'color';
-    keys = values;
-  } else if (top === 2 && counts.get(grouped[1]) === 2) {
-    category = 'twoPair';
-    keys = grouped;
-  } else if (top === 2) {
-    category = 'pair';
-    keys = grouped;
-  } else {
-    category = 'highCard';
-    keys = values;
+function value(
+  size: number, category: HandCategory, fourCard: boolean, keys: number[], tieBreakSuit: number,
+): HandValue {
+  let strength = CATEGORIES.indexOf(category) * 2 + (fourCard ? 1 : 0);
+  for (let i = 0; i < 4; i++) strength = strength * 16 + (i < keys.length ? keys[i] : 0);
+  strength = strength * 4 + tieBreakSuit;
+  return { size, category, fourCard, keys, tieBreakSuit, strength };
+}
+
+export function evaluate(cards: Card[]): HandValue {
+  const size = cards.length;
+  if (size !== 3 && size !== 4) {
+    throw new Error(`A group must contain 3 or 4 cards, got ${size}`);
   }
-
-  const highest = values[0];
+  if (new Set(cards.map(cardId)).size !== size) {
+    throw new Error('A group cannot contain duplicate cards');
+  }
+  const highest = Math.max(...cards.map((c) => c.rank));
   const tieBreakSuit = Math.max(
     ...cards.filter((c) => c.rank === highest).map((c) => c.suit),
   );
-  const order = size === 3 ? CATEGORY_ORDER_3 : CATEGORY_ORDER_4;
-  let strength = order.indexOf(category);
-  for (let i = 0; i < 4; i++) strength = strength * 16 + (i < keys.length ? keys[i] : 0);
-  strength = strength * 4 + tieBreakSuit;
-  return { size, category, keys, tieBreakSuit, strength };
+  const [category, keys] = classify(cards);
+  if (size === 3) return value(3, category, false, keys, tieBreakSuit);
+  // Four cards: the full four-card hand if all four make one, otherwise the
+  // best three cards with the fourth as a final kicker.
+  let best: HandValue | null = FOUR_CARD_CATEGORIES.has(category)
+    ? value(4, category, true, keys, tieBreakSuit)
+    : null;
+  for (let skip = 0; skip < 4; skip++) {
+    const three = cards.filter((_, i) => i !== skip);
+    const [c3, k3] = classify(three);
+    const v = value(4, c3, false, [...k3, cards[skip].rank], tieBreakSuit);
+    if (best === null || v.strength > best.strength) best = v;
+  }
+  return best!;
+}
+
+/** Groups reordered strongest first, the order in which they are played. */
+export function strongestFirst(groups: Card[][]): Card[][] {
+  const strength = new Map(groups.map((g) => [g, evaluate(g).strength]));
+  return [...groups].sort((a, b) => strength.get(b)! - strength.get(a)!);
 }
 
 /** Index of the strongest group, or -1 for an empty list. */

@@ -78,7 +78,7 @@ class CenterArea extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    g == 3 ? l.groupOfFour : l.groupLabel(g + 1),
+                    l.groupLabel(g + 1),
                     style: TextStyle(
                       fontFamily: 'YatraOne',
                       fontSize: 18,
@@ -164,7 +164,7 @@ class _PlayedGroup extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            l.category(value.category),
+            l.handName(value),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

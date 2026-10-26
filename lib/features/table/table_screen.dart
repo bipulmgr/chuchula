@@ -11,6 +11,7 @@ import '../../core/theme/table_themes.dart';
 import '../../game/models/card.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
+import '../../game/rules/hand_evaluator.dart';
 import '../../game/state/game_session.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
@@ -56,9 +57,9 @@ class _TableScreenState extends ConsumerState<TableScreen>
     duration: const Duration(milliseconds: 650),
   )..forward();
 
-  List<PlayingCard> _order = const [];
+  List<List<PlayingCard>> _groups = const [];
   int _orderRound = -1;
-  final List<List<PlayingCard>> _undo = [];
+  final List<List<List<PlayingCard>>> _undo = [];
   PlayerView? _last;
   String? _banner;
   Timer? _bannerTimer;
@@ -161,7 +162,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     // New round: reset the draft and play the deal.
     if (v.round != _orderRound) {
       _orderRound = v.round;
-      _order = List.of(v.myArrangement?.allCards ?? v.myHand);
+      _groups = v.myArrangement?.groups ?? _split(v.myHand);
       _undo.clear();
       _showSummary = false;
       _summaryTimer?.cancel();
@@ -170,7 +171,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
         _deal.forward(from: 0);
       }
     } else if (v.myArrangement != null) {
-      _order = v.myArrangement!.allCards;
+      _groups = v.myArrangement!.groups;
     }
 
     if (old != null && old.round == v.round) {
@@ -240,61 +241,88 @@ class _TableScreenState extends ConsumerState<TableScreen>
 
   // --- Arrangement actions -------------------------------------------------
 
+  /// Splits a 13-card list into 3-3-3-4 groups.
+  static List<List<PlayingCard>> _split(List<PlayingCard> cards) =>
+      Arrangement.fromOrderedCards(cards).groups;
+
+  /// Re-splits [cards] using the current group sizes.
+  List<List<PlayingCard>> _resplit(List<PlayingCard> cards) {
+    final next = <List<PlayingCard>>[];
+    var start = 0;
+    for (final g in _groups) {
+      next.add(cards.sublist(start, start + g.length));
+      start += g.length;
+    }
+    return next;
+  }
+
+  List<PlayingCard> get _flat => [for (final g in _groups) ...g];
+
   void _swap(int a, int b) {
     if (a == b) return;
-    setState(() {
-      _undo.add(List.of(_order));
-      final next = List.of(_order);
-      final tmp = next[a];
-      next[a] = next[b];
-      next[b] = tmp;
-      _order = next;
-    });
-    audio.play(Sfx.snap);
+    final next = _flat;
+    final tmp = next[a];
+    next[a] = next[b];
+    next[b] = tmp;
+    _setGroups(_resplit(next));
     audio.haptic(HapticKind.selection);
   }
 
-  void _setOrder(List<PlayingCard> next) {
+  void _swapGroups(int a, int b) {
+    if (a == b) return;
+    final next = List.of(_groups);
+    final tmp = next[a];
+    next[a] = next[b];
+    next[b] = tmp;
+    _setGroups(next);
+    audio.haptic(HapticKind.selection);
+  }
+
+  void _setGroups(List<List<PlayingCard>> next) {
     setState(() {
-      _undo.add(List.of(_order));
-      _order = next;
+      _undo.add(_groups);
+      _groups = next;
     });
     audio.play(Sfx.snap);
   }
 
   void _sortByRank() =>
-      _setOrder(List.of(_order)..sort((a, b) => a.compareTo(b)));
+      _setGroups(_resplit(_flat..sort((a, b) => a.compareTo(b))));
 
-  void _sortBySuit() => _setOrder(
-    List.of(_order)..sort((a, b) {
-      final s = a.suit.index.compareTo(b.suit.index);
-      return s != 0 ? s : a.rank.value.compareTo(b.rank.value);
-    }),
+  void _sortBySuit() => _setGroups(
+    _resplit(
+      _flat..sort((a, b) {
+        final s = a.suit.index.compareTo(b.suit.index);
+        return s != 0 ? s : a.rank.value.compareTo(b.rank.value);
+      }),
+    ),
   );
 
   void _suggest() {
     final v = _last;
     if (v == null) return;
     final a = const MediumBot(quadCandidates: 40).arrange(v);
-    _setOrder(a.allCards);
+    _setGroups(a.groups);
   }
 
   void _undoLast() {
     if (_undo.isEmpty) return;
-    setState(() => _order = _undo.removeLast());
+    setState(() => _groups = _undo.removeLast());
     audio.play(Sfx.drag);
   }
 
   void _reset() {
     final v = _last;
     if (v == null) return;
-    _setOrder(List.of(v.myHand));
+    _setGroups(_split(v.myHand));
   }
 
   Future<void> _ready() async {
     audio.play(Sfx.button);
     audio.haptic(HapticKind.medium);
-    await session.submitArrangement(Arrangement.fromOrderedCards(_order));
+    // Groups are played strongest first; show them in that order now.
+    setState(() => _groups = HandEvaluator.strongestFirst(_groups));
+    await session.submitArrangement(Arrangement(_groups));
   }
 
   Future<void> _play() async {
@@ -468,11 +496,12 @@ class _TableScreenState extends ConsumerState<TableScreen>
                 child: AnimatedBuilder(
                   animation: _deal,
                   builder: (context, _) => HandStrip(
-                    order: _order,
+                    groups: _groups,
                     mode: _stripMode(v),
                     theme: theme,
                     reducedMotion: reduced,
                     onSwap: _swap,
+                    onSwapGroups: _swapGroups,
                     onDragStart: () => audio.play(Sfx.drag),
                     onPlayGroup: v.isMyTurn ? _play : null,
                     playedGroups: _myPlayedGroups(v),

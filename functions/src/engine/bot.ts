@@ -1,15 +1,14 @@
 // A simple server-side bot. It receives only its own PlayerView (its own
 // hand), so it cannot see hidden opponent cards or the deck.
 import { Card, cardCode, parseCard } from './card';
-import { CATEGORY_ORDER_3, CATEGORY_ORDER_4, evaluate } from './evaluator';
+import { CATEGORIES, evaluate, strongestFirst } from './evaluator';
 import { ArrangementJson, GameMove, PlayerView } from './state';
 
 /** Rough 0..1 strength of a group: category first, then top rank. */
 function score(group: Card[]): number {
   const v = evaluate(group);
-  const order = group.length === 3 ? CATEGORY_ORDER_3 : CATEGORY_ORDER_4;
   const top = v.keys[0] ?? 0;
-  return (order.indexOf(v.category) + top / 16) / order.length;
+  return (CATEGORIES.indexOf(v.category) + (v.fourCard ? 0.5 : 0) + top / 32) / CATEGORIES.length;
 }
 
 function* combinations<T>(items: T[], k: number, start = 0, acc: T[] = []): Generator<T[]> {
@@ -26,8 +25,8 @@ function* combinations<T>(items: T[], k: number, start = 0, acc: T[] = []): Gene
 
 /**
  * Picks the arrangement that maximises the sum of squared group scores
- * (favouring a few strong groups over many average ones). Groups 1-3 are
- * ordered weakest first so the strongest three-card group comes late.
+ * (favouring a few strong groups over many average ones). Groups are
+ * returned strongest first, the order they are played in.
  * Group scores are computed once per card subset (286 triples, 715 quads).
  */
 export function arrangeHand(handCodes: string[]): ArrangementJson {
@@ -65,8 +64,7 @@ export function arrangeHand(handCodes: string[]): ArrangementJson {
     }
   }
   const groups = bestMasks.map((m) => hand.filter((_, i) => m & (1 << i)));
-  const triples = groups.slice(0, 3).sort((a, b) => evaluate(a).strength - evaluate(b).strength);
-  return [...triples, groups[3]].map((g) => g.map(cardCode));
+  return strongestFirst(groups).map((g) => g.map(cardCode));
 }
 
 /** The bot's next move for [view], or null if it has nothing to do. */

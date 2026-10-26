@@ -233,7 +233,7 @@ Map<String, Object?> buildFixtures() => {
       const RuleConfig(
         sweepReplacesGroupPoints: false,
         bonusesStackWithGroupPoints: false,
-        requireAscendingStrength: true,
+        strongestFirst: false,
       ),
     ),
     matchFixture(
