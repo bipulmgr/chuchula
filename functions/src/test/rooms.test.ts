@@ -108,6 +108,9 @@ describe('rooms', () => {
     if (s.phase === 'matchOver') return;
     const round = s.round;
     ({ room: r, state: s } = rooms.submitMove(r, s, 'host', { type: 'next', seat: 0 }, 8, engine) as { room: Room; state: GameState });
+    // A bot may show a special hand at once, ending the new round; then a
+    // second "next" is legitimately valid, so there is nothing to check.
+    if (s.phase !== 'arranging') return;
     ({ room: r, state: s } = rooms.submitMove(r, s, 'maya', { type: 'next', seat: 1 }, 9, engine) as { room: Room; state: GameState });
     assert.equal(s.round, round + 1);
   });
