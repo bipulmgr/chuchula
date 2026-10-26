@@ -40,8 +40,11 @@ void main() {
         final bot = BotStrategy.forDifficulty(d, seed: seed);
         for (var seat = 0; seat < 4; seat++) {
           final a = bot.arrange(PlayerView.of(s, seat));
-          expect(e.validateArrangement(s, seat, a).isValid, isTrue,
-              reason: '${d.name} seed $seed seat $seat');
+          expect(
+            e.validateArrangement(s, seat, a).isValid,
+            isTrue,
+            reason: '${d.name} seed $seed seat $seat',
+          );
         }
       }
     });
@@ -50,10 +53,12 @@ void main() {
   test('medium bot keeps a trail together', () {
     const bot = MediumBot();
     final a = bot.arrangeHand(
-        parseCards('AS AH AD 2C 5D 7H 9S JC 3D 8H 10S 4C 6D'),
-        const ArrangementObjective());
+      parseCards('AS AH AD 2C 5D 7H 9S JC 3D 8H 10S 4C 6D'),
+      const ArrangementObjective(),
+    );
     final hasTrail = a.groups.any(
-        (g) => g.where((c) => c.rank == Rank.ace).length == 3);
+      (g) => g.where((c) => c.rank == Rank.ace).length == 3,
+    );
     expect(hasTrail, isTrue);
   });
 
@@ -77,8 +82,10 @@ void main() {
         continue;
       }
       for (var seat = 0; seat < 4; seat++) {
-        s = e.applyMove(s,
-            SubmitArrangement(seat, bots[seat].arrange(PlayerView.of(s, seat))));
+        s = e.applyMove(
+          s,
+          SubmitArrangement(seat, bots[seat].arrange(PlayerView.of(s, seat))),
+        );
       }
       s = playRound(e, s);
       for (final w in s.history.last.groupWinners) {

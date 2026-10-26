@@ -43,42 +43,44 @@ class StrengthCdf {
 
   /// Distribution of every possible three-card group (exhaustive).
   static StrengthCdf get random3 => _random3 ??= () {
-        final deck = fullDeck();
-        final samples = <int>[];
-        for (var a = 0; a < 52; a++) {
-          for (var b = a + 1; b < 52; b++) {
-            for (var c = b + 1; c < 52; c++) {
-              samples.add(
-                  HandEvaluator.evaluate([deck[a], deck[b], deck[c]]).strength);
-            }
-          }
+    final deck = fullDeck();
+    final samples = <int>[];
+    for (var a = 0; a < 52; a++) {
+      for (var b = a + 1; b < 52; b++) {
+        for (var c = b + 1; c < 52; c++) {
+          samples.add(
+            HandEvaluator.evaluate([deck[a], deck[b], deck[c]]).strength,
+          );
         }
-        return StrengthCdf(samples);
-      }();
+      }
+    }
+    return StrengthCdf(samples);
+  }();
 
   /// Distribution of four-card groups (seeded sample).
   static StrengthCdf get random4 => _random4 ??= () {
-        final r = SeededRandomSource(4444);
-        final deck = fullDeck();
-        final samples = <int>[];
-        for (var i = 0; i < 20000; i++) {
-          final picked = <int>{};
-          while (picked.length < 4) {
-            picked.add(r.nextInt(52));
-          }
-          samples.add(HandEvaluator.evaluate([for (final p in picked) deck[p]])
-              .strength);
-        }
-        return StrengthCdf(samples);
-      }();
+    final r = SeededRandomSource(4444);
+    final deck = fullDeck();
+    final samples = <int>[];
+    for (var i = 0; i < 20000; i++) {
+      final picked = <int>{};
+      while (picked.length < 4) {
+        picked.add(r.nextInt(52));
+      }
+      samples.add(
+        HandEvaluator.evaluate([for (final p in picked) deck[p]]).strength,
+      );
+    }
+    return StrengthCdf(samples);
+  }();
 }
 
 /// Pre-evaluates every 3- and 4-card subset of a 13-card hand, indexed by
 /// a 13-bit mask, so arrangement search is cheap.
 class HandAnalysis {
   HandAnalysis(List<PlayingCard> hand)
-      : cards = List.unmodifiable(hand),
-        strength = Int64List(1 << 13) {
+    : cards = List.unmodifiable(hand),
+      strength = Int64List(1 << 13) {
     if (hand.length != kHandSize) {
       throw ArgumentError('Expected $kHandSize cards');
     }
@@ -86,13 +88,17 @@ class HandAnalysis {
       for (var b = a + 1; b < 13; b++) {
         for (var c = b + 1; c < 13; c++) {
           final m3 = (1 << a) | (1 << b) | (1 << c);
-          strength[m3] =
-              HandEvaluator.evaluate([hand[a], hand[b], hand[c]]).strength;
+          strength[m3] = HandEvaluator.evaluate([hand[a], hand[b], hand[c]])
+              .strength;
           combos3.add(m3);
           for (var d = c + 1; d < 13; d++) {
             final m4 = m3 | (1 << d);
-            strength[m4] = HandEvaluator.evaluate(
-                [hand[a], hand[b], hand[c], hand[d]]).strength;
+            strength[m4] = HandEvaluator.evaluate([
+              hand[a],
+              hand[b],
+              hand[c],
+              hand[d],
+            ]).strength;
             combos4.add(m4);
           }
         }
@@ -107,8 +113,10 @@ class HandAnalysis {
   final List<int> combos3 = [];
   final List<int> combos4 = [];
 
-  List<PlayingCard> cardsOf(int mask) =>
-      [for (var i = 0; i < 13; i++) if (mask & (1 << i) != 0) cards[i]];
+  List<PlayingCard> cardsOf(int mask) => [
+    for (var i = 0; i < 13; i++)
+      if (mask & (1 << i) != 0) cards[i],
+  ];
 
   /// Every way to split the 9 cards in [mask] into three triples
   /// (unordered; 280 partitions).
@@ -133,12 +141,11 @@ class HandAnalysis {
     }
   }
 
-  static List<int> _bits(int mask) =>
-      [for (var i = 0; i < 13; i++) if (mask & (1 << i) != 0) i];
+  static List<int> _bits(int mask) => [
+    for (var i = 0; i < 13; i++)
+      if (mask & (1 << i) != 0) i,
+  ];
 
   Arrangement toArrangement(List<int> tripleMasks, int quadMask) =>
-      Arrangement([
-        for (final m in tripleMasks) cardsOf(m),
-        cardsOf(quadMask),
-      ]);
+      Arrangement([for (final m in tripleMasks) cardsOf(m), cardsOf(quadMask)]);
 }

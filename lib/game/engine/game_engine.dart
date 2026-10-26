@@ -31,7 +31,7 @@ class GameSetup {
 /// → (`StartNextRound`) → `arranging` … until `matchOver`.
 class ChuchulaGameEngine {
   ChuchulaGameEngine({RandomSource? random})
-      : random = random ?? SecureRandomSource();
+    : random = random ?? SecureRandomSource();
 
   final RandomSource random;
 
@@ -80,7 +80,9 @@ class ChuchulaGameEngine {
   /// Splits a 52-card deck into four hands, dealing one card at a time
   /// starting with the seat after the dealer.
   static List<List<PlayingCard>> dealHands(
-      List<PlayingCard> deck, int dealerSeat) {
+    List<PlayingCard> deck,
+    int dealerSeat,
+  ) {
     final hands = List.generate(kSeatCount, (_) => <PlayingCard>[]);
     for (var i = 0; i < deck.length; i++) {
       hands[(dealerSeat + 1 + i) % kSeatCount].add(deck[i]);
@@ -98,7 +100,7 @@ class ChuchulaGameEngine {
       final instant = <int>[
         if (s.rules.allRanksInstantWin)
           for (var i = 0; i < kSeatCount; i++)
-            if (BonusDetector.hasAllRanks(hands[i])) i
+            if (BonusDetector.hasAllRanks(hands[i])) i,
       ];
       if (instant.length > 1) continue; // Void deal: redeal.
 
@@ -121,7 +123,9 @@ class ChuchulaGameEngine {
           arrangements: List.filled(kSeatCount, null),
           bonuses: [
             for (var i = 0; i < kSeatCount; i++)
-              i == seat ? const [Bonus(BonusType.allRanks, 0)] : const <Bonus>[]
+              i == seat
+                  ? const [Bonus(BonusType.allRanks, 0)]
+                  : const <Bonus>[],
           ],
           points: List.filled(kSeatCount, 0),
           instantWinSeat: seat,
@@ -147,19 +151,26 @@ class ChuchulaGameEngine {
   // ---------------------------------------------------------------------
 
   ValidationResult validateArrangement(
-      GameState state, int seat, Arrangement arrangement) {
+    GameState state,
+    int seat,
+    Arrangement arrangement,
+  ) {
     if (seat < 0 || seat >= kSeatCount) {
       return const ValidationResult.fail(RuleError.invalidSeat);
     }
     final groups = arrangement.groups;
     if (groups.length != kGroupCount) {
       return ValidationResult.fail(
-          RuleError.wrongGroupCount, '${groups.length}');
+        RuleError.wrongGroupCount,
+        '${groups.length}',
+      );
     }
     for (var i = 0; i < kGroupCount; i++) {
       if (groups[i].length != kGroupSizes[i]) {
-        return ValidationResult.fail(RuleError.wrongGroupSize,
-            'group ${i + 1} has ${groups[i].length} cards');
+        return ValidationResult.fail(
+          RuleError.wrongGroupSize,
+          'group ${i + 1} has ${groups[i].length} cards',
+        );
       }
     }
     final all = arrangement.allCards;
@@ -248,7 +259,7 @@ class ChuchulaGameEngine {
       case PlayGroup(:final seat):
         final g = state.groupIndex;
         final plays = [
-          for (final p in state.roundPlays) List<List<PlayingCard>?>.of(p)
+          for (final p in state.roundPlays) List<List<PlayingCard>?>.of(p),
         ];
         plays[g][seat] = state.arrangements[seat]!.groups[g];
         final played = plays[g].where((p) => p != null).length;
@@ -269,15 +280,19 @@ class ChuchulaGameEngine {
             turnSeat: () => winner,
           );
         }
-        return _finishRound(state.copyWith(
-          roundPlays: plays,
-          groupWinners: winners,
-          turnSeat: () => null,
-        ));
+        return _finishRound(
+          state.copyWith(
+            roundPlays: plays,
+            groupWinners: winners,
+            turnSeat: () => null,
+          ),
+        );
 
       case StartNextRound():
-        return _dealRound(state,
-            nextDealer: (state.dealerSeat + 1) % kSeatCount);
+        return _dealRound(
+          state,
+          nextDealer: (state.dealerSeat + 1) % kSeatCount,
+        );
     }
   }
 
@@ -294,9 +309,10 @@ class ChuchulaGameEngine {
     }
     final bonuses = [
       for (var i = 0; i < kSeatCount; i++)
-        BonusDetector.detect(state.hands[i], state.rules)
-            .where((b) => b.type != BonusType.allRanks)
-            .toList()
+        BonusDetector.detect(
+          state.hands[i],
+          state.rules,
+        ).where((b) => b.type != BonusType.allRanks).toList(),
     ];
     final seatScores = [
       for (var i = 0; i < kSeatCount; i++)
@@ -305,12 +321,15 @@ class ChuchulaGameEngine {
           groupWinners: state.groupWinners,
           bonuses: bonuses[i],
           rules: state.rules,
-        )
+        ),
     ];
     final points = [
       for (var i = 0; i < kSeatCount; i++)
         RoundScorer.applyTarget(
-            state.scores[i], seatScores[i].total, state.rules)
+          state.scores[i],
+          seatScores[i].total,
+          state.rules,
+        ),
     ];
     final sweep = seatScores.indexWhere((s) => s.swept);
     return RoundResult(
@@ -326,7 +345,7 @@ class ChuchulaGameEngine {
   GameState _finishRound(GameState state) {
     final rr = resolveRound(state);
     final scores = [
-      for (var i = 0; i < kSeatCount; i++) state.scores[i] + rr.points[i]
+      for (var i = 0; i < kSeatCount; i++) state.scores[i] + rr.points[i],
     ];
     var next = state.copyWith(
       scores: scores,

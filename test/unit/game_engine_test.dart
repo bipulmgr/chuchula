@@ -49,14 +49,16 @@ void main() {
     });
 
     test('fixed deck helper deals the requested hands', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       final s = start(e);
       expect(s.hands[0].toSet(), parseCards(strongHand).toSet());
     });
 
     test('rejects a malformed fixed deck', () {
       final e = fixedEngine([
-        [1, 2, 3]
+        [1, 2, 3],
       ]);
       expect(() => start(e), throwsArgumentError);
     });
@@ -66,7 +68,9 @@ void main() {
     late ChuchulaGameEngine e;
     late GameState s;
     setUp(() {
-      e = fixedEngine([deckFor([strongHand])]);
+      e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       s = start(e);
     });
 
@@ -77,7 +81,12 @@ void main() {
 
     test('rejects wrong group sizes', () {
       final h = s.hands[0];
-      final a = Arrangement([h.sublist(0, 4), h.sublist(4, 7), h.sublist(7, 10), h.sublist(10)]);
+      final a = Arrangement([
+        h.sublist(0, 4),
+        h.sublist(4, 7),
+        h.sublist(7, 10),
+        h.sublist(10),
+      ]);
       expect(e.validateArrangement(s, 0, a).error, RuleError.wrongGroupSize);
     });
 
@@ -100,38 +109,56 @@ void main() {
     });
 
     test('optional ascending-strength rule', () {
-      final e2 = fixedEngine([deckFor([strongHand])]);
-      final s2 = start(e2,
-          rules: const RuleConfig(requireAscendingStrength: true));
+      final e2 = fixedEngine([
+        deckFor([strongHand]),
+      ]);
+      final s2 = start(
+        e2,
+        rules: const RuleConfig(requireAscendingStrength: true),
+      );
       final desc = Arrangement.fromOrderedCards(
-          parseCards('AS AH AD KS KH KD QS QH QD JS JH JD JC'));
+        parseCards('AS AH AD KS KH KD QS QH QD JS JH JD JC'),
+      );
       expect(e2.validateArrangement(s2, 0, desc).error, RuleError.notAscending);
       final asc = Arrangement.fromOrderedCards(
-          parseCards('QS QH QD KS KH KD AS AH AD JS JH JD JC'));
+        parseCards('QS QH QD KS KH KD AS AH AD JS JH JD JC'),
+      );
       expect(e2.validateArrangement(s2, 0, asc).isValid, isTrue);
     });
   });
 
   group('phases and turns', () {
     test('cannot play before everyone is ready', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = start(e);
-      expect(e.validateMove(s, const PlayGroup(0, 0)).error,
-          RuleError.wrongPhase);
+      expect(
+        e.validateMove(s, const PlayGroup(0, 0)).error,
+        RuleError.wrongPhase,
+      );
       s = e.applyMove(
-          s, SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])));
+        s,
+        SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])),
+      );
       expect(s.phase, GamePhase.arranging);
       expect(s.isReady(0), isTrue);
       expect(
-          e.validateMove(s,
-                  SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])))
-              .error,
-          RuleError.alreadyReady);
+        e
+            .validateMove(
+              s,
+              SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])),
+            )
+            .error,
+        RuleError.alreadyReady,
+      );
     });
 
     test('transitions to playing when all four are ready; seat after '
         'dealer leads', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       final s = arrangeAll(e, start(e));
       expect(s.phase, GamePhase.playing);
       expect(s.groupIndex, 0);
@@ -139,20 +166,32 @@ void main() {
     });
 
     test('wrong player and wrong group are rejected', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       final s = arrangeAll(e, start(e));
-      expect(e.validateMove(s, const PlayGroup(2, 0)).error,
-          RuleError.notYourTurn);
-      expect(e.validateMove(s, const PlayGroup(0, 1)).error,
-          RuleError.wrongGroup);
-      expect(() => e.applyMove(s, const PlayGroup(2, 0)),
-          throwsA(isA<InvalidMoveException>()));
-      expect(e.validateMove(s, const PlayGroup(9, 0)).error,
-          RuleError.invalidSeat);
+      expect(
+        e.validateMove(s, const PlayGroup(2, 0)).error,
+        RuleError.notYourTurn,
+      );
+      expect(
+        e.validateMove(s, const PlayGroup(0, 1)).error,
+        RuleError.wrongGroup,
+      );
+      expect(
+        () => e.applyMove(s, const PlayGroup(2, 0)),
+        throwsA(isA<InvalidMoveException>()),
+      );
+      expect(
+        e.validateMove(s, const PlayGroup(9, 0)).error,
+        RuleError.invalidSeat,
+      );
     });
 
     test('turns go around and the group winner leads the next group', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = arrangeAll(e, start(e), custom: {0: strong0});
       for (final seat in [0, 1, 2, 3]) {
         expect(s.turnSeat, seat);
@@ -164,7 +203,9 @@ void main() {
     });
 
     test('duplicate play event is rejected (idempotency)', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = arrangeAll(e, start(e));
       s = e.applyMove(s, const PlayGroup(0, 0));
       expect(e.validateMove(s, const PlayGroup(0, 0)).isValid, isFalse);
@@ -173,7 +214,9 @@ void main() {
 
   group('scoring', () {
     test('sweep replaces group points by default (5 total)', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = arrangeAll(e, start(e, rules: noBonus), custom: {0: strong0});
       s = playRound(e, s);
       expect(s.phase, GamePhase.roundOver);
@@ -183,13 +226,21 @@ void main() {
     });
 
     test('sweep can stack on top of group points', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = arrangeAll(
-          e, start(e, rules: const RuleConfig(
-              sweepReplacesGroupPoints: false,
-              threeTrailsPoints: 0,
-              fourOfAKindPoints: 0)),
-          custom: {0: strong0});
+        e,
+        start(
+          e,
+          rules: const RuleConfig(
+            sweepReplacesGroupPoints: false,
+            threeTrailsPoints: 0,
+            fourOfAKindPoints: 0,
+          ),
+        ),
+        custom: {0: strong0},
+      );
       s = playRound(e, s);
       expect(s.scores[0], 9);
     });
@@ -200,7 +251,7 @@ void main() {
       s = playRound(e, s);
       final rr = s.lastRound!;
       final bonusTotal = [
-        for (final b in rr.bonuses) b.fold<int>(0, (t, x) => t + x.points)
+        for (final b in rr.bonuses) b.fold<int>(0, (t, x) => t + x.points),
       ];
       for (var i = 0; i < 4; i++) {
         final won = rr.groupWinners.where((w) => w == i).length;
@@ -212,42 +263,49 @@ void main() {
     test('scorer: bonuses stack or take the larger', () {
       const bonuses = [Bonus(BonusType.fourOfAKind, 4)];
       final stacked = RoundScorer.scoreSeat(
-          seat: 0,
-          groupWinners: [0, 1, 0, 2],
-          bonuses: bonuses,
-          rules: RuleConfig.standard);
+        seat: 0,
+        groupWinners: [0, 1, 0, 2],
+        bonuses: bonuses,
+        rules: RuleConfig.standard,
+      );
       expect(stacked.total, 6);
       final larger = RoundScorer.scoreSeat(
-          seat: 0,
-          groupWinners: [0, 1, 0, 2],
-          bonuses: bonuses,
-          rules: const RuleConfig(bonusesStackWithGroupPoints: false));
+        seat: 0,
+        groupWinners: [0, 1, 0, 2],
+        bonuses: bonuses,
+        rules: const RuleConfig(bonusesStackWithGroupPoints: false),
+      );
       expect(larger.total, 4);
     });
 
     test('four of a kind bonus is awarded once per four of a kind', () {
       final e = fixedEngine([
-        deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S'])
+        deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
       ]);
       var s = playRound(e, arrangeAll(e, start(e)));
-      expect(s.lastRound!.bonuses[0],
-          contains(const Bonus(BonusType.fourOfAKind, 4)));
+      expect(
+        s.lastRound!.bonuses[0],
+        contains(const Bonus(BonusType.fourOfAKind, 4)),
+      );
     });
 
     test('bonus detector: six pairs, three trails, all ranks', () {
       const r = RuleConfig.standard;
       List<BonusType> t(String h) =>
           BonusDetector.detect(parseCards(h), r).map((b) => b.type).toList();
-      expect(t('2S 2H 3S 3H 4S 4H 5S 5H 6S 6H 7S 7H 9D'),
-          [BonusType.sixPairs]);
-      expect(t('2S 2H 2D 3S 3H 3D 4S 4H 4D 6S 7H 9C JD'),
-          [BonusType.threeTrails]);
+      expect(t('2S 2H 3S 3H 4S 4H 5S 5H 6S 6H 7S 7H 9D'), [BonusType.sixPairs]);
+      expect(t('2S 2H 2D 3S 3H 3D 4S 4H 4D 6S 7H 9C JD'), [
+        BonusType.threeTrails,
+      ]);
       // Three trails also contain three pairs, not six.
-      expect(t('AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS'),
-          [BonusType.allRanks]);
+      expect(t('AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS'), [
+        BonusType.allRanks,
+      ]);
       // Four of a kind counts as two pairs for six pairs.
-      expect(t('2S 2H 2D 2C 3S 3H 4S 4H 5S 5H 6S 6H 9D'),
-          [BonusType.fourOfAKind, BonusType.sixPairs]);
+      expect(t('2S 2H 2D 2C 3S 3H 4S 4H 5S 5H 6S 6H 9D'), [
+        BonusType.fourOfAKind,
+        BonusType.sixPairs,
+      ]);
       expect(t('2S 5H 8D JC AS 3H 6D 9C QS 4H 7D 10C 2H'), isEmpty);
     });
   });
@@ -255,7 +313,7 @@ void main() {
   group('match end', () {
     test('instant win when a seat holds all thirteen ranks', () {
       final e = fixedEngine([
-        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS'])
+        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
       final s = start(e);
       expect(s.phase, GamePhase.matchOver);
@@ -266,7 +324,7 @@ void main() {
 
     test('instant win can be switched off', () {
       final e = fixedEngine([
-        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS'])
+        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
       final s = start(e, rules: const RuleConfig(allRanksInstantWin: false));
       expect(s.phase, GamePhase.arranging);
@@ -314,12 +372,16 @@ void main() {
       expect(rounds, greaterThan(1));
       final r = s.result!;
       expect(r.finalScores[r.winnerSeat], greaterThanOrEqualTo(20));
-      expect(e.validateMove(s, const StartNextRound(0)).error,
-          RuleError.matchOver);
+      expect(
+        e.validateMove(s, const StartNextRound(0)).error,
+        RuleError.matchOver,
+      );
       // Score equals the sum of round points: no double awards.
       for (var i = 0; i < 4; i++) {
-        expect(s.scores[i],
-            s.history.fold<int>(0, (t, rr) => t + rr.points[i]));
+        expect(
+          s.scores[i],
+          s.history.fold<int>(0, (t, rr) => t + rr.points[i]),
+        );
       }
     });
   });
@@ -342,7 +404,9 @@ void main() {
     });
 
     test('moves round-trip through JSON', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       final s = start(e);
       final moves = <GameMove>[
         SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])),
@@ -350,13 +414,17 @@ void main() {
         const StartNextRound(3),
       ];
       for (final m in moves) {
-        expect(jsonEncode(GameMove.fromJson(m.toJson()).toJson()),
-            jsonEncode(m.toJson()));
+        expect(
+          jsonEncode(GameMove.fromJson(m.toJson()).toJson()),
+          jsonEncode(m.toJson()),
+        );
       }
     });
 
     test('player view hides other hands and unplayed groups', () {
-      final e = fixedEngine([deckFor([strongHand])]);
+      final e = fixedEngine([
+        deckFor([strongHand]),
+      ]);
       var s = arrangeAll(e, start(e));
       s = e.applyMove(s, const PlayGroup(0, 0));
       final view = PlayerView.of(s, 1);

@@ -74,7 +74,7 @@ class RoundScorer {
         if (rules.targetIsExact
             ? scores[i] == rules.targetScore
             : scores[i] >= rules.targetScore)
-          i
+          i,
     ];
     if (reached.isEmpty) return null;
     final best = reached.map((i) => scores[i]).reduce((a, b) => a > b ? a : b);

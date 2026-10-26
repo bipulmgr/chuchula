@@ -18,7 +18,10 @@ const testSeats = [
 List<int> deckFor(List<String> hands, {int dealer = 3}) {
   final parsed = [for (final h in hands) parseCards(h)];
   final used = {for (final h in parsed) ...h};
-  final spare = [for (final c in fullDeck()) if (!used.contains(c)) c];
+  final spare = [
+    for (final c in fullDeck())
+      if (!used.contains(c)) c,
+  ];
   final full = <List<PlayingCard>>[];
   for (var i = 0; i < 4; i++) {
     final h = i < parsed.length ? List.of(parsed[i]) : <PlayingCard>[];
@@ -39,15 +42,20 @@ ChuchulaGameEngine fixedEngine(List<List<int>> decks) =>
     ChuchulaGameEngine(random: FixedDeckRandomSource(decks, seed: 7));
 
 GameState start(ChuchulaGameEngine engine, {RuleConfig? rules}) =>
-    engine.startGame(GameSetup(
-      matchId: 'test',
-      seats: testSeats,
-      rules: rules ?? RuleConfig.standard,
-    ));
+    engine.startGame(
+      GameSetup(
+        matchId: 'test',
+        seats: testSeats,
+        rules: rules ?? RuleConfig.standard,
+      ),
+    );
 
 /// Arranges every seat as hand-order (sorted) chunks, or with [custom].
-GameState arrangeAll(ChuchulaGameEngine engine, GameState s,
-    {Map<int, String> custom = const {}}) {
+GameState arrangeAll(
+  ChuchulaGameEngine engine,
+  GameState s, {
+  Map<int, String> custom = const {},
+}) {
   for (var seat = 0; seat < 4; seat++) {
     final a = custom.containsKey(seat)
         ? Arrangement.fromOrderedCards(parseCards(custom[seat]!))

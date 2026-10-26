@@ -17,19 +17,18 @@ abstract class BotStrategy {
 
   Arrangement arrange(PlayerView view);
 
-  static BotStrategy forDifficulty(BotDifficulty d, {int? seed}) =>
-      switch (d) {
-        BotDifficulty.easy => EasyBot(seed: seed),
-        BotDifficulty.medium => const MediumBot(),
-        BotDifficulty.hard => HardBot(seed: seed),
-      };
+  static BotStrategy forDifficulty(BotDifficulty d, {int? seed}) => switch (d) {
+    BotDifficulty.easy => EasyBot(seed: seed),
+    BotDifficulty.medium => const MediumBot(),
+    BotDifficulty.hard => HardBot(seed: seed),
+  };
 }
 
 /// Legal, simple play: usually sorts the hand and cuts it into groups,
 /// sometimes groups cards at random.
 class EasyBot extends BotStrategy {
   EasyBot({int? seed})
-      : _random = seed == null ? SecureRandomSource() : SeededRandomSource(seed);
+    : _random = seed == null ? SecureRandomSource() : SeededRandomSource(seed);
 
   final RandomSource _random;
 
@@ -103,7 +102,9 @@ class MediumBot extends BotStrategy {
       arrangeHand(view.myHand, ArrangementObjective.fromView(view));
 
   Arrangement arrangeHand(
-      List<PlayingCard> hand, ArrangementObjective objective) {
+    List<PlayingCard> hand,
+    ArrangementObjective objective,
+  ) {
     final a = HandAnalysis(hand);
     final c3 = StrengthCdf.random3;
     final c4 = StrengthCdf.random4;
@@ -133,7 +134,8 @@ class MediumBot extends BotStrategy {
     // With one shared distribution the order of the triples cannot change
     // the score, so only one order is searched (then sorted strongest
     // first below).
-    final sameCdf = identical(tripleCdfs[0], tripleCdfs[1]) &&
+    final sameCdf =
+        identical(tripleCdfs[0], tripleCdfs[1]) &&
         identical(tripleCdfs[1], tripleCdfs[2]);
     const allOrders = [
       [0, 1, 2],
@@ -143,11 +145,16 @@ class MediumBot extends BotStrategy {
       [2, 0, 1],
       [2, 1, 0],
     ];
-    final orders = sameCdf ? const [[0, 1, 2]] : allOrders;
+    final orders = sameCdf
+        ? const [
+            [0, 1, 2],
+          ]
+        : allOrders;
     for (final q in consider) {
       final pq = quadCdf.probabilityBeats(a.strength[q]);
       for (final part in HandAnalysis.triplePartitions(
-          HandAnalysis.fullMask & ~q)) {
+        HandAnalysis.fullMask & ~q,
+      )) {
         for (final o in orders) {
           final t = [part[o[0]], part[o[1]], part[o[2]]];
           final s = objective.score([
@@ -175,7 +182,7 @@ class MediumBot extends BotStrategy {
 /// group position.
 class HardBot extends BotStrategy {
   HardBot({int? seed, this.simulations = 20, this.quadCandidates = 100})
-      : _seed = seed;
+    : _seed = seed;
 
   final int? _seed;
   final int simulations;
@@ -190,14 +197,19 @@ class HardBot extends BotStrategy {
         ? SeededRandomSource(DateTime.now().microsecondsSinceEpoch)
         : SeededRandomSource(_seed);
     final known = view.knownCards;
-    final unseen = [for (final c in fullDeck()) if (!known.contains(c)) c];
+    final unseen = [
+      for (final c in fullDeck())
+        if (!known.contains(c)) c,
+    ];
 
     const model = MediumBot(quadCandidates: 30);
     final samples = List.generate(kGroupCount, (_) => <int>[]);
     for (var i = 0; i < simulations; i++) {
       final hand = random.shuffled(unseen).take(kHandSize).toList();
       final arrangement = model.arrangeHand(
-          hand, const ArrangementObjective(sweepWeight: 0.5));
+        hand,
+        const ArrangementObjective(sweepWeight: 0.5),
+      );
       final analysis = HandAnalysis(hand);
       for (var g = 0; g < kGroupCount; g++) {
         var mask = 0;

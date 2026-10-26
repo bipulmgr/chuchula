@@ -43,8 +43,10 @@ class HandValue implements Comparable<HandValue> {
   @override
   int compareTo(HandValue other) {
     if (other.size != size) {
-      throw ArgumentError('Cannot compare a $size-card group with a '
-          '${other.size}-card group');
+      throw ArgumentError(
+        'Cannot compare a $size-card group with a '
+        '${other.size}-card group',
+      );
     }
     return strength.compareTo(other.strength);
   }

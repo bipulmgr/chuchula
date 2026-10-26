@@ -57,19 +57,19 @@ class RuleConfig {
   static const standard = RuleConfig();
 
   Map<String, dynamic> toJson() => {
-        'targetScore': targetScore,
-        'targetIsExact': targetIsExact,
-        'groupWinPoints': groupWinPoints,
-        'sweepPoints': sweepPoints,
-        'sweepReplacesGroupPoints': sweepReplacesGroupPoints,
-        'fourOfAKindPoints': fourOfAKindPoints,
-        'sixPairsPoints': sixPairsPoints,
-        'threeTrailsPoints': threeTrailsPoints,
-        'bonusesStackWithGroupPoints': bonusesStackWithGroupPoints,
-        'allRanksInstantWin': allRanksInstantWin,
-        'requireAscendingStrength': requireAscendingStrength,
-        'maxRounds': maxRounds,
-      };
+    'targetScore': targetScore,
+    'targetIsExact': targetIsExact,
+    'groupWinPoints': groupWinPoints,
+    'sweepPoints': sweepPoints,
+    'sweepReplacesGroupPoints': sweepReplacesGroupPoints,
+    'fourOfAKindPoints': fourOfAKindPoints,
+    'sixPairsPoints': sixPairsPoints,
+    'threeTrailsPoints': threeTrailsPoints,
+    'bonusesStackWithGroupPoints': bonusesStackWithGroupPoints,
+    'allRanksInstantWin': allRanksInstantWin,
+    'requireAscendingStrength': requireAscendingStrength,
+    'maxRounds': maxRounds,
+  };
 
   factory RuleConfig.fromJson(Map<String, dynamic> json) {
     const d = RuleConfig.standard;
@@ -78,7 +78,8 @@ class RuleConfig {
       targetIsExact: json['targetIsExact'] as bool? ?? d.targetIsExact,
       groupWinPoints: json['groupWinPoints'] as int? ?? d.groupWinPoints,
       sweepPoints: json['sweepPoints'] as int? ?? d.sweepPoints,
-      sweepReplacesGroupPoints: json['sweepReplacesGroupPoints'] as bool? ??
+      sweepReplacesGroupPoints:
+          json['sweepReplacesGroupPoints'] as bool? ??
           d.sweepReplacesGroupPoints,
       fourOfAKindPoints:
           json['fourOfAKindPoints'] as int? ?? d.fourOfAKindPoints,
@@ -87,10 +88,11 @@ class RuleConfig {
           json['threeTrailsPoints'] as int? ?? d.threeTrailsPoints,
       bonusesStackWithGroupPoints:
           json['bonusesStackWithGroupPoints'] as bool? ??
-              d.bonusesStackWithGroupPoints,
+          d.bonusesStackWithGroupPoints,
       allRanksInstantWin:
           json['allRanksInstantWin'] as bool? ?? d.allRanksInstantWin,
-      requireAscendingStrength: json['requireAscendingStrength'] as bool? ??
+      requireAscendingStrength:
+          json['requireAscendingStrength'] as bool? ??
           d.requireAscendingStrength,
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
     );

@@ -34,21 +34,25 @@ class SeatInfo {
   /// Index into the avatar palette.
   final int avatar;
 
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'name': name, 'isBot': isBot, 'avatar': avatar};
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'isBot': isBot,
+    'avatar': avatar,
+  };
 
   factory SeatInfo.fromJson(Map<String, dynamic> json) => SeatInfo(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        isBot: json['isBot'] as bool? ?? false,
-        avatar: json['avatar'] as int? ?? 0,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    isBot: json['isBot'] as bool? ?? false,
+    avatar: json['avatar'] as int? ?? 0,
+  );
 }
 
 /// A player's thirteen cards split into four ordered groups (3, 3, 3, 4).
 class Arrangement {
   Arrangement(List<List<PlayingCard>> groups)
-      : groups = List.unmodifiable(groups.map(List<PlayingCard>.unmodifiable));
+    : groups = List.unmodifiable(groups.map(List<PlayingCard>.unmodifiable));
 
   final List<List<PlayingCard>> groups;
 
@@ -102,40 +106,39 @@ class RoundResult {
   final List<PlayingCard>? instantWinHand;
 
   Map<String, dynamic> toJson() => {
-        'round': round,
-        'groupWinners': groupWinners,
-        'arrangements': [for (final a in arrangements) a?.toJson()],
-        'bonuses': [
-          for (final b in bonuses) [for (final x in b) x.toJson()]
-        ],
-        'points': points,
-        'sweepSeat': sweepSeat,
-        'instantWinSeat': instantWinSeat,
-        'instantWinHand':
-            instantWinHand == null ? null : _codes(instantWinHand!),
-      };
+    'round': round,
+    'groupWinners': groupWinners,
+    'arrangements': [for (final a in arrangements) a?.toJson()],
+    'bonuses': [
+      for (final b in bonuses) [for (final x in b) x.toJson()],
+    ],
+    'points': points,
+    'sweepSeat': sweepSeat,
+    'instantWinSeat': instantWinSeat,
+    'instantWinHand': instantWinHand == null ? null : _codes(instantWinHand!),
+  };
 
   factory RoundResult.fromJson(Map<String, dynamic> json) => RoundResult(
-        round: json['round'] as int,
-        groupWinners: (json['groupWinners'] as List).cast<int>(),
-        arrangements: [
-          for (final a in json['arrangements'] as List)
-            a == null ? null : Arrangement.fromJson(a)
+    round: json['round'] as int,
+    groupWinners: (json['groupWinners'] as List).cast<int>(),
+    arrangements: [
+      for (final a in json['arrangements'] as List)
+        a == null ? null : Arrangement.fromJson(a),
+    ],
+    bonuses: [
+      for (final b in json['bonuses'] as List)
+        [
+          for (final x in b as List)
+            Bonus.fromJson((x as Map).cast<String, dynamic>()),
         ],
-        bonuses: [
-          for (final b in json['bonuses'] as List)
-            [
-              for (final x in b as List)
-                Bonus.fromJson((x as Map).cast<String, dynamic>())
-            ]
-        ],
-        points: (json['points'] as List).cast<int>(),
-        sweepSeat: json['sweepSeat'] as int?,
-        instantWinSeat: json['instantWinSeat'] as int?,
-        instantWinHand: json['instantWinHand'] == null
-            ? null
-            : _cards(json['instantWinHand']),
-      );
+    ],
+    points: (json['points'] as List).cast<int>(),
+    sweepSeat: json['sweepSeat'] as int?,
+    instantWinSeat: json['instantWinSeat'] as int?,
+    instantWinHand: json['instantWinHand'] == null
+        ? null
+        : _cards(json['instantWinHand']),
+  );
 }
 
 class MatchResult {
@@ -150,16 +153,16 @@ class MatchResult {
   final List<int> finalScores;
 
   Map<String, dynamic> toJson() => {
-        'winnerSeat': winnerSeat,
-        'reason': reason.name,
-        'finalScores': finalScores,
-      };
+    'winnerSeat': winnerSeat,
+    'reason': reason.name,
+    'finalScores': finalScores,
+  };
 
   factory MatchResult.fromJson(Map<String, dynamic> json) => MatchResult(
-        winnerSeat: json['winnerSeat'] as int,
-        reason: MatchEndReason.values.byName(json['reason'] as String),
-        finalScores: (json['finalScores'] as List).cast<int>(),
-      );
+    winnerSeat: json['winnerSeat'] as int,
+    reason: MatchEndReason.values.byName(json['reason'] as String),
+    finalScores: (json['finalScores'] as List).cast<int>(),
+  );
 }
 
 /// The complete, authoritative state of a match. Immutable: the engine
@@ -246,48 +249,47 @@ class GameState {
     List<int>? groupWinners,
     List<RoundResult>? history,
     MatchResult? Function()? result,
-  }) =>
-      GameState(
-        matchId: matchId,
-        rules: rules,
-        seats: seats,
-        scores: scores ?? this.scores,
-        round: round ?? this.round,
-        dealerSeat: dealerSeat ?? this.dealerSeat,
-        phase: phase ?? this.phase,
-        hands: hands ?? this.hands,
-        arrangements: arrangements ?? this.arrangements,
-        groupIndex: groupIndex ?? this.groupIndex,
-        turnSeat: turnSeat != null ? turnSeat() : this.turnSeat,
-        roundPlays: roundPlays ?? this.roundPlays,
-        groupWinners: groupWinners ?? this.groupWinners,
-        history: history ?? this.history,
-        version: version + 1,
-        result: result != null ? result() : this.result,
-      );
+  }) => GameState(
+    matchId: matchId,
+    rules: rules,
+    seats: seats,
+    scores: scores ?? this.scores,
+    round: round ?? this.round,
+    dealerSeat: dealerSeat ?? this.dealerSeat,
+    phase: phase ?? this.phase,
+    hands: hands ?? this.hands,
+    arrangements: arrangements ?? this.arrangements,
+    groupIndex: groupIndex ?? this.groupIndex,
+    turnSeat: turnSeat != null ? turnSeat() : this.turnSeat,
+    roundPlays: roundPlays ?? this.roundPlays,
+    groupWinners: groupWinners ?? this.groupWinners,
+    history: history ?? this.history,
+    version: version + 1,
+    result: result != null ? result() : this.result,
+  );
 
   Map<String, dynamic> toJson() => {
-        'schema': 1,
-        'matchId': matchId,
-        'rules': rules.toJson(),
-        'seats': [for (final s in seats) s.toJson()],
-        'scores': scores,
-        'round': round,
-        'dealerSeat': dealerSeat,
-        'phase': phase.name,
-        'hands': [for (final h in hands) _codes(h)],
-        'arrangements': [for (final a in arrangements) a?.toJson()],
-        'groupIndex': groupIndex,
-        'turnSeat': turnSeat,
-        'roundPlays': [
-          for (final g in roundPlays)
-            [for (final p in g) p == null ? null : _codes(p)]
-        ],
-        'groupWinners': groupWinners,
-        'history': [for (final r in history) r.toJson()],
-        'version': version,
-        'result': result?.toJson(),
-      };
+    'schema': 1,
+    'matchId': matchId,
+    'rules': rules.toJson(),
+    'seats': [for (final s in seats) s.toJson()],
+    'scores': scores,
+    'round': round,
+    'dealerSeat': dealerSeat,
+    'phase': phase.name,
+    'hands': [for (final h in hands) _codes(h)],
+    'arrangements': [for (final a in arrangements) a?.toJson()],
+    'groupIndex': groupIndex,
+    'turnSeat': turnSeat,
+    'roundPlays': [
+      for (final g in roundPlays)
+        [for (final p in g) p == null ? null : _codes(p)],
+    ],
+    'groupWinners': groupWinners,
+    'history': [for (final r in history) r.toJson()],
+    'version': version,
+    'result': result?.toJson(),
+  };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
     if (json['schema'] != 1) {
@@ -296,10 +298,11 @@ class GameState {
     return GameState(
       matchId: json['matchId'] as String,
       rules: RuleConfig.fromJson(
-          (json['rules'] as Map).cast<String, dynamic>()),
+        (json['rules'] as Map).cast<String, dynamic>(),
+      ),
       seats: [
         for (final s in json['seats'] as List)
-          SeatInfo.fromJson((s as Map).cast<String, dynamic>())
+          SeatInfo.fromJson((s as Map).cast<String, dynamic>()),
       ],
       scores: (json['scores'] as List).cast<int>(),
       round: json['round'] as int,
@@ -308,24 +311,25 @@ class GameState {
       hands: [for (final h in json['hands'] as List) _cards(h)],
       arrangements: [
         for (final a in json['arrangements'] as List)
-          a == null ? null : Arrangement.fromJson(a)
+          a == null ? null : Arrangement.fromJson(a),
       ],
       groupIndex: json['groupIndex'] as int,
       turnSeat: json['turnSeat'] as int?,
       roundPlays: [
         for (final g in json['roundPlays'] as List)
-          [for (final p in g as List) p == null ? null : _cards(p)]
+          [for (final p in g as List) p == null ? null : _cards(p)],
       ],
       groupWinners: (json['groupWinners'] as List).cast<int>(),
       history: [
         for (final r in json['history'] as List)
-          RoundResult.fromJson((r as Map).cast<String, dynamic>())
+          RoundResult.fromJson((r as Map).cast<String, dynamic>()),
       ],
       version: json['version'] as int,
       result: json['result'] == null
           ? null
           : MatchResult.fromJson(
-              (json['result'] as Map).cast<String, dynamic>()),
+              (json['result'] as Map).cast<String, dynamic>(),
+            ),
     );
   }
 }

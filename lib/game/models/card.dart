@@ -16,9 +16,10 @@ enum Suit {
 
   bool get isRed => this == Suit.diamonds || this == Suit.hearts;
 
-  static Suit fromCode(String code) =>
-      Suit.values.firstWhere((s) => s.code == code,
-          orElse: () => throw FormatException('Unknown suit "$code"'));
+  static Suit fromCode(String code) => Suit.values.firstWhere(
+    (s) => s.code == code,
+    orElse: () => throw FormatException('Unknown suit "$code"'),
+  );
 }
 
 /// Card ranks. [value] runs 2..14 with the ace high (14).
@@ -44,9 +45,10 @@ enum Rank {
 
   static Rank fromValue(int value) => Rank.values[value - 2];
 
-  static Rank fromLabel(String label) =>
-      Rank.values.firstWhere((r) => r.label == label,
-          orElse: () => throw FormatException('Unknown rank "$label"'));
+  static Rank fromLabel(String label) => Rank.values.firstWhere(
+    (r) => r.label == label,
+    orElse: () => throw FormatException('Unknown rank "$label"'),
+  );
 }
 
 /// An immutable playing card. Every card in a deck has a unique [id] 0..51.

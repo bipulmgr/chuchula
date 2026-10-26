@@ -12,8 +12,10 @@ sealed class GameMove {
   static GameMove fromJson(Map<String, dynamic> json) {
     final seat = json['seat'] as int;
     return switch (json['type']) {
-      'arrange' =>
-        SubmitArrangement(seat, Arrangement.fromJson(json['arrangement'])),
+      'arrange' => SubmitArrangement(
+        seat,
+        Arrangement.fromJson(json['arrangement']),
+      ),
       'play' => PlayGroup(seat, json['group'] as int),
       'next' => StartNextRound(seat),
       final t => throw FormatException('Unknown move type $t'),
@@ -28,8 +30,11 @@ class SubmitArrangement extends GameMove {
   final Arrangement arrangement;
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'type': 'arrange', 'seat': seat, 'arrangement': arrangement.toJson()};
+  Map<String, dynamic> toJson() => {
+    'type': 'arrange',
+    'seat': seat,
+    'arrangement': arrangement.toJson(),
+  };
 }
 
 /// Reveals the seat's group for the group currently in play. [group] must
@@ -41,7 +46,11 @@ class PlayGroup extends GameMove {
   final int group;
 
   @override
-  Map<String, dynamic> toJson() => {'type': 'play', 'seat': seat, 'group': group};
+  Map<String, dynamic> toJson() => {
+    'type': 'play',
+    'seat': seat,
+    'group': group,
+  };
 }
 
 /// Deals the next round after the round summary.
@@ -70,9 +79,7 @@ enum RuleError {
 }
 
 class ValidationResult {
-  const ValidationResult.ok()
-      : error = null,
-        detail = null;
+  const ValidationResult.ok() : error = null, detail = null;
 
   const ValidationResult.fail(RuleError this.error, [this.detail]);
 
@@ -82,8 +89,9 @@ class ValidationResult {
   bool get isValid => error == null;
 
   @override
-  String toString() =>
-      isValid ? 'ValidationResult.ok' : 'ValidationResult(${error!.name}: $detail)';
+  String toString() => isValid
+      ? 'ValidationResult.ok'
+      : 'ValidationResult(${error!.name}: $detail)';
 }
 
 class InvalidMoveException implements Exception {
@@ -91,5 +99,6 @@ class InvalidMoveException implements Exception {
   final ValidationResult result;
 
   @override
-  String toString() => 'InvalidMoveException(${result.error?.name}: ${result.detail})';
+  String toString() =>
+      'InvalidMoveException(${result.error?.name}: ${result.detail})';
 }

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.8'
+
+jobs:
+  test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test --reporter expanded
+
+  android:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build debug APK
+        run: flutter build apk --debug
+      - name: Build release APK
+        # Signed with the release keystore when the ANDROID_KEYSTORE_* secrets
+        # exist; otherwise android/app/build.gradle.kts falls back to the
+        # debug key and the APK is for testing only.
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          fi
+          flutter build apk --release
+      - name: Verify APKs
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/chuchula-release.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/chuchula-debug.apk
+          for f in dist/*.apk; do
+            echo "== $f"; ls -l "$f"; sha256sum "$f"
+            unzip -tq "$f"
+            "$BT/aapt2" dump badging "$f" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|uses-permission)"
+            "$BT/apksigner" verify --print-certs "$f" | head -5
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chuchula-apks
+          path: dist/*.apk
+          if-no-files-found: error

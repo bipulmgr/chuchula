@@ -19,9 +19,10 @@ class Bonus {
 
   Map<String, dynamic> toJson() => {'type': type.name, 'points': points};
 
-  factory Bonus.fromJson(Map<String, dynamic> json) =>
-      Bonus(BonusType.values.byName(json['type'] as String),
-          json['points'] as int);
+  factory Bonus.fromJson(Map<String, dynamic> json) => Bonus(
+    BonusType.values.byName(json['type'] as String),
+    json['points'] as int,
+  );
 
   @override
   bool operator ==(Object other) =>

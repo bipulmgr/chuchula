@@ -25,8 +25,10 @@ void main() {
     });
 
     test('parses ten and rejects garbage', () {
-      expect(PlayingCard.parse('10H'),
-          const PlayingCard(Rank.ten, Suit.hearts));
+      expect(
+        PlayingCard.parse('10H'),
+        const PlayingCard(Rank.ten, Suit.hearts),
+      );
       expect(() => PlayingCard.parse('1X'), throwsFormatException);
       expect(() => PlayingCard.fromId(52), throwsRangeError);
     });
@@ -125,7 +127,7 @@ void main() {
       for (final size in [3, 4]) {
         final values = [
           for (var p = 0; p < 4; p++)
-            HandEvaluator.evaluate(shuffled.sublist(p * size, p * size + size))
+            HandEvaluator.evaluate(shuffled.sublist(p * size, p * size + size)),
         ];
         for (var i = 0; i < 4; i++) {
           for (var j = i + 1; j < 4; j++) {
