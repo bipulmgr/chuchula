@@ -73,8 +73,7 @@ class PlayerView {
   Set<PlayingCard> get knownCards => {
     ...myHand,
     for (final g in roundPlays)
-      for (final p in g)
-        if (p != null) ...p,
+      for (final p in g) ...?p,
   };
 
   Map<String, dynamic> toJson() => {

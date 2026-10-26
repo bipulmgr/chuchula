@@ -80,8 +80,8 @@ class ArrangementObjective {
   }
 }
 
-class _Candidate {
-  _Candidate(this.triples, this.quad, this.score);
+class ArrangementCandidate {
+  ArrangementCandidate(this.triples, this.quad, this.score);
   final List<int> triples;
   final int quad;
   final double score;
@@ -120,7 +120,7 @@ class MediumBot extends BotStrategy {
 
   /// Searches four-card groups (strongest [quadCandidates] first), every
   /// split of the rest into triples, and every order of those triples.
-  static _Candidate searchArrangements(
+  static ArrangementCandidate searchArrangements(
     HandAnalysis a,
     ArrangementObjective objective, {
     required List<StrengthCdf> tripleCdfs,
@@ -130,7 +130,7 @@ class MediumBot extends BotStrategy {
     final quads = List<int>.of(a.combos4)
       ..sort((x, y) => a.strength[y].compareTo(a.strength[x]));
     final consider = quads.take(quadCandidates);
-    _Candidate? best;
+    ArrangementCandidate? best;
     // With one shared distribution the order of the triples cannot change
     // the score, so only one order is searched (then sorted strongest
     // first below).
@@ -163,14 +163,16 @@ class MediumBot extends BotStrategy {
             tripleCdfs[2].probabilityBeats(a.strength[t[2]]),
             pq,
           ]);
-          if (best == null || s > best.score) best = _Candidate(t, q, s);
+          if (best == null || s > best.score) {
+            best = ArrangementCandidate(t, q, s);
+          }
         }
       }
     }
     if (sameCdf) {
       final sorted = List.of(best!.triples)
         ..sort((x, y) => a.strength[y].compareTo(a.strength[x]));
-      best = _Candidate(sorted, best.quad, best.score);
+      best = ArrangementCandidate(sorted, best.quad, best.score);
     }
     return best!;
   }
@@ -181,10 +183,9 @@ class MediumBot extends BotStrategy {
 /// optimizes against the strength each opponent is likely to field in each
 /// group position.
 class HardBot extends BotStrategy {
-  HardBot({int? seed, this.simulations = 20, this.quadCandidates = 100})
-    : _seed = seed;
+  const HardBot({this.seed, this.simulations = 20, this.quadCandidates = 100});
 
-  final int? _seed;
+  final int? seed;
   final int simulations;
   final int quadCandidates;
 
@@ -193,9 +194,9 @@ class HardBot extends BotStrategy {
 
   @override
   Arrangement arrange(PlayerView view) {
-    final random = _seed == null
+    final random = seed == null
         ? SeededRandomSource(DateTime.now().microsecondsSinceEpoch)
-        : SeededRandomSource(_seed);
+        : SeededRandomSource(seed!);
     final known = view.knownCards;
     final unseen = [
       for (final c in fullDeck())
