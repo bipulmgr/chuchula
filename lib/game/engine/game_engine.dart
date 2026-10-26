@@ -147,9 +147,13 @@ class ChuchulaGameEngine {
     );
   }
 
-  /// Ends the round: [seat] showed the special hands in its dealt cards.
-  GameState _showHand(GameState s, int seat) {
-    final bonuses = BonusDetector.detect(s.hands[seat], s.rules);
+  /// Ends the round: [seat] showed the special hands in its dealt cards
+  /// (only those of kind [only], when given).
+  GameState _showHand(GameState s, int seat, BonusType? only) {
+    final bonuses = [
+      for (final b in BonusDetector.detect(s.hands[seat], s.rules))
+        if (only == null || b.type == only) b,
+    ];
     if (bonuses.any((b) => b.type == BonusType.allRanks)) {
       return _instantWin(s, seat);
     }
@@ -189,6 +193,20 @@ class ChuchulaGameEngine {
       s.rules.declareBonuses && s.phase == GamePhase.arranging
       ? BonusDetector.detect(s.hands[seat], s.rules)
       : const [];
+
+  /// The best special to show from [bonuses]: all ranks wins the match,
+  /// otherwise the kind worth most. Null when there is none.
+  static BonusType? bestShow(List<Bonus> bonuses) {
+    if (bonuses.isEmpty) return null;
+    if (bonuses.any((b) => b.type == BonusType.allRanks)) {
+      return BonusType.allRanks;
+    }
+    final totals = <BonusType, int>{};
+    for (final b in bonuses) {
+      totals[b.type] = (totals[b.type] ?? 0) + b.points;
+    }
+    return totals.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+  }
 
   // ---------------------------------------------------------------------
   // Validation
@@ -269,11 +287,14 @@ class ChuchulaGameEngine {
           return const ValidationResult.fail(RuleError.wrongPhase);
         }
         return const ValidationResult.ok();
-      case ShowHand(:final seat):
+      case ShowHand(:final seat, :final bonus):
         if (state.phase != GamePhase.arranging) {
           return const ValidationResult.fail(RuleError.wrongPhase);
         }
-        if (showable(state, seat).isEmpty) {
+        if (!showable(
+          state,
+          seat,
+        ).any((b) => bonus == null || b.type == bonus)) {
           return const ValidationResult.fail(RuleError.nothingToShow);
         }
         return const ValidationResult.ok();
@@ -341,8 +362,8 @@ class ChuchulaGameEngine {
           ),
         );
 
-      case ShowHand(:final seat):
-        return _showHand(state, seat);
+      case ShowHand(:final seat, :final bonus):
+        return _showHand(state, seat, bonus);
 
       case StartNextRound():
         return _dealRound(

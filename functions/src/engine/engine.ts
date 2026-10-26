@@ -7,7 +7,7 @@ import {
   Card, cardCode, cardId, compareCards, fromId, parseCard,
 } from './card';
 import { bestIndex, evaluate, fourCardIsWeakest, fourCardWeakestArrangement, playOrder } from './evaluator';
-import { Bonus, RuleConfig, STANDARD_RULES, detectBonuses, hasAllRanks } from './rules';
+import { Bonus, BonusType, RuleConfig, STANDARD_RULES, detectBonuses, hasAllRanks } from './rules';
 import {
   GROUP_COUNT, GROUP_SIZES, GameMove, GameState, MatchResult, RoundResult,
   RuleError, SEAT_COUNT, SeatInfo,
@@ -159,9 +159,9 @@ export class ChuchulaEngine {
     });
   }
 
-  /** Ends the round: [seat] showed the special hands in its dealt cards. */
-  private showHand(s: GameState, seat: number): GameState {
-    const bonuses = detectBonuses(cards(s.hands[seat]), s.rules);
+  /** Ends the round: [seat] showed the special hands in its dealt cards (only kind [only], when given). */
+  private showHand(s: GameState, seat: number, only?: BonusType): GameState {
+    const bonuses = detectBonuses(cards(s.hands[seat]), s.rules).filter((b) => !only || b.type === only);
     if (bonuses.some((b) => b.type === 'allRanks')) return this.instantWin(s, seat);
     const total = bonuses.reduce((t, b) => t + b.points, 0);
     const points = [0, 1, 2, 3].map((i) => (i === seat ? applyTarget(s.scores[i], total, s.rules) : 0));
@@ -239,7 +239,9 @@ export class ChuchulaEngine {
         return null;
       case 'show':
         if (state.phase !== 'arranging') return { error: 'wrongPhase' };
-        if (showable(state, move.seat).length === 0) return { error: 'nothingToShow' };
+        if (!showable(state, move.seat).some((b) => !move.bonus || b.type === move.bonus)) {
+          return { error: 'nothingToShow' };
+        }
         return null;
     }
   }
@@ -285,7 +287,7 @@ export class ChuchulaEngine {
         return this.finishRound(bump(state, { roundPlays: plays, groupWinners: winners, turnSeat: null }));
       }
       case 'show':
-        return this.showHand(state, move.seat);
+        return this.showHand(state, move.seat, move.bonus);
       case 'next':
         return this.dealRound(state, (state.dealerSeat + 1) % SEAT_COUNT);
     }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../bots/bot_strategy.dart';
 import '../engine/game_engine.dart';
+import '../rules/bonuses.dart';
 import '../models/game_state.dart';
 import '../models/moves.dart';
 import '../models/player_view.dart';
@@ -54,6 +55,7 @@ class BotTiming {
     this.maxThink = const Duration(milliseconds: 2200),
     this.play = const Duration(milliseconds: 800),
     this.afterGroup = const Duration(milliseconds: 1700),
+    this.deal = const Duration(milliseconds: 2800),
   });
 
   /// Zero delays, for tests and simulations.
@@ -61,7 +63,8 @@ class BotTiming {
     : minThink = Duration.zero,
       maxThink = Duration.zero,
       play = Duration.zero,
-      afterGroup = Duration.zero;
+      afterGroup = Duration.zero,
+      deal = Duration.zero;
 
   final Duration minThink;
   final Duration maxThink;
@@ -69,6 +72,11 @@ class BotTiming {
 
   /// Pause before leading a new group, so everyone sees the last result.
   final Duration afterGroup;
+
+  /// Bots start arranging once the dealing animation is over. In browser
+  /// builds they think on the UI thread, and thinking during the deal
+  /// would freeze the animation.
+  final Duration deal;
 }
 
 /// A seat controlled by another device (Bluetooth client). The authority
@@ -145,7 +153,8 @@ class AuthorityGameSession extends BaseGameSession {
       _applyLocal(PlayGroup(localSeat, _state.groupIndex));
 
   @override
-  Future<void> showHand() async => _applyLocal(ShowHand(localSeat));
+  Future<void> showHand([BonusType? bonus]) async =>
+      _applyLocal(ShowHand(localSeat, bonus));
 
   @override
   Future<void> startNextRound() async => _applyLocal(StartNextRound(localSeat));
@@ -261,12 +270,22 @@ class AuthorityGameSession extends BaseGameSession {
 
   Future<void> _arrangeBot(int seat, int round) async {
     _arranging.add(seat);
+    if (timing.deal > Duration.zero) {
+      await Future<void>.delayed(timing.deal);
+      if (disposed || _state.round != round || _state.isReady(seat)) {
+        _arranging.remove(seat);
+        return;
+      }
+    }
     thinkingNotifier.value = {...thinkingNotifier.value, seat};
     final started = DateTime.now();
     final bot = _bots[seat]!;
     final view = PlayerView.of(_state, seat);
     // Bots always show a special hand: it ends the round in their favour.
-    final show = ShowHand(seat);
+    final show = ShowHand(
+      seat,
+      ChuchulaGameEngine.bestShow(ChuchulaGameEngine.showable(_state, seat)),
+    );
     final canShow = engine.validateMove(_state, show).isValid;
     Arrangement? arrangement;
     if (!canShow) {

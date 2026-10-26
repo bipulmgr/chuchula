@@ -45,6 +45,14 @@ describe('rooms', () => {
     assert.equal(rooms.joinRoom(room, 'maya', 'Maya', 9).seats.filter((s) => s.uid === 'maya').length, 1);
   });
 
+  it('bots get different random names', () => {
+    const names = rooms.randomBotNames(4);
+    assert.equal(new Set(names).size, 4);
+    const seen = new Set<string>();
+    for (let i = 0; i < 10; i++) for (const n of rooms.randomBotNames(2)) seen.add(n);
+    assert.ok(seen.size > 4);
+  });
+
   it('room codes avoid look-alike characters', () => {
     for (let i = 0; i < 200; i++) assert.match(rooms.newRoomCode(), /^[A-HJ-NP-Z2-9]{6}$/);
   });

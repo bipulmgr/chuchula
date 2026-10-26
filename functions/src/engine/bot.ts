@@ -2,7 +2,7 @@
 // hand), so it cannot see hidden opponent cards or the deck.
 import { Card, cardCode, parseCard } from './card';
 import { CATEGORIES, evaluate, playOrder } from './evaluator';
-import { STANDARD_RULES, detectBonuses } from './rules';
+import { STANDARD_RULES, bestShow, detectBonuses } from './rules';
 import { ArrangementJson, GameMove, PlayerView } from './state';
 
 /** Rough 0..1 strength of a group: category first, then top rank. */
@@ -80,17 +80,16 @@ export function arrangeHand(handCodes: string[]): ArrangementJson {
   return playOrder(groups).map((g) => g.map(cardCode));
 }
 
-function canShow(handCodes: string[]): boolean {
-  return detectBonuses(handCodes.map(parseCard), STANDARD_RULES).length > 0;
+function bestSpecial(handCodes: string[]) {
+  return bestShow(detectBonuses(handCodes.map(parseCard), STANDARD_RULES));
 }
 
 /** The bot's next move for [view], or null if it has nothing to do. */
 export function botMove(view: PlayerView): GameMove | null {
   const seat = view.mySeat;
   // Always show a special hand: it ends the round in the bot's favour.
-  if (view.phase === 'arranging' && canShow(view.myHand)) {
-    return { type: 'show', seat };
-  }
+  const special = view.phase === 'arranging' ? bestSpecial(view.myHand) : null;
+  if (special) return { type: 'show', seat, bonus: special };
   if (view.phase === 'arranging' && !view.ready[seat]) {
     return { type: 'arrange', seat, arrangement: arrangeHand(view.myHand) };
   }

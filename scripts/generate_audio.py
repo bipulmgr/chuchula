@@ -6,7 +6,12 @@ original work licensed with the project. Requires numpy and ffmpeg.
 
     python3 scripts/generate_audio.py
 
-Writes OGG Vorbis files to assets/audio/.
+Writes OGG Vorbis files to assets/audio/: the classic sound set and the
+Himalayan Evening music at the top level, the other sound sets in
+assets/audio/<set>/, and the other music tracks as music_<name>.ogg.
+
+    python3 scripts/generate_audio.py            # everything
+    python3 scripts/generate_audio.py extra      # only the extra sets/tracks
 """
 import os
 import subprocess
@@ -94,6 +99,27 @@ def mix(length, *parts):
     return out
 
 
+def square(freq, dur, decay=0.1, gain=0.3, duty=0.5):
+    """Chiptune square wave."""
+    x = t(dur)
+    y = np.where((x * freq) % 1 < duty, 1.0, -1.0)
+    return gain * y * env(len(x), 0.001, decay)
+
+
+def chirp(f0, f1, dur, decay=0.08, gain=0.3):
+    x = t(dur)
+    f = f0 + (f1 - f0) * x / dur
+    phase = 2 * np.pi * np.cumsum(f) / SR
+    y = np.where(np.sin(phase) >= 0, 1.0, -1.0)
+    return gain * y * env(len(x), 0.001, decay)
+
+
+def wood(freq, dur=0.08, gain=0.5):
+    """Soft wooden knock."""
+    x = t(dur)
+    return gain * np.sin(2 * np.pi * freq * x) * env(len(x), 0.001, 0.012)
+
+
 def save(name, y, quality=4):
     peak = np.max(np.abs(y)) or 1.0
     y = (y / peak * 0.89 * 32767).astype(np.int16)
@@ -106,6 +132,7 @@ def save(name, y, quality=4):
         w.setframerate(SR)
         w.writeframes(y.tobytes())
     dst = os.path.join(OUT, name + '.ogg')
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', path,
                     '-c:a', 'libvorbis', '-q:a', str(quality), dst], check=True)
     os.remove(path)
@@ -187,6 +214,111 @@ def music():
     save('music_loop', lowpass(y, 9000), quality=3)
 
 
+def soft_sfx():
+    d = 'soft/'
+    save(d + 'deal', noise_burst(0.06, 600, 2500, 0.015, 0.35))
+    save(d + 'drag', noise_burst(0.05, 800, 3000, 0.01, 0.25))
+    save(d + 'snap', wood(520, 0.1, 0.5))
+    save(d + 'play', mix(0.3, (0, noise_burst(0.2, 300, 1800, 0.06, 0.25)),
+                         (0.08, wood(300, 0.12, 0.6))))
+    save(d + 'turn', bell(note(2, 1), 1.2, 0.5, 0.35))
+    save(d + 'button', wood(760, 0.06, 0.4))
+    save(d + 'win', mix(2.4, *[(i * 0.2, bell(note(d2, 1), 1.6, 0.8, 0.35))
+                              for i, d2 in enumerate([0, 2, 4, 5, 7])]))
+    save(d + 'lose', mix(1.8, *[(i * 0.3, bell(note(d2, 0), 1.2, 0.6, 0.3))
+                              for i, d2 in enumerate([4, 2, 0])]))
+    save(d + 'achievement', mix(1.8, *[(i * 0.06, bell(note(d2, 1), 1.6, 0.8, 0.3))
+                                     for i, d2 in enumerate([0, 2, 4, 7])]))
+    save(d + 'group_win', mix(0.9, (0, bell(note(4, 1), 0.8, 0.4, 0.35))))
+
+
+def arcade_sfx():
+    d = 'arcade/'
+    save(d + 'deal', chirp(1800, 900, 0.04, 0.02, 0.25))
+    save(d + 'drag', chirp(600, 900, 0.04, 0.015, 0.2))
+    save(d + 'snap', square(note(4, 2), 0.06, 0.03, 0.3))
+    save(d + 'play', mix(0.2, (0, square(note(0, 2), 0.08, 0.05, 0.3)),
+                         (0.07, square(note(4, 2), 0.1, 0.05, 0.3))))
+    save(d + 'turn', mix(0.3, (0, square(note(2, 3), 0.1, 0.06, 0.25, 0.25)),
+                         (0.1, square(note(4, 3), 0.15, 0.08, 0.25, 0.25))))
+    save(d + 'button', square(note(0, 3), 0.05, 0.02, 0.25, 0.25))
+    save(d + 'win', mix(1.4, *[(i * 0.1, square(note(d2, 2), 0.2, 0.15, 0.3))
+                              for i, d2 in enumerate([0, 2, 4, 5, 7, 9, 10])]))
+    save(d + 'lose', mix(1.2, *[(i * 0.18, square(note(d2, 1), 0.25, 0.15, 0.3))
+                              for i, d2 in enumerate([4, 3, 1, 0])]))
+    save(d + 'achievement', mix(1.2, *[(i * 0.07, square(note(d2, 3), 0.15, 0.1, 0.25, 0.25))
+                                     for i, d2 in enumerate([0, 4, 2, 5, 4, 7, 9, 10])]))
+    save(d + 'group_win', mix(0.4, (0, square(note(2, 2), 0.1, 0.06, 0.3)),
+                              (0.09, square(note(5, 2), 0.2, 0.1, 0.3))))
+
+
+def loop(parts, length, name):
+    y = mix(length + 1.5, *parts)
+    n = int(SR * length)
+    tail = y[n:]
+    y = y[:n]
+    y[: len(tail)] += tail
+    save(name, lowpass(y, 9000), quality=3)
+
+
+def music_festival():
+    """Upbeat festival track: quick madal and bright plucked melody."""
+    beat = 60 / 112
+    bars = 16
+    length = bars * 4 * beat
+    parts = []
+    for i in range(bars * 4):
+        parts.append((i * beat, pluck(note(0, -1), beat * 1.5, 0.5, 0.16, 0.3)))
+    pattern = [(0, 'lo'), (0.5, 'hi'), (1, 'hi'), (1.5, 'lo'), (2, 'lo'), (2.5, 'hi'),
+               (3, 'hi'), (3.25, 'hi'), (3.5, 'lo')]
+    for bar in range(bars):
+        for pos, kind in pattern:
+            s0 = (bar * 4 + pos) * beat
+            if kind == 'lo':
+                parts.append((s0, drum(100, 0.3, 1.7, 0.1, 0.6, 0.1)))
+            else:
+                parts.append((s0, drum(360, 0.12, 1.2, 0.03, 0.35, 0.5)))
+    phrase = [(0, 4, 0.5), (0.5, 5, 0.5), (1, 7, 1), (2, 5, 0.5), (2.5, 4, 0.5),
+              (3, 2, 1), (4, 4, 0.5), (4.5, 2, 0.5), (5, 1, 0.5), (5.5, 2, 0.5),
+              (6, 0, 2)]
+    for k in range(4):
+        base = k * 8 * beat
+        shift = 0 if k % 2 == 0 else 1
+        for pos, deg, durb in phrase:
+            parts.append((base + pos * beat,
+                          pluck(note(deg + shift, 1), durb * beat * 2, 0.35, 0.3, 0.8)))
+    loop(parts, length, 'music_festival')
+
+
+def music_calm():
+    """Slow, quiet track: drone and singing bowls."""
+    beat = 60 / 60
+    bars = 12
+    length = bars * 4 * beat
+    parts = []
+    for i in range(bars):
+        parts.append((i * 4 * beat, pluck(note(0, -1), 4.5 * beat, 1.5, 0.2, 0.1)))
+        parts.append((i * 4 * beat + 2 * beat, pluck(note(3, -1), 4.5 * beat, 1.5, 0.15, 0.1)))
+    melody = [0, 2, 4, 3, 2, 1, 2, 0, 4, 5, 4, 2]
+    for i, deg in enumerate(melody):
+        parts.append((i * 4 * beat + 0.5, bell(note(deg, 1), 3.5, 1.2, 0.3)))
+        if i % 2 == 1:
+            parts.append((i * 4 * beat + 2.5, bell(note(deg + 2, 2), 2.0, 0.8, 0.12)))
+    loop(parts, length, 'music_calm')
+
+
+def extra():
+    soft_sfx()
+    arcade_sfx()
+    music_festival()
+    music_calm()
+
+
 if __name__ == '__main__':
-    sfx()
-    music()
+    import sys
+    if sys.argv[1:] == ['extra']:
+        extra()
+    else:
+        sfx()
+        music()
+        extra()

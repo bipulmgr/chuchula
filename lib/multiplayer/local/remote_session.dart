@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../game/rules/bonuses.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/moves.dart';
 import '../../game/models/player_view.dart';
@@ -172,7 +173,8 @@ class RemoteGameSession extends BaseGameSession {
       _send(PlayGroup(localSeat, viewNotifier.value?.groupIndex ?? 0));
 
   @override
-  Future<void> showHand() => _send(ShowHand(localSeat));
+  Future<void> showHand([BonusType? bonus]) =>
+      _send(ShowHand(localSeat, bonus));
 
   @override
   Future<void> startNextRound() async {}

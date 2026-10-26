@@ -4,6 +4,7 @@ import 'package:chuchula/features/lobby/bluetooth_lobby_screen.dart';
 import 'package:chuchula/features/lobby/online_lobby_screen.dart';
 import 'package:chuchula/features/settings/settings_screen.dart';
 import 'package:chuchula/features/tutorial/how_to_play_screen.dart';
+import 'package:chuchula/persistence/settings_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -73,10 +74,45 @@ void main() {
       expect(env.store.loadSettings().haptics, isFalse);
     });
 
+    testWidgets('music track, sound style and Suggest are saved', (
+      tester,
+    ) async {
+      final env = await pumpApp(tester, home: const SettingsScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('musicTrack')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('musicTrack-festival')).last);
+      await tester.pumpAndSettle();
+      expect(env.audio.settings.musicTrack, MusicTrack.festival);
+      expect(env.store.loadSettings().musicTrack, MusicTrack.festival);
+
+      await tester.tap(find.byKey(const Key('soundSet')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('soundSet-arcade')).last);
+      await tester.pumpAndSettle();
+      expect(env.store.loadSettings().soundSet, SoundSet.arcade);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('suggestToggle')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('suggestToggle')));
+      await tester.pumpAndSettle();
+      expect(env.store.loadSettings().showSuggest, isFalse);
+    });
+
     testWidgets('choosing a theme recolors the app', (tester) async {
       final env = await pumpApp(tester, home: const SettingsScreen());
       await tester.pumpAndSettle();
       expect(env.container.read(tableThemeProvider).id, TableThemeId.emerald);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('theme-tihar')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('theme-tihar')));
       await tester.pumpAndSettle();
       expect(env.container.read(tableThemeProvider).id, TableThemeId.tihar);

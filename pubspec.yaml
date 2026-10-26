@@ -32,6 +32,8 @@ flutter:
   generate: true
   assets:
     - assets/audio/
+    - assets/audio/soft/
+    - assets/audio/arcade/
   fonts:
     - family: Mukta
       fonts:

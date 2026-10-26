@@ -82,6 +82,20 @@ describe('engine', () => {
     assert.ok(fourCardIsWeakest(bot));
   });
 
+  it('a picked special is checked and only it is scored', () => {
+    const engine = new ChuchulaEngine();
+    const started = engine.startGame({ matchId: 'm', seats });
+    const hand = '9S 9H 9D 9C 2S 2H 2D 3S 3H 3D 4S 4H 4D'.split(' ');
+    const s: GameState = { ...started, phase: 'arranging', hands: [hand, ...started.hands.slice(1)] };
+    assert.equal(engine.validateMove(s, { type: 'show', seat: 0, bonus: 'sixPairs' })?.error, 'nothingToShow');
+    const four = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
+    assert.equal(four.scores[0] - s.scores[0], 4);
+    const trails = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'threeTrails' });
+    assert.equal(trails.scores[0] - s.scores[0], 9);
+    assert.throws(() => parseMove({ type: 'show', seat: 0, bonus: 'royalFlush' }));
+    assert.deepEqual(parseMove({ type: 'show', seat: 0, bonus: 'sixPairs' }), { type: 'show', seat: 0, bonus: 'sixPairs' });
+  });
+
   it('ranks 3- and 4-card groups on one ladder', () => {
     const v = (codes: string) => evaluate(parseCards(codes));
     assert.equal(v('8S JS KH AS').category, 'color');

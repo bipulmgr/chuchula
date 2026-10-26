@@ -6,6 +6,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../bots/bot_strategy.dart';
 import '../core/theme/table_themes.dart';
 
+/// Background music tracks.
+enum MusicTrack {
+  himalaya,
+  festival,
+  calm;
+
+  String get asset => switch (this) {
+    MusicTrack.himalaya => 'audio/music_loop.ogg',
+    _ => 'audio/music_$name.ogg',
+  };
+}
+
+/// Sound effect sets. Classic files sit at the top of assets/audio/.
+enum SoundSet {
+  classic,
+  soft,
+  arcade;
+
+  String get folder => this == SoundSet.classic ? 'audio/' : 'audio/$name/';
+}
+
 class AppSettings {
   const AppSettings({
     this.musicOn = true,
@@ -19,6 +40,9 @@ class AppSettings {
     this.reducedMotion = false,
     this.playerName = '',
     this.difficulty = BotDifficulty.medium,
+    this.musicTrack = MusicTrack.himalaya,
+    this.soundSet = SoundSet.classic,
+    this.showSuggest = true,
   });
 
   final bool musicOn;
@@ -34,6 +58,11 @@ class AppSettings {
   final bool reducedMotion;
   final String playerName;
   final BotDifficulty difficulty;
+  final MusicTrack musicTrack;
+  final SoundSet soundSet;
+
+  /// Whether the table offers the Suggest button while arranging.
+  final bool showSuggest;
 
   AppSettings copyWith({
     bool? musicOn,
@@ -47,6 +76,9 @@ class AppSettings {
     bool? reducedMotion,
     String? playerName,
     BotDifficulty? difficulty,
+    MusicTrack? musicTrack,
+    SoundSet? soundSet,
+    bool? showSuggest,
   }) => AppSettings(
     musicOn: musicOn ?? this.musicOn,
     sfxOn: sfxOn ?? this.sfxOn,
@@ -59,6 +91,9 @@ class AppSettings {
     reducedMotion: reducedMotion ?? this.reducedMotion,
     playerName: playerName ?? this.playerName,
     difficulty: difficulty ?? this.difficulty,
+    musicTrack: musicTrack ?? this.musicTrack,
+    soundSet: soundSet ?? this.soundSet,
+    showSuggest: showSuggest ?? this.showSuggest,
   );
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +108,9 @@ class AppSettings {
     'reducedMotion': reducedMotion,
     'playerName': playerName,
     'difficulty': difficulty.name,
+    'musicTrack': musicTrack.name,
+    'soundSet': soundSet.name,
+    'showSuggest': showSuggest,
   };
 
   /// Tolerant parsing: unknown or corrupt values fall back to defaults.
@@ -106,6 +144,9 @@ class AppSettings {
       reducedMotion: pick('reducedMotion', d.reducedMotion),
       playerName: pick('playerName', d.playerName),
       difficulty: pickEnum('difficulty', BotDifficulty.values, d.difficulty),
+      musicTrack: pickEnum('musicTrack', MusicTrack.values, d.musicTrack),
+      soundSet: pickEnum('soundSet', SoundSet.values, d.soundSet),
+      showSuggest: pick('showSuggest', d.showSuggest),
     );
   }
 }

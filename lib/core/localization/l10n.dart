@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 
 import '../../bots/bot_strategy.dart';
+import '../../game/models/bot_names.dart';
 import '../../game/models/moves.dart';
 import '../../game/rules/bonuses.dart';
 import '../../game/rules/hand_evaluator.dart';
+import '../../persistence/settings_repository.dart';
 import '../theme/table_themes.dart';
 import 'generated/app_localizations.dart';
 
@@ -63,6 +65,18 @@ extension L10nNames on AppLocalizations {
     BotDifficulty.hard => hardDesc,
   };
 
+  String trackName(MusicTrack t) => switch (t) {
+    MusicTrack.himalaya => trackHimalaya,
+    MusicTrack.festival => trackFestival,
+    MusicTrack.calm => trackCalm,
+  };
+
+  String soundSetName(SoundSet s) => switch (s) {
+    SoundSet.classic => soundClassic,
+    SoundSet.soft => soundSoft,
+    SoundSet.arcade => soundArcade,
+  };
+
   String themeName(TableThemeId t) => switch (t) {
     TableThemeId.emerald => themeEmerald,
     TableThemeId.dashain => themeDashain,
@@ -77,5 +91,7 @@ extension L10nNames on AppLocalizations {
     CardBackId.classic => backClassic,
   };
 
-  List<String> get botNames => [botName1, botName2, botName3];
+  /// Three different bot names, picked at random each time.
+  List<String> get botNames =>
+      randomBotNames(3, languageCode: localeName.split('_').first);
 }

@@ -90,9 +90,11 @@ top; two pair sits between Color and Pair.)*
 | Show three trails ("three trials") | 9, round ends |
 | Show one card of every rank, A to K ("all thirteen different") | Match win |
 
-To show, tap **Show** (the ✨ button next to Suggest) while arranging. It
-lights up, and a big Show button appears, when the hand has a special;
-otherwise it explains what can be shown.
+To show, tap **Show** (the ✨ button) while arranging and pick the special
+from its menu. The app gives no hint about which special the hand holds.
+The pick is checked against the dealt cards: if the hand has it, the round
+ends and **only the picked kind scores** (two fours of a kind score 4 each);
+if not, nothing is shown and the player carries on arranging.
 
 **Showing a special hand.** While arranging (before the groups are
 played), a player holding one of these hands can tap **Show**. The round
@@ -103,8 +105,8 @@ Bots always show. A special hand that is not shown scores nothing.
 Details *(interim)*:
 
 - Special hands are judged on the **dealt** 13 cards.
-- A hand with more than one special scores all of them together (for
-  example four of a kind and three trails: 4 + 9).
+- A hand with more than one special scores only the kind the player
+  picks (bots pick the most valuable).
 - The first player to show ends the round; nobody else can show after.
 - For six pairs, a four of a kind counts as two pairs and a trail as one.
 - "Three trials" is read as three *trails* (three separate
@@ -122,7 +124,7 @@ Details *(interim)*:
 These follow the interim answers above until confirmed:
 
 1. "Three trials": is it three trails (three of a kind)?
-2. A hand with two specials (say four of a kind and three trails): both, or the best one?
+2. A hand with two specials (say four of a kind and three trails): the app now scores only the one the player picks. Should both count?
 3. Does a sweep's 5 points replace the four group points or add to them?
 4. If two players could show, does the first to show win, or the bigger special?
 5. Is the target "20 or more"? What happens with a tie above 20?

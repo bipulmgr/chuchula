@@ -5,6 +5,7 @@ import '../../app/providers.dart';
 import '../../audio/audio_service.dart';
 import '../../core/localization/l10n.dart';
 import '../../core/theme/table_themes.dart';
+import '../../persistence/settings_repository.dart';
 import '../../game/models/card.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
@@ -43,6 +44,34 @@ class SettingsScreen extends ConsumerWidget {
             audio.play(Sfx.button);
           },
         );
+
+    Widget dropdown<T>(
+      String key,
+      String label,
+      T value,
+      List<T> values,
+      String Function(T) name,
+      ValueChanged<T> f,
+    ) => ListTile(
+      title: Text(label, style: TextStyle(color: theme.onSurface)),
+      trailing: DropdownButton<T>(
+        key: Key(key),
+        value: value,
+        dropdownColor: theme.surface,
+        style: TextStyle(color: theme.onSurface, fontFamily: 'Mukta'),
+        items: [
+          for (final v in values)
+            DropdownMenuItem(
+              key: Key('$key-${(v as Enum).name}'),
+              value: v,
+              child: Text(name(v)),
+            ),
+        ],
+        onChanged: (v) {
+          if (v != null) f(v);
+        },
+      ),
+    );
 
     Widget slider(
       String key,
@@ -85,6 +114,14 @@ class SettingsScreen extends ConsumerWidget {
                     s.musicOn,
                     (v) => n.update((x) => x.copyWith(musicOn: v)),
                   ),
+                  dropdown(
+                    'musicTrack',
+                    l.musicTrack,
+                    s.musicTrack,
+                    MusicTrack.values,
+                    l.trackName,
+                    (v) => n.update((x) => x.copyWith(musicTrack: v)),
+                  ),
                   slider(
                     'musicVolume',
                     l.musicVolume,
@@ -97,6 +134,17 @@ class SettingsScreen extends ConsumerWidget {
                     l.soundEffects,
                     s.sfxOn,
                     (v) => n.update((x) => x.copyWith(sfxOn: v)),
+                  ),
+                  dropdown(
+                    'soundSet',
+                    l.soundSet,
+                    s.soundSet,
+                    SoundSet.values,
+                    l.soundSetName,
+                    (v) {
+                      n.update((x) => x.copyWith(soundSet: v));
+                      audio.play(Sfx.groupWin);
+                    },
                   ),
                   slider(
                     'sfxVolume',
@@ -210,6 +258,12 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (v) =>
                           n.update((x) => x.copyWith(languageCode: () => v)),
                     ),
+                  ),
+                  toggle(
+                    'suggestToggle',
+                    l.showSuggestSetting,
+                    s.showSuggest,
+                    (v) => n.update((x) => x.copyWith(showSuggest: v)),
                   ),
                   toggle(
                     'motionToggle',

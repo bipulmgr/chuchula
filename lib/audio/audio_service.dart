@@ -18,10 +18,12 @@ enum Sfx {
   achievement,
   groupWin;
 
-  String get asset => switch (this) {
-    Sfx.groupWin => 'audio/group_win.ogg',
-    _ => 'audio/$name.ogg',
+  String get file => switch (this) {
+    Sfx.groupWin => 'group_win.ogg',
+    _ => '$name.ogg',
   };
+
+  String asset([SoundSet set = SoundSet.classic]) => '${set.folder}$file';
 }
 
 /// Plays background music and sound effects, honoring the mute switches
@@ -75,6 +77,7 @@ class AudioPlayersService implements AudioService {
   AppSettings _settings = const AppSettings();
   bool _paused = false;
   bool _musicStarted = false;
+  MusicTrack? _track;
   DateTime _lastDeal = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
@@ -89,10 +92,13 @@ class AudioPlayersService implements AudioService {
 
   void _syncMusic() {
     final shouldPlay = _settings.musicOn && !_paused;
+    final track = _settings.musicTrack;
     _guard(() async {
-      if (shouldPlay && !_musicStarted) {
+      if (shouldPlay && (!_musicStarted || _track != track)) {
         _musicStarted = true;
-        await _music.play(AssetSource('audio/music_loop.ogg'));
+        _track = track;
+        await _music.stop();
+        await _music.play(AssetSource(track.asset));
       } else if (shouldPlay) {
         await _music.resume();
       } else {
@@ -114,7 +120,10 @@ class AudioPlayersService implements AudioService {
     _next = (_next + 1) % _pool.length;
     _guard(() async {
       await p.stop();
-      await p.play(AssetSource(sfx.asset), volume: _settings.sfxVolume);
+      await p.play(
+        AssetSource(sfx.asset(_settings.soundSet)),
+        volume: _settings.sfxVolume,
+      );
     });
   }
 

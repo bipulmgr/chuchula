@@ -56,9 +56,6 @@
     }
   },
   "startMatch": "Deal the cards",
-  "botName1": "Aarav",
-  "botName2": "Sita",
-  "botName3": "Pemba",
   "roundLabel": "Round {round}",
   "@roundLabel": {
     "placeholders": {
@@ -88,8 +85,10 @@
     }
   },
   "ready": "Ready",
-  "showHand": "Show {hand} +{points}",
-  "@showHand": {
+  "showSpecial": "Show",
+  "showMenuTitle": "Show a special hand",
+  "showChoice": "{hand} +{points}",
+  "@showChoice": {
     "placeholders": {
       "hand": {
         "type": "String"
@@ -99,10 +98,22 @@
       }
     }
   },
-  "showSpecial": "Show",
-  "showNothing": "Nothing to show in this hand. You can show four of a kind (+4), six pairs (+6), three trails (+9), or one card of every rank from A to K (wins the match). The Show button lights up when you have one.",
-  "showAllRanks": "Show all thirteen ranks and win",
-  "showHint": "You hold a special hand. Show it to end the round with its points, or arrange and play on.",
+  "showChoiceWin": "{hand}: wins the match",
+  "@showChoiceWin": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "showMissing": "{hand} is not in your hand. Nothing was shown.",
+  "@showMissing": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
   "handShown": "{name} showed {hand}",
   "@handShown": {
     "placeholders": {
@@ -272,6 +283,15 @@
   "cardBack": "Card back",
   "language": "Language",
   "systemLanguage": "Device language",
+  "musicTrack": "Music track",
+  "trackHimalaya": "Himalayan evening",
+  "trackFestival": "Festival",
+  "trackCalm": "Calm bowls",
+  "soundSet": "Sound style",
+  "soundClassic": "Classic",
+  "soundSoft": "Soft",
+  "soundArcade": "Arcade",
+  "showSuggestSetting": "Show the Suggest button",
   "reducedMotion": "Reduce animations",
   "themeEmerald": "Emerald",
   "themeDashain": "Dashain",
@@ -392,7 +412,7 @@
   "tutTieTitle": "Ties",
   "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
   "tutScoreTitle": "Scoring",
-  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (✨, next to Suggest) to end the round with four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (✨) and pick the special you hold to end the round: four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
   "tutEndTitle": "Winning",
   "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
   "@tutEnd": {

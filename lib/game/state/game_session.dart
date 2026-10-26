@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../rules/bonuses.dart';
 import '../models/game_state.dart';
 import '../models/moves.dart';
 import '../models/player_view.dart';
@@ -51,7 +52,8 @@ abstract class GameSession {
   Future<void> playGroup();
 
   /// Shows this seat's special hand, ending the round.
-  Future<void> showHand();
+  /// Shows the special [bonus] (all specials when null).
+  Future<void> showHand([BonusType? bonus]);
 
   Future<void> startNextRound();
 

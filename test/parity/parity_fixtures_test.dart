@@ -161,8 +161,16 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
         var shown = false;
         for (var seat = 0; seat < 4; seat++) {
           // A seat with a special hand shows it, ending the round.
-          if (ChuchulaGameEngine.showable(s, seat).isNotEmpty) {
-            apply(ShowHand(seat));
+          final specials = ChuchulaGameEngine.showable(s, seat);
+          if (specials.isNotEmpty) {
+            // Picking a special the hand lacks is refused.
+            for (final t in BonusType.values) {
+              if (!specials.any((b) => b.type == t)) {
+                tryInvalid(ShowHand(seat, t));
+                break;
+              }
+            }
+            apply(ShowHand(seat, ChuchulaGameEngine.bestShow(specials)));
             shown = true;
             break;
           }

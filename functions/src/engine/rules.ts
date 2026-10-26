@@ -44,7 +44,8 @@ export function rulesFromJson(json: Partial<RuleConfig> | undefined): RuleConfig
   return r;
 }
 
-export type BonusType = 'fourOfAKind' | 'sixPairs' | 'threeTrails' | 'allRanks';
+export const BONUS_TYPES = ['fourOfAKind', 'sixPairs', 'threeTrails', 'allRanks'] as const;
+export type BonusType = (typeof BONUS_TYPES)[number];
 
 export interface Bonus {
   type: BonusType;
@@ -77,4 +78,15 @@ export function detectBonuses(hand: Card[], rules: RuleConfig): Bonus[] {
   const trails = counts.filter((n) => n >= 3).length;
   if (trails >= 3) bonuses.push({ type: 'threeTrails', points: rules.threeTrailsPoints });
   return bonuses;
+}
+
+/** The best special to show: all ranks wins the match, otherwise the kind worth most. */
+export function bestShow(bonuses: Bonus[]): BonusType | null {
+  if (bonuses.length === 0) return null;
+  if (bonuses.some((b) => b.type === 'allRanks')) return 'allRanks';
+  const totals = new Map<BonusType, number>();
+  for (const b of bonuses) totals.set(b.type, (totals.get(b.type) ?? 0) + b.points);
+  let best: BonusType | null = null;
+  for (const [t, v] of totals) if (best === null || v > totals.get(best)!) best = t;
+  return best;
 }

@@ -47,7 +47,20 @@ export class RoomError extends Error {
 export const AWAY_AFTER_MS = 60_000;
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1
-export const BOT_NAMES = ['Sita Bot', 'Hari Bot', 'Gita Bot'];
+export const BOT_NAMES = [
+  'Aarav', 'Sita', 'Pemba', 'Hari', 'Gita', 'Bikash', 'Sarita', 'Dawa', 'Kiran', 'Laxmi', 'Nabin', 'Puja',
+  'Ramesh', 'Anita', 'Tenzing', 'Sunita', 'Bishal', 'Asmita', 'Prakash', 'Kamala', 'Suman', 'Nima', 'Rojina', 'Dipesh',
+];
+
+/** [count] different bot names in random order. */
+export function randomBotNames(count: number): string[] {
+  const pool = [...BOT_NAMES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
 
 export function newRoomCode(): string {
   let code = '';
@@ -126,11 +139,12 @@ export function leaveRoom(room: Room, state: GameState | null, uid: string, now:
 export function startMatch(room: Room, uid: string, now: number, engine: ChuchulaEngine, matchId: string): RoomUpdate {
   if (room.hostUid !== uid) throw new RoomError('not-host');
   if (room.status !== 'waiting') throw new RoomError('already-started');
+  const botNames = randomBotNames(4);
   let bot = 0;
   const seats = room.seats.map((s, i): RoomSeat =>
     s.uid !== null
       ? s
-      : { uid: null, name: BOT_NAMES[bot++ % BOT_NAMES.length], avatar: i, isBot: true, away: false, lastSeen: 0 },
+      : { uid: null, name: botNames[bot++], avatar: i, isBot: true, away: false, lastSeen: 0 },
   );
   const state = engine.startGame({
     matchId,

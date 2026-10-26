@@ -1,6 +1,6 @@
 // Wire/storage shapes, identical to the JSON written by the Dart models
 // (GameState.toJson, PlayerView.toJson, GameMove.toJson). Cards are codes.
-import { Bonus, RuleConfig } from './rules';
+import { BONUS_TYPES, Bonus, BonusType, RuleConfig } from './rules';
 
 export const SEAT_COUNT = 4;
 export const HAND_SIZE = 13;
@@ -63,7 +63,7 @@ export type GameMove =
   | { type: 'arrange'; seat: number; arrangement: ArrangementJson }
   | { type: 'play'; seat: number; group: number }
   | { type: 'next'; seat: number }
-  | { type: 'show'; seat: number };
+  | { type: 'show'; seat: number; bonus?: BonusType };
 
 export type RuleError =
   | 'wrongPhase'
@@ -151,8 +151,11 @@ export function parseMove(json: unknown): GameMove {
       return { type: 'play', seat, group: m.group };
     case 'next':
       return { type: 'next', seat };
-    case 'show':
-      return { type: 'show', seat };
+    case 'show': {
+      if (m.bonus === undefined || m.bonus === null) return { type: 'show', seat };
+      if (!BONUS_TYPES.includes(m.bonus as BonusType)) throw new Error('bad bonus');
+      return { type: 'show', seat, bonus: m.bonus as BonusType };
+    }
     default:
       throw new Error('unknown move type');
   }

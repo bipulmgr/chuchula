@@ -430,6 +430,33 @@ void main() {
       final m = GameMove.fromJson(const ShowHand(2).toJson());
       expect(m, isA<ShowHand>());
       expect(m.seat, 2);
+      final picked = GameMove.fromJson(
+        const ShowHand(1, BonusType.sixPairs).toJson(),
+      );
+      expect((picked as ShowHand).bonus, BonusType.sixPairs);
+    });
+
+    test('showing a picked special checks and scores only that one', () {
+      // Four nines and three trails (2s, 3s, 4s) in one hand.
+      final e = fixedEngine([
+        deckFor(['9S 9H 9D 9C 2S 2H 2D 3S 3H 3D 4S 4H 4D']),
+      ]);
+      final s = start(e);
+      expect(
+        e.validateMove(s, const ShowHand(0, BonusType.sixPairs)).error,
+        RuleError.nothingToShow,
+      );
+      final four = e.applyMove(s, const ShowHand(0, BonusType.fourOfAKind));
+      expect(four.scores[0], 4);
+      expect(four.lastRound!.bonuses[0].map((b) => b.type), [
+        BonusType.fourOfAKind,
+      ]);
+      final trails = e.applyMove(s, const ShowHand(0, BonusType.threeTrails));
+      expect(trails.scores[0], 9);
+      expect(
+        ChuchulaGameEngine.bestShow(ChuchulaGameEngine.showable(s, 0)),
+        BonusType.threeTrails,
+      );
     });
   });
 

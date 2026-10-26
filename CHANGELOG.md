@@ -19,14 +19,18 @@ First version.
   3-card hand of that kind. Otherwise the fourth card is a spare that
   adds nothing.
 - Once everyone is Ready, groups are revealed automatically.
-- Special hands are shown with the Show button (always next to Suggest)
-  while arranging: four of a
-  kind +4, six pairs +6, three trails +9 end the round; all thirteen
-  ranks wins the match. Bots show theirs too.
+- Special hands are shown from the Show menu while arranging: the player
+  picks four of a kind +4, six pairs +6, three trails +9 (each ends the
+  round) or all thirteen ranks (wins the match), and the pick is checked.
+  Nothing hints at the hand beforehand. Bots show theirs too.
 - Table with drag-and-drop or tap-to-swap arranging (single cards or
   whole groups), suggestions, undo, sort, animations, sounds, music and
   haptics.
-- Four table themes, four card backs, English and Nepali, reduced motion.
+- Four table themes, four card backs, three music tracks, three sound
+  styles, English and Nepali, reduced motion, and a switch to hide
+  Suggest. Bots get random names each game.
+- Dealing animation: the deck is riffled, then cards arc to each seat
+  and land in your hand one by one.
 - Tests for the engine, bots, offline matches, the Bluetooth protocol,
   screens, the table, engine parity, security rules and a full online
   match in the Firebase emulators.

@@ -52,7 +52,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _deal = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1900),
+    duration: const Duration(milliseconds: 2600),
   );
   late final AnimationController _entrance = AnimationController(
     vsync: this,
@@ -70,6 +70,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
   Timer? _autoPlayTimer;
   bool _reportedFinish = false;
   int _lastDealTick = -1;
+  bool _dealPending = false;
   StreamSubscription<SessionEvent>? _events;
 
   GameSession get session => widget.session;
@@ -126,9 +127,12 @@ class _TableScreenState extends ConsumerState<TableScreen>
       ref.read(settingsProvider).reducedMotion ||
       MediaQuery.maybeDisableAnimationsOf(context) == true;
 
+  int _dealFirstPosition(PlayerView v) =>
+      relativePosition((v.dealerSeat + 1) % 4, v.mySeat);
+
   void _onDealTick() {
-    final tick = (_deal.value * 52).floor();
-    if (tick != _lastDealTick && tick < 52 && tick % 2 == 0) {
+    final tick = DealTiming.dealtCount(_deal.value);
+    if (tick != _lastDealTick && tick > 0 && tick.isOdd) {
       _lastDealTick = tick;
       audio.play(Sfx.deal);
     }
@@ -172,7 +176,16 @@ class _TableScreenState extends ConsumerState<TableScreen>
       _summaryTimer?.cancel();
       if (v.phase == GamePhase.arranging && !_reducedMotion) {
         _lastDealTick = -1;
-        _deal.forward(from: 0);
+        // Start once the table has been laid out: building a new screen can
+        // take long enough that a deal started now would be over before
+        // its first frame.
+        _deal.value = 0;
+        _dealPending = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _dealPending = false;
+          _deal.forward(from: 0);
+        });
       }
     } else if (v.myArrangement != null) {
       _groups = v.myArrangement!.groups;
@@ -370,10 +383,77 @@ class _TableScreenState extends ConsumerState<TableScreen>
     });
   }
 
-  Future<void> _show() async {
+  /// Shows the special the player picked, after checking the hand has it.
+  /// Nothing about the hand is revealed before the pick.
+  Future<void> _show(BonusType type) async {
+    final v = _last;
+    if (v == null) return;
+    final has = BonusDetector.detect(
+      v.myHand,
+      RuleConfig.standard,
+    ).any((b) => b.type == type);
+    if (!has) {
+      _flash(context.l10n.showMissing(context.l10n.bonus(type)));
+      audio.haptic(HapticKind.heavy);
+      return;
+    }
     audio.play(Sfx.achievement);
     audio.haptic(HapticKind.heavy);
-    await session.showHand();
+    await session.showHand(type);
+  }
+
+  Widget _showMenu(TableTheme theme, AppLocalizations l) {
+    String label(BonusType t) => switch (t) {
+      BonusType.allRanks => l.showChoiceWin(l.bonus(t)),
+      BonusType.fourOfAKind => l.showChoice(
+        l.bonus(t),
+        RuleConfig.standard.fourOfAKindPoints,
+      ),
+      BonusType.sixPairs => l.showChoice(
+        l.bonus(t),
+        RuleConfig.standard.sixPairsPoints,
+      ),
+      BonusType.threeTrails => l.showChoice(
+        l.bonus(t),
+        RuleConfig.standard.threeTrailsPoints,
+      ),
+    };
+    return SizedBox(
+      width: 40,
+      height: 48,
+      child: PopupMenuButton<BonusType>(
+        key: const Key('showIconButton'),
+        tooltip: l.showSpecial,
+        padding: EdgeInsets.zero,
+        color: theme.surface,
+        icon: Icon(Icons.auto_awesome, color: theme.accentSoft),
+        onOpened: () => audio.play(Sfx.button),
+        onSelected: _show,
+        itemBuilder: (_) => [
+          PopupMenuItem<BonusType>(
+            enabled: false,
+            child: Text(
+              l.showMenuTitle,
+              style: TextStyle(
+                color: theme.accent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          for (final t in const [
+            BonusType.fourOfAKind,
+            BonusType.sixPairs,
+            BonusType.threeTrails,
+            BonusType.allRanks,
+          ])
+            PopupMenuItem<BonusType>(
+              key: Key('show-${t.name}'),
+              value: t,
+              child: Text(label(t), style: TextStyle(color: theme.onSurface)),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _next() async {
@@ -523,10 +603,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
                   Positioned.fill(
                     child: DealOverlay(
                       animation: _deal,
-                      firstPosition: relativePosition(
-                        (v.dealerSeat + 1) % 4,
-                        v.mySeat,
-                      ),
+                      firstPosition: _dealFirstPosition(v),
                       theme: theme,
                       cardBack: back,
                     ),
@@ -552,8 +629,14 @@ class _TableScreenState extends ConsumerState<TableScreen>
                     onPlayGroup: v.isMyTurn ? _play : null,
                     playedGroups: _myPlayedGroups(v),
                     activeGroup: v.isMyTurn ? v.groupIndex : null,
-                    revealProgress: _deal.isAnimating
-                        ? ((_deal.value - 0.55) / 0.45).clamp(0.0, 1.0)
+                    revealProgress: _dealPending
+                        ? 0
+                        : _deal.isAnimating
+                        ? DealTiming.landedAtBottom(
+                                _deal.value,
+                                _dealFirstPosition(v),
+                              ) /
+                              13
                         : 1,
                   ),
                 ),
@@ -729,9 +812,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
   }
 
   Widget _actions(PlayerView v, TableTheme theme, AppLocalizations l) {
-    final special = v.phase == GamePhase.arranging
-        ? BonusDetector.detect(v.myHand, RuleConfig.standard)
-        : const <Bonus>[];
+    final settings = ref.watch(settingsProvider);
     Widget bar;
     if (v.phase == GamePhase.arranging && v.myArrangement == null) {
       bar = Row(
@@ -750,15 +831,9 @@ class _TableScreenState extends ConsumerState<TableScreen>
             theme,
           ),
           _iconAction(Icons.filter_list, l.sortSuit, _sortBySuit, theme),
-          _iconAction(Icons.lightbulb_outline, l.suggest, _suggest, theme),
-          _iconAction(
-            Icons.auto_awesome,
-            l.showSpecial,
-            () => special.isEmpty ? _flash(l.showNothing) : _show(),
-            theme,
-            key: const Key('showIconButton'),
-            highlight: special.isNotEmpty,
-          ),
+          if (settings.showSuggest)
+            _iconAction(Icons.lightbulb_outline, l.suggest, _suggest, theme),
+          _showMenu(theme, l),
           const SizedBox(width: 6),
           Expanded(
             child: GoldButton(
@@ -774,35 +849,6 @@ class _TableScreenState extends ConsumerState<TableScreen>
     } else {
       bar = const SizedBox(height: 50);
     }
-    if (special.isNotEmpty) {
-      final allRanks = special.any((b) => b.type == BonusType.allRanks);
-      final label = allRanks
-          ? l.showAllRanks
-          : l.showHand(
-              special.map((b) => l.bonus(b.type)).join(' + '),
-              special.fold<int>(0, (t, b) => t + b.points),
-            );
-      bar = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            l.showHint,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: theme.onSurface),
-          ),
-          const SizedBox(height: 4),
-          GoldButton(
-            key: const Key('showHandButton'),
-            theme: theme,
-            label: label,
-            icon: Icons.auto_awesome,
-            onPressed: _show,
-          ),
-          const SizedBox(height: 6),
-          bar,
-        ],
-      );
-    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
       child: bar,
@@ -813,11 +859,8 @@ class _TableScreenState extends ConsumerState<TableScreen>
     IconData icon,
     String label,
     VoidCallback? onTap,
-    TableTheme theme, {
-    Key? key,
-    bool highlight = false,
-  }) => Tooltip(
-    key: key,
+    TableTheme theme,
+  ) => Tooltip(
     message: label,
     child: Semantics(
       button: true,
@@ -837,7 +880,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
             icon,
             color: onTap == null
                 ? theme.onSurface.withValues(alpha: 0.3)
-                : (highlight ? theme.glow : theme.accentSoft),
+                : theme.accentSoft,
           ),
         ),
       ),

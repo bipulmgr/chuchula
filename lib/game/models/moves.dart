@@ -1,3 +1,4 @@
+import '../rules/bonuses.dart';
 import 'game_state.dart';
 
 /// A request from a seat to change the game state. Moves are validated by
@@ -18,7 +19,10 @@ sealed class GameMove {
       ),
       'play' => PlayGroup(seat, json['group'] as int),
       'next' => StartNextRound(seat),
-      'show' => ShowHand(seat),
+      'show' => ShowHand(
+        seat,
+        BonusType.values.where((b) => b.name == json['bonus']).firstOrNull,
+      ),
       final t => throw FormatException('Unknown move type $t'),
     };
   }
@@ -58,10 +62,18 @@ class PlayGroup extends GameMove {
 /// or all thirteen ranks) during arranging. This ends the round, or the
 /// match for all thirteen ranks.
 class ShowHand extends GameMove {
-  const ShowHand(super.seat);
+  const ShowHand(super.seat, [this.bonus]);
+
+  /// The special the player says they hold. Only that kind is scored.
+  /// Null shows every special in the hand.
+  final BonusType? bonus;
 
   @override
-  Map<String, dynamic> toJson() => {'type': 'show', 'seat': seat};
+  Map<String, dynamic> toJson() => {
+    'type': 'show',
+    'seat': seat,
+    if (bonus != null) 'bonus': bonus!.name,
+  };
 }
 
 /// Deals the next round after the round summary.

@@ -1,3 +1,4 @@
+import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/bots/bot_strategy.dart';
 import 'package:chuchula/features/table/hand_strip.dart';
 import 'package:chuchula/features/table/seat_plate.dart';
@@ -165,8 +166,11 @@ void main() {
     );
     await pumpApp(tester, home: TableScreen(session: session));
     await _settle(tester);
-    expect(find.textContaining('Four of a kind +4'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('showHandButton')));
+    // Nothing hints at the special until the player picks it.
+    expect(find.textContaining('Four of a kind'), findsNothing);
+    await tester.tap(find.byKey(const Key('showIconButton')));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('show-fourOfAKind')));
     await _settle(tester);
     final v = session.view.value!;
     expect(v.phase, GamePhase.roundOver);
@@ -213,16 +217,31 @@ void main() {
     await session.dispose();
   });
 
-  testWidgets('the Show button explains special hands when there is none', (
-    tester,
-  ) async {
+  testWidgets('Suggest can be turned off in settings', (tester) async {
+    final session = _session();
+    final env = await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    expect(find.byTooltip('Suggest'), findsOneWidget);
+    env.container
+        .read(settingsProvider.notifier)
+        .update((s) => s.copyWith(showSuggest: false));
+    await _settle(tester);
+    expect(find.byTooltip('Suggest'), findsNothing);
+    await session.dispose();
+  });
+
+  testWidgets('picking a special the hand lacks shows nothing', (tester) async {
     final session = _session();
     await pumpApp(tester, home: TableScreen(session: session));
     await _settle(tester);
-    expect(find.byKey(const Key('showHandButton')), findsNothing);
     await tester.tap(find.byKey(const Key('showIconButton')));
+    await _settle(tester);
+    for (final k in ['fourOfAKind', 'sixPairs', 'threeTrails', 'allRanks']) {
+      expect(find.byKey(Key('show-$k')), findsOneWidget);
+    }
+    await tester.tap(find.byKey(const Key('show-sixPairs')));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.textContaining('Nothing to show'), findsOneWidget);
+    expect(find.textContaining('is not in your hand'), findsOneWidget);
     expect(session.view.value!.phase, GamePhase.arranging);
     await _settle(tester);
     await session.dispose();
