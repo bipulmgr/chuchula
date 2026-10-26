@@ -402,7 +402,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     await session.showHand(type);
   }
 
-  Widget _showMenu(TableTheme theme, AppLocalizations l) {
+  Widget _showMenu(TableTheme theme, AppLocalizations l, double width) {
     String label(BonusType t) => switch (t) {
       BonusType.allRanks => l.showChoiceWin(l.bonus(t)),
       BonusType.fourOfAKind => l.showChoice(
@@ -419,7 +419,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
       ),
     };
     return SizedBox(
-      width: 40,
+      width: width,
       height: 48,
       child: PopupMenuButton<BonusType>(
         key: const Key('showIconButton'),
@@ -568,7 +568,17 @@ class _TableScreenState extends ConsumerState<TableScreen>
   ) {
     final l = context.l10n;
     final media = MediaQuery.sizeOf(context);
-    final handMaxHeight = (media.height * 0.36).clamp(150.0, 320.0);
+    // Short screens give the hand a smaller share so the table keeps room.
+    final handLimit = (media.height * (media.height < 700 ? 0.29 : 0.34)).clamp(
+      140.0,
+      320.0,
+    );
+    // Only as tall as the cards need, so the table keeps the rest.
+    final handMaxHeight =
+        HandLayout.compute(media.width - 20, [
+          for (final g in _groups) g.length,
+        ], maxHeight: handLimit).size.height +
+        6;
 
     return Stack(
       children: [
@@ -587,19 +597,38 @@ class _TableScreenState extends ConsumerState<TableScreen>
             Expanded(
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(70, 64, 70, 8),
-                      child: CenterArea(
-                        view: v,
-                        theme: theme,
-                        reducedMotion: reduced,
+                  // The top player sits above the playing area and the side
+                  // players in its upper corners, so revealed groups (laid
+                  // out by CenterArea below them) never cover a name or a
+                  // card fan, whatever the screen size.
+                  Column(
+                    children: [
+                      for (var seat = 0; seat < kSeatCount; seat++)
+                        if (relativePosition(seat, v.mySeat) == 2)
+                          _opponent(v, seat, theme, back, reduced),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                                child: CenterArea(
+                                  view: v,
+                                  theme: theme,
+                                  reducedMotion: reduced,
+                                  sideClearance: 92,
+                                ),
+                              ),
+                            ),
+                            for (var seat = 0; seat < kSeatCount; seat++)
+                              if (seat != v.mySeat &&
+                                  relativePosition(seat, v.mySeat) != 2)
+                                _opponent(v, seat, theme, back, reduced),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  for (var seat = 0; seat < kSeatCount; seat++)
-                    if (seat != v.mySeat)
-                      _opponent(v, seat, theme, back, reduced),
                   Positioned.fill(
                     child: DealOverlay(
                       animation: _deal,
@@ -608,6 +637,20 @@ class _TableScreenState extends ConsumerState<TableScreen>
                       cardBack: back,
                     ),
                   ),
+                  // Messages sit in the middle of the table, clear of the
+                  // players' names.
+                  if (_banner != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Align(
+                          alignment: const Alignment(0, 0.2),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: _Toast(text: _banner!, theme: theme),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -645,17 +688,6 @@ class _TableScreenState extends ConsumerState<TableScreen>
             _actions(v, theme, l),
           ],
         ),
-        if (_banner != null)
-          Positioned(
-            top: 56,
-            left: 24,
-            right: 24,
-            child: IgnorePointer(
-              child: Center(
-                child: _Toast(text: _banner!, theme: theme),
-              ),
-            ),
-          ),
         if (_showSummary &&
             v.phase == GamePhase.roundOver &&
             v.lastRound != null)
@@ -712,9 +744,9 @@ class _TableScreenState extends ConsumerState<TableScreen>
   ) {
     final pos = relativePosition(seat, v.mySeat);
     final align = switch (pos) {
-      1 => const Alignment(1, -0.25),
-      2 => const Alignment(0, -1),
-      _ => const Alignment(-1, -0.25),
+      1 => Alignment.topRight,
+      2 => Alignment.topCenter,
+      _ => Alignment.topLeft,
     };
     final connections = session.connections.value;
     final thinking = session.thinking.value;
@@ -744,7 +776,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     return Align(
       alignment: align,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: EdgeInsets.fromLTRB(6, pos == 2 ? 2 : 0, 6, 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: pos == 1
@@ -795,10 +827,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
               child: Text(
                 status,
                 key: ValueKey(status),
-                maxLines: 2,
+                maxLines: MediaQuery.sizeOf(context).height < 700 ? 2 : 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: MediaQuery.sizeOf(context).width < 420 ? 11.5 : 13,
                   height: 1.2,
                   fontWeight: v.isMyTurn ? FontWeight.w800 : FontWeight.w400,
                   color: v.isMyTurn ? theme.glow : theme.onSurface,
@@ -813,6 +845,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
 
   Widget _actions(PlayerView v, TableTheme theme, AppLocalizations l) {
     final settings = ref.watch(settingsProvider);
+    // On narrow phones the tools tighten up so Ready keeps room for its
+    // label.
+    final narrow = MediaQuery.sizeOf(context).width < 380;
+    final iconWidth = narrow ? 32.0 : 40.0;
     Widget bar;
     if (v.phase == GamePhase.arranging && v.myArrangement == null) {
       bar = Row(
@@ -822,25 +858,40 @@ class _TableScreenState extends ConsumerState<TableScreen>
             l.undo,
             _undo.isEmpty ? null : _undoLast,
             theme,
+            iconWidth,
           ),
-          _iconAction(Icons.restart_alt, l.reset, _reset, theme),
+          _iconAction(Icons.restart_alt, l.reset, _reset, theme, iconWidth),
           _iconAction(
             Icons.format_list_numbered,
             l.sortRank,
             _sortByRank,
             theme,
+            iconWidth,
           ),
-          _iconAction(Icons.filter_list, l.sortSuit, _sortBySuit, theme),
+          _iconAction(
+            Icons.filter_list,
+            l.sortSuit,
+            _sortBySuit,
+            theme,
+            iconWidth,
+          ),
           if (settings.showSuggest)
-            _iconAction(Icons.lightbulb_outline, l.suggest, _suggest, theme),
-          _showMenu(theme, l),
-          const SizedBox(width: 6),
+            _iconAction(
+              Icons.lightbulb_outline,
+              l.suggest,
+              _suggest,
+              theme,
+              iconWidth,
+            ),
+          _showMenu(theme, l, iconWidth),
+          SizedBox(width: narrow ? 4 : 6),
           Expanded(
             child: GoldButton(
               key: const Key('readyButton'),
               theme: theme,
               label: l.ready,
-              icon: Icons.check,
+              icon: narrow ? null : Icons.check,
+              dense: narrow,
               onPressed: _ready,
             ),
           ),
@@ -860,6 +911,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     String label,
     VoidCallback? onTap,
     TableTheme theme,
+    double width,
   ) => Tooltip(
     message: label,
     child: Semantics(
@@ -874,7 +926,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
               },
         radius: 24,
         child: SizedBox(
-          width: 40,
+          width: width,
           height: 48,
           child: Icon(
             icon,

@@ -28,18 +28,24 @@ class HandLayout {
     const gap = 12.0;
     const labelH = labelHeight;
     const overlap = 0.52; // visible fraction of a covered card
-    final singleRow = maxWidth >= 620;
+    // Group frames reach 4px past their cards on each side.
+    const margin = 4.0;
+    final avail = maxWidth - 2 * margin;
+    final singleRow = maxWidth >= 600;
     double w;
     if (singleRow) {
-      // 4w + 9*overlap*w + 3*gap = maxWidth
-      w = (maxWidth - 3 * gap) / (4 + 9 * overlap);
+      // 4w + 9*overlap*w + 3*gap = avail
+      w = (avail - 3 * gap) / (4 + 9 * overlap);
     } else {
-      // Widest row holds groups of 3 and 4: 2w + 5*overlap*w + gap.
-      w = (maxWidth - gap) / (2 + 5 * overlap);
+      // Widest row holds groups of 3 and 4: 2w + 5*overlap*w + gap. On
+      // phones cards are kept a little smaller than the width allows, so
+      // the table keeps room.
+      w = (avail - gap) / (2 + 5 * overlap);
+      w = w.clamp(0.0, maxWidth * 0.165);
     }
     final rows = singleRow ? 1 : 2;
     final hLimit = (maxHeight - rows * labelH - (rows - 1) * 8) / rows;
-    w = w.clamp(36.0, 96.0);
+    w = w.clamp(30.0, 92.0);
     if (w / kCardAspect > hLimit) w = hLimit * kCardAspect;
     final cardH = w / kCardAspect;
     final step = w * overlap;
@@ -59,7 +65,8 @@ class HandLayout {
             [0, 1],
             [2, 3],
           ];
-    final width = layoutRows.map(rowWidth).reduce((a, b) => a > b ? a : b);
+    final width =
+        layoutRows.map(rowWidth).reduce((a, b) => a > b ? a : b) + 2 * margin;
     var y = 0.0;
     for (final row in layoutRows) {
       var x = (width - rowWidth(row)) / 2;

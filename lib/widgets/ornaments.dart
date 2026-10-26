@@ -220,6 +220,7 @@ class GoldButton extends StatefulWidget {
     this.primary = true,
     this.expand = true,
     this.subtitle,
+    this.dense = false,
   });
 
   final TableTheme theme;
@@ -229,6 +230,9 @@ class GoldButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final bool primary;
   final bool expand;
+
+  /// Tighter padding and type, for narrow toolbars.
+  final bool dense;
 
   @override
   State<GoldButton> createState() => _GoldButtonState();
@@ -260,7 +264,7 @@ class _GoldButtonState extends State<GoldButton> {
                 style: TextStyle(
                   fontFamily: 'Mukta',
                   fontWeight: FontWeight.w800,
-                  fontSize: 17,
+                  fontSize: widget.dense ? 15 : 17,
                   color: fg,
                   height: 1.1,
                 ),
@@ -298,8 +302,8 @@ class _GoldButtonState extends State<GoldButton> {
               duration: const Duration(milliseconds: 200),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 50),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.dense ? 6 : 18,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
