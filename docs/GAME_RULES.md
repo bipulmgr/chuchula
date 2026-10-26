@@ -16,16 +16,19 @@ interpretations**. Each one is a switch in
    groups: three groups of 3 cards and one group of 4 cards. Cards can be
    swapped one at a time, and whole groups can be swapped by dragging (or
    tapping) a group's label. Press **Ready** to lock the arrangement.
-3. **Order.** Groups are always played **strongest first**: group 1 is
-   the player's strongest group, group 4 the weakest. The 4-card group
-   goes wherever it ranks (a 4-card trail goes first). The app puts the
-   groups in this order when Ready is pressed, and the engine and server
-   enforce it.
+3. **Order.** The three 3-card groups are played **strongest first**
+   (groups 1 to 3), and the **4-card group is always played last** (group
+   4). The 4-card group must be the player's **weakest** group: weaker
+   than each of the three 3-card groups. The app puts the groups in this
+   order when Ready is pressed, and refuses Ready (as do the engine and
+   server) while the 4-card group is stronger than a 3-card group. Only a
+   hand that cannot be arranged that way at all (very rare) may play a
+   stronger 4-card group last.
 4. **Play.** Once all four players are ready, the groups are revealed
    automatically, with no taps: everyone's group 1 is played. The player after the dealer reveals first, then the others in
    turn. The strongest group wins the point and its owner leads the next
-   group. This repeats for groups 2, 3 and 4. A turn can mix 3-card and
-   4-card groups; they compare on the one ladder below.
+   group. This repeats for groups 2, 3 and 4. Group 4 is everyone's
+   4-card group.
 5. **Score.** Points are added (see below) and the next round is dealt.
 
 The match ends when a player reaches the target score (20).
@@ -58,10 +61,8 @@ holds for 4-card runs and double runs. The app labels these "4-card
 Color", "4-card Run" and so on.
 
 **The spare card.** Because a spare adds nothing, padding a strong group
-with it gains nothing. Suggest and the bots therefore aim for full 4-card
-hands, and otherwise put the spare on the weakest group, where it may
-help (a 4-card group of 2♦ 3♦ A♥ 5♦ is still a Color by its best three
-cards).
+with it gains nothing. The 4-card group is the weakest group anyway, so
+Suggest and the bots use it for the leftover cards.
 
 **Sequences.** Aces are high or low. A-K-Q (A-K-Q-J) is the highest run,
 A-2-3 (A-2-3-4) is second, then K-Q-J and so on down to 4-3-2. Runs do not
@@ -88,6 +89,10 @@ top; two pair sits between Color and Pair.)*
 | Show six pairs | 6, round ends |
 | Show three trails ("three trials") | 9, round ends |
 | Show one card of every rank, A to K ("all thirteen different") | Match win |
+
+To show, tap **Show** (the ✨ button next to Suggest) while arranging. It
+lights up, and a big Show button appears, when the hand has a special;
+otherwise it explains what can be shown.
 
 **Showing a special hand.** While arranging (before the groups are
 played), a player holding one of these hands can tap **Show**. The round
@@ -126,9 +131,9 @@ These follow the interim answers above until confirmed:
 
 Confirmed by Bipul on 2026-10-26: groups are revealed automatically
 once everyone is ready; special hands are shown during arranging and end
-the round (4, 6, 9 points) or the match (all thirteen ranks); groups are
-played strongest first with
-the 4-card group anywhere; a 4-card group is named by the best hand in
+the round (4, 6, 9 points) or the match (all thirteen ranks); the three
+3-card groups are played strongest first and the 4-card group last, as
+the weakest group; a 4-card group is named by the best hand in
 it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourth card is a spare that adds nothing.
 
 ## Rule switches
@@ -145,6 +150,7 @@ it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourt
 | `threeTrailsPoints` | 9 | Three trails bonus |
 | `bonusesStackWithGroupPoints` | true | Only with `declareBonuses` off: if false, a player gets the larger of bonus or group points |
 | `allRanksInstantWin` | true | All thirteen ranks wins the match |
-| `strongestFirst` | true | Groups are played strongest first (the engine orders them) |
+| `strongestFirst` | true | 3-card groups are played strongest first, then the 4-card group (the engine orders them) |
+| `fourCardWeakest` | true | The 4-card group must be weaker than every 3-card group, unless the hand allows no such arrangement |
 | `declareBonuses` | true | Special hands score only when shown, which ends the round. If false, they score automatically at round end and all-ranks wins at the deal |
 | `maxRounds` | 100 | Safety limit |

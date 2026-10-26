@@ -175,17 +175,54 @@ void main() {
     await session.dispose();
   });
 
-  testWidgets('ready puts my groups strongest first', (tester) async {
+  testWidgets('ready plays 3-card groups strongest first, 4-card last', (
+    tester,
+  ) async {
     final session = _session();
     await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    await tester.tap(find.byTooltip('Suggest'));
     await _settle(tester);
     await tester.tap(find.byKey(const Key('readyButton')));
     await _settle(tester);
     final mine = session.view.value!.myArrangement!.groups;
+    expect([for (final g in mine) g.length], [3, 3, 3, 4]);
     final strengths = [
       for (final g in mine) HandEvaluator.evaluate(g).strength,
     ];
     expect(strengths, [...strengths]..sort((a, b) => b.compareTo(a)));
+    await session.dispose();
+  });
+
+  testWidgets('ready refuses a 4-card group that is not the weakest', (
+    tester,
+  ) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    // Sorted by rank, the 4-card group is J-Q-K-A: a run, too strong.
+    await tester.tap(find.byTooltip('Sort by rank'));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('readyButton')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('must be your weakest'), findsOneWidget);
+    expect(session.view.value!.ready[0], isFalse);
+    await _settle(tester);
+    await session.dispose();
+  });
+
+  testWidgets('the Show button explains special hands when there is none', (
+    tester,
+  ) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    expect(find.byKey(const Key('showHandButton')), findsNothing);
+    await tester.tap(find.byKey(const Key('showIconButton')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('Nothing to show'), findsOneWidget);
+    expect(session.view.value!.phase, GamePhase.arranging);
+    await _settle(tester);
     await session.dispose();
   });
 
@@ -194,6 +231,8 @@ void main() {
   ) async {
     final session = _session();
     await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    await tester.tap(find.byTooltip('Suggest'));
     await _settle(tester);
     await tester.tap(find.byKey(const Key('readyButton')));
     await _settle(tester);

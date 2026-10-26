@@ -75,7 +75,7 @@
       }
     }
   },
-  "arrangeHint": "Swap cards by dragging one onto another. Drag a group by its label to swap whole groups. Groups play strongest first.",
+  "arrangeHint": "Swap cards by dragging one onto another. Drag a group by its label to swap whole groups. The 3-card groups play strongest first; the 4-card group plays last and must be your weakest.",
   "swapGroupLabel": "Group {group}, {category}. Drag onto another group, or tap two group labels, to swap them.",
   "@swapGroupLabel": {
     "placeholders": {
@@ -99,6 +99,8 @@
       }
     }
   },
+  "showSpecial": "Show",
+  "showNothing": "Nothing to show in this hand. You can show four of a kind (+4), six pairs (+6), three trails (+9), or one card of every rank from A to K (wins the match). The Show button lights up when you have one.",
   "showAllRanks": "Show all thirteen ranks and win",
   "showHint": "You hold a special hand. Show it to end the round with its points, or arrange and play on.",
   "handShown": "{name} showed {hand}",
@@ -282,6 +284,7 @@
   "about": "About",
   "aboutBody": "Original artwork, music and sounds are generated for Chuchula. Fonts: Mukta and Yatra One (SIL Open Font License).",
   "errNotYourTurn": "It's not your turn yet.",
+  "errFourCardTooStrong": "The 4-card group plays last and must be your weakest group. Rearrange it, or tap Suggest.",
   "errInvalidArrangement": "That arrangement isn't valid.",
   "errGeneric": "That move isn't allowed right now.",
   "connectionLost": "Lost connection with {name}. Waiting for them to return…",
@@ -381,15 +384,15 @@
   "tutArrangeTitle": "Arrange",
   "tutArrange": "Your hand sits along the bottom, already split into the four groups. Drag a card onto another card to swap them, or tap two cards. Drag a group by its label to swap whole groups. Tap Ready when you are happy. Nobody sees your groups until they are played.",
   "tutPlayTitle": "Play",
-  "tutPlay": "Once everyone is Ready, the groups are revealed automatically: everyone's strongest group first, then the next strongest, and so on. The 4-card group goes wherever it ranks. The strongest group in each turn wins it, and its owner leads the next one.",
+  "tutPlay": "Once everyone is Ready, the groups are revealed automatically: everyone's strongest 3-card group first, then the next two, and the 4-card groups last. Your 4-card group must be your weakest group. The strongest group in each turn wins it, and its owner leads the next one.",
   "tutRankTitle": "Ranking",
   "tutRank3": "Four of a kind > Trail (three of a kind) > Double run (run in one suit) > Run > Color (same suit) > Two pair > Pair > High card. A-K-Q is the top run, then A-2-3.",
   "tutRank4Title": "The 4-card group",
-  "tutRank4": "It counts as the best hand inside it, so three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
+  "tutRank4": "It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color, so three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
   "tutTieTitle": "Ties",
   "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
   "tutScoreTitle": "Scoring",
-  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show to end the round with four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (✨, next to Suggest) to end the round with four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
   "tutEndTitle": "Winning",
   "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
   "@tutEnd": {

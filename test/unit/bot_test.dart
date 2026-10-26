@@ -67,7 +67,7 @@ void main() {
     // Seat 0 medium, seat 1 hard, seats 2-3 easy.
     final bots = <BotStrategy>[
       const MediumBot(),
-      HardBot(seed: 1, simulations: 12, quadCandidates: 60),
+      HardBot(seed: 1, simulations: 12),
       EasyBot(seed: 2),
       EasyBot(seed: 3),
     ];
@@ -98,7 +98,7 @@ void main() {
     expect(strong, greaterThan(weak), reason: 'wins: $wins');
   });
 
-  test("Suggest on Bipul's hand keeps the spare off the double run", () {
+  test("Suggest on Bipul's hand puts the weakest group, of 4, last", () {
     final hand = parseCards('5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC');
     for (final bot in [const MediumBot(), HardBot(seed: 3)]) {
       final a = bot is MediumBot
@@ -113,20 +113,13 @@ void main() {
                 0,
               ),
             );
-      final quad = a.groups.singleWhere((g) => g.length == 4);
-      final value = HandEvaluator.evaluate(quad);
-      // Either a real 4-card hand, or the spare sits on the weakest group.
-      if (!value.fourCard) {
-        expect(
-          identical(quad, a.groups.last),
-          isTrue,
-          reason: '${bot.runtimeType}: ${a.groups}',
-        );
-      }
-      // Suggest (the medium bot) leads with the 5-6-7 hearts double run.
-      if (bot is MediumBot) {
-        expect(a.groups.first.map((c) => c.code).toSet(), {'5H', '6H', '7H'});
-      }
+      final why = '${bot.runtimeType}: ${a.groups}';
+      expect([for (final g in a.groups) g.length], [3, 3, 3, 4], reason: why);
+      expect(HandEvaluator.fourCardIsWeakest(a.groups), isTrue, reason: why);
+      final strengths = [
+        for (final g in a.groups.take(3)) HandEvaluator.evaluate(g).strength,
+      ];
+      expect(strengths, [...strengths]..sort((x, y) => y - x), reason: why);
     }
   });
 }

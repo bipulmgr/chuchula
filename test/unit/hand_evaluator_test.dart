@@ -143,70 +143,58 @@ void main() {
     });
   });
 
-  test("Bipul's round: Pemba and Sita play strongest first", () {
-    List<String> order(List<String> groups) => [
-      for (final g in HandEvaluator.strongestFirst([
-        for (final c in groups) parseCards(c),
-      ]))
-        g.map((c) => c.code).join(' '),
-    ];
-    // Pemba: the 4-card double run beats both runs, so it comes second.
-    expect(order(['2C 2D 2H', '9C 10C JD', '4S 5H 6H', '6S 7S 8S 9S']), [
+  List<String> codes(List<List<PlayingCard>> groups) => [
+    for (final g in groups) g.map((c) => c.code).join(' '),
+  ];
+
+  test("Bipul's round: 3-card groups strongest first, 4-card group last", () {
+    List<String> order(List<String> groups) =>
+        codes(HandEvaluator.playOrder([for (final c in groups) parseCards(c)]));
+    expect(order(['4S 5H 6H', '6S 7S 8S 9S', '2C 2D 2H', '9C 10C JD']), [
       '2C 2D 2H',
-      '6S 7S 8S 9S',
       '9C 10C JD',
       '4S 5H 6H',
+      '6S 7S 8S 9S',
     ]);
-    // Sita: the 4-card color beats the 3-card color and the pair.
-    expect(order(['4C 5C 6C', '8C JC KC', '8H AS AH', '3D 10D JD KD']), [
+    expect(order(['8H AS AH', '3D 10D JD KD', '4C 5C 6C', '8C JC KC']), [
       '4C 5C 6C',
-      '3D 10D JD KD',
       '8C JC KC',
       '8H AS AH',
+      '3D 10D JD KD',
     ]);
   });
 
-  test("Suggest's hand: the spare 5D moves off the double run", () {
-    final groups = HandEvaluator.spareToWeakest([
-      parseCards('5D 5H 6H 7H'),
-      parseCards('2D 3D AH'),
-      parseCards('2S 6S 8S'),
-      parseCards('10C KH AC'),
-    ]);
-    expect(groups.map((g) => g.map((c) => c.code).join(' ')), [
-      '5H 6H 7H',
-      '2D 3D AH',
-      '2S 6S 8S',
-      '10C KH AC 5D',
-    ]);
-    // A full 4-card hand keeps all four cards.
-    final full = HandEvaluator.spareToWeakest([
-      parseCards('2H 5H 9H JH'),
-      parseCards('2D 3D AH'),
-      parseCards('2S 6S 8S'),
-      parseCards('10C KH AC'),
-    ]);
-    expect(full.singleWhere((g) => g.length == 4).map((c) => c.code), [
-      '2H',
-      '5H',
-      '9H',
-      'JH',
-    ]);
-  });
-
-  test('strongestFirst orders groups for play', () {
-    final groups = [
-      parseCards('2S 5H 9D'),
-      parseCards('5C 5S 5D 8H'),
-      parseCards('3H 7H JH'),
-      parseCards('QC KD AS'),
+  test('the 4-card group must be the weakest', () {
+    List<List<PlayingCard>> g(List<String> s) => [
+      for (final c in s) parseCards(c),
     ];
-    expect(HandEvaluator.strongestFirst(groups).map((g) => g.first.code), [
-      '5C',
-      'QC',
-      '3H',
-      '2S',
-    ]);
+    // Bipul's Suggest hand: 5D 5H 6H 7H as the 4-card group is too strong.
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['5D 5H 6H 7H', '2D 3D AH', '2S 6S 8S', '10C KH AC']),
+      ),
+      isFalse,
+    );
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['5H 6H 7H', '2D 3D 5D', '2S 6S 8D', '10C KH AC AH']),
+      ),
+      isFalse, // a pair of aces beats the high card 8-6-2
+    );
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['5H 6H 7H', 'AC AH 5D', '2S 6S 8S', '10C KH 2D 3D']),
+      ),
+      isTrue,
+    );
+  });
+
+  test('finds an arrangement with the 4-card group weakest', () {
+    final hand = parseCards('5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC');
+    final groups = HandEvaluator.fourCardWeakestArrangement(hand)!;
+    expect([for (final x in groups) x.length], [3, 3, 3, 4]);
+    expect(HandEvaluator.fourCardIsWeakest(groups), isTrue);
+    expect({for (final x in groups) ...x}, hand.toSet());
   });
 
   test('rejects wrong sizes and duplicates', () {

@@ -14,6 +14,7 @@ class RuleConfig {
     this.bonusesStackWithGroupPoints = true,
     this.allRanksInstantWin = true,
     this.strongestFirst = true,
+    this.fourCardWeakest = true,
     this.declareBonuses = true,
     this.maxRounds = 100,
   });
@@ -48,10 +49,15 @@ class RuleConfig {
   /// One card of each of the thirteen ranks wins the match immediately.
   final bool allRanksInstantWin;
 
-  /// If true, each player's groups are played strongest first (the 4-card
-  /// group included, wherever it ranks). The engine puts submitted groups
-  /// in that order. If false, groups are played in the order submitted.
+  /// If true, each player's three 3-card groups are played strongest
+  /// first and the 4-card group last. The engine puts submitted groups in
+  /// that order. If false, groups are played in the order submitted.
   final bool strongestFirst;
+
+  /// If true, the 4-card group must be weaker than every 3-card group
+  /// (an arrangement breaking this is refused), unless the hand allows no
+  /// such arrangement.
+  final bool fourCardWeakest;
 
   /// If true, hand bonuses (and the all-ranks win) count only when the
   /// player shows them during arranging, which ends the round at once.
@@ -75,6 +81,7 @@ class RuleConfig {
     'bonusesStackWithGroupPoints': bonusesStackWithGroupPoints,
     'allRanksInstantWin': allRanksInstantWin,
     'strongestFirst': strongestFirst,
+    'fourCardWeakest': fourCardWeakest,
     'declareBonuses': declareBonuses,
     'maxRounds': maxRounds,
   };
@@ -100,6 +107,7 @@ class RuleConfig {
       allRanksInstantWin:
           json['allRanksInstantWin'] as bool? ?? d.allRanksInstantWin,
       strongestFirst: json['strongestFirst'] as bool? ?? d.strongestFirst,
+      fourCardWeakest: json['fourCardWeakest'] as bool? ?? d.fourCardWeakest,
       declareBonuses: json['declareBonuses'] as bool? ?? d.declareBonuses,
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
     );

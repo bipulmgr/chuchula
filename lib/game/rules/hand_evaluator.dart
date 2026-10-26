@@ -195,35 +195,89 @@ class HandEvaluator {
     return (HandCategory.highCard, values);
   }
 
-  /// Bot and Suggest tidy-up: if the 4-card group is not a full 4-card
-  /// hand, its spare card is moved to the weakest 3-card group, so a strong
-  /// hand is not padded with a card that adds nothing. No group gets
-  /// weaker. Returns the groups strongest first.
-  static List<List<PlayingCard>> spareToWeakest(
-    List<List<PlayingCard>> groups,
-  ) {
-    final sorted = strongestFirst(groups);
-    final q = sorted.indexWhere((g) => g.length == 4);
-    final value = evaluate(sorted[q]);
-    final weakest = sorted.lastIndexWhere((g) => g.length == 3);
-    if (value.fourCard || value.spare == null || weakest < q) return sorted;
-    final spare = value.spare!;
-    final next = List.of(sorted);
-    next[q] = [
-      for (final c in sorted[q])
-        if (c != spare) c,
-    ];
-    next[weakest] = [...sorted[weakest], spare];
-    return strongestFirst(next);
+  /// [groups] in the order they are played: the three 3-card groups
+  /// strongest first, then the 4-card group last.
+  static List<List<PlayingCard>> playOrder(List<List<PlayingCard>> groups) {
+    final values = {for (final g in groups) g: evaluate(g).strength};
+    return List.of(groups)..sort((a, b) {
+      if (a.length != b.length) return a.length.compareTo(b.length);
+      return values[b]!.compareTo(values[a]!);
+    });
   }
 
-  /// [groups] reordered strongest first, the order in
-  /// which they are played.
-  static List<List<PlayingCard>> strongestFirst(
-    List<List<PlayingCard>> groups,
+  /// True when the 4-card group is weaker than every 3-card group.
+  static bool fourCardIsWeakest(List<List<PlayingCard>> groups) {
+    final quads = groups.where((g) => g.length == 4).toList();
+    if (quads.length != 1) return true;
+    final q = evaluate(quads.single).strength;
+    return groups
+        .where((g) => g.length == 3)
+        .every((g) => evaluate(g).strength > q);
+  }
+
+  /// An arrangement of [hand] (13 cards) whose 4-card group is weaker than
+  /// all three 3-card groups, in play order, or null if the hand has none.
+  /// Tries the weakest 4-card groups first, so this is usually immediate.
+  static List<List<PlayingCard>>? fourCardWeakestArrangement(
+    List<PlayingCard> hand,
   ) {
-    final values = {for (final g in groups) g: evaluate(g).strength};
-    return List.of(groups)..sort((a, b) => values[b]!.compareTo(values[a]!));
+    if (hand.length != 13) return null;
+    final s3 = <int, int>{};
+    final quads = <(int, int)>[];
+    for (var a = 0; a < 13; a++) {
+      for (var b = a + 1; b < 13; b++) {
+        for (var c = b + 1; c < 13; c++) {
+          final m3 = (1 << a) | (1 << b) | (1 << c);
+          s3[m3] = evaluate([hand[a], hand[b], hand[c]]).strength;
+          for (var d = c + 1; d < 13; d++) {
+            quads.add((
+              m3 | (1 << d),
+              evaluate([hand[a], hand[b], hand[c], hand[d]]).strength,
+            ));
+          }
+        }
+      }
+    }
+    quads.sort((x, y) => x.$2.compareTo(y.$2));
+    List<PlayingCard> cardsOf(int m) => [
+      for (var i = 0; i < 13; i++)
+        if (m & (1 << i) != 0) hand[i],
+    ];
+    for (final (q, qs) in quads) {
+      final rest = [
+        for (var i = 0; i < 13; i++)
+          if (q & (1 << i) == 0) i,
+      ];
+      final first = rest.first;
+      for (var x = 1; x < 9; x++) {
+        for (var y = x + 1; y < 9; y++) {
+          final t1 = (1 << first) | (1 << rest[x]) | (1 << rest[y]);
+          if (s3[t1]! <= qs) continue;
+          final left = [
+            for (final i in rest)
+              if (t1 & (1 << i) == 0) i,
+          ];
+          for (var u = 1; u < 6; u++) {
+            for (var v = u + 1; v < 6; v++) {
+              final t2 = (1 << left[0]) | (1 << left[u]) | (1 << left[v]);
+              if (s3[t2]! <= qs) continue;
+              var t3 = 0;
+              for (final i in left) {
+                if (t2 & (1 << i) == 0) t3 |= 1 << i;
+              }
+              if (s3[t3]! <= qs) continue;
+              return playOrder([
+                cardsOf(t1),
+                cardsOf(t2),
+                cardsOf(t3),
+                cardsOf(q),
+              ]);
+            }
+          }
+        }
+      }
+    }
+    return null;
   }
 
   /// Returns a comparison key for a run of consecutive ranks, or null.

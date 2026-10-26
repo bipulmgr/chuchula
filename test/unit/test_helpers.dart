@@ -4,6 +4,7 @@ import 'package:chuchula/game/models/card.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/models/moves.dart';
 import 'package:chuchula/game/rules/rule_config.dart';
+import 'package:chuchula/game/rules/hand_evaluator.dart';
 
 const testSeats = [
   SeatInfo(id: 'p0', name: 'You'),
@@ -41,16 +42,22 @@ List<int> deckFor(List<String> hands, {int dealer = 3}) {
 ChuchulaGameEngine fixedEngine(List<List<int>> decks) =>
     ChuchulaGameEngine(random: FixedDeckRandomSource(decks, seed: 7));
 
+/// Rules for scenario tests, which choose groups freely; the rule that the
+/// 4-card group must be the weakest has its own tests.
+const scenarioRules = RuleConfig(fourCardWeakest: false);
+
 GameState start(ChuchulaGameEngine engine, {RuleConfig? rules}) =>
     engine.startGame(
       GameSetup(
         matchId: 'test',
         seats: testSeats,
-        rules: rules ?? RuleConfig.standard,
+        rules: rules ?? scenarioRules,
       ),
     );
 
 /// Arranges every seat as hand-order (sorted) chunks, or with [custom].
+/// A sorted cut that would put a too-strong 4-card group last is replaced
+/// by a legal arrangement.
 GameState arrangeAll(
   ChuchulaGameEngine engine,
   GameState s, {
@@ -59,7 +66,7 @@ GameState arrangeAll(
   for (var seat = 0; seat < 4; seat++) {
     final a = custom.containsKey(seat)
         ? Arrangement.fromOrderedCards(parseCards(custom[seat]!))
-        : Arrangement.fromOrderedCards(s.hands[seat]);
+        : _legal(Arrangement.fromOrderedCards(s.hands[seat]), s.hands[seat]);
     s = engine.applyMove(s, SubmitArrangement(seat, a));
   }
   return s;
@@ -70,4 +77,10 @@ GameState playRound(ChuchulaGameEngine engine, GameState s) {
     s = engine.applyMove(s, PlayGroup(s.turnSeat!, s.groupIndex));
   }
   return s;
+}
+
+Arrangement _legal(Arrangement a, List<PlayingCard> hand) {
+  if (HandEvaluator.fourCardIsWeakest(a.groups)) return a;
+  final fixed = HandEvaluator.fourCardWeakestArrangement(hand);
+  return fixed == null ? a : Arrangement(fixed);
 }

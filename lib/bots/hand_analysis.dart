@@ -82,32 +82,29 @@ class StrengthCdf implements GroupDistribution {
 }
 
 /// Strength of the group an opponent plays in one position, when their
-/// four groups (three random triples and one random quad) are played
-/// strongest first. A cheap stand-in for real arrangements.
+/// three random triples are played strongest first and their random quad
+/// last. A cheap stand-in for real arrangements.
 class PositionDistribution implements GroupDistribution {
   PositionDistribution(this.position);
 
-  /// 0 for the strongest group, 3 for the weakest.
+  /// 0 for the strongest 3-card group, 2 for the weakest, 3 for the
+  /// 4-card group.
   final int position;
 
   @override
   double probabilityBeats(int strength) {
-    final p3 = StrengthCdf.random3.probabilityBeats(strength);
-    final p4 = StrengthCdf.random4.probabilityBeats(strength);
-    // Distribution of how many of the four groups are weaker than us.
-    var below = [1.0];
-    for (final p in [p3, p3, p3, p4]) {
-      final next = List<double>.filled(below.length + 1, 0);
-      for (var k = 0; k < below.length; k++) {
-        next[k] += below[k] * (1 - p);
-        next[k + 1] += below[k] * p;
-      }
-      below = next;
-    }
-    // Their group in this position is weaker than ours when at least
-    // 4 - position of their groups are.
+    if (position == 3) return StrengthCdf.random4.probabilityBeats(strength);
+    final p = StrengthCdf.random3.probabilityBeats(strength);
+    // Their triple in this position is weaker than ours when at least
+    // 3 - position of their three triples are.
+    final below = [
+      (1 - p) * (1 - p) * (1 - p),
+      3 * p * (1 - p) * (1 - p),
+      3 * p * p * (1 - p),
+      p * p * p,
+    ];
     var sum = 0.0;
-    for (var k = 4 - position; k <= 4; k++) {
+    for (var k = 3 - position; k <= 3; k++) {
       sum += below[k];
     }
     return sum;
@@ -184,14 +181,27 @@ class HandAnalysis {
     }
   }
 
+  /// The 280 ways to split nine positions (0..8) into three triples, as
+  /// bit patterns over those positions.
+  static final List<(int, int, int)> partitionPatterns = [
+    for (final p in triplePartitions((1 << 9) - 1)) (p[0], p[1], p[2]),
+  ];
+
+  /// Maps a 9-bit [pattern] over [positions] to a hand mask.
+  static int spread(int pattern, List<int> positions) {
+    var m = 0;
+    for (var i = 0; i < 9; i++) {
+      if (pattern & (1 << i) != 0) m |= 1 << positions[i];
+    }
+    return m;
+  }
+
   static List<int> _bits(int mask) => [
     for (var i = 0; i < 13; i++)
       if (mask & (1 << i) != 0) i,
   ];
 
-  /// The arrangement for group [masks], strongest first, with a spare card
-  /// moved off a strong group (see [HandEvaluator.spareToWeakest]).
-  Arrangement toArrangement(List<int> masks) => Arrangement(
-    HandEvaluator.spareToWeakest([for (final m in masks) cardsOf(m)]),
-  );
+  /// The arrangement for group [masks], in play order.
+  Arrangement toArrangement(List<int> masks) =>
+      Arrangement(HandEvaluator.playOrder([for (final m in masks) cardsOf(m)]));
 }

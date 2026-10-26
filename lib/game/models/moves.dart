@@ -84,6 +84,7 @@ enum RuleError {
   duplicateCard,
   cardNotOwned,
   missingCards,
+  fourCardTooStrong,
   wrongGroup,
   nothingToShow,
   matchOver,

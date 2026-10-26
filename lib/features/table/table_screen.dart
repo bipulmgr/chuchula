@@ -307,7 +307,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
   void _suggest() {
     final v = _last;
     if (v == null) return;
-    final a = const MediumBot(quadCandidates: 40).arrange(v);
+    final a = const MediumBot().arrange(v);
     _setGroups(a.groups);
   }
 
@@ -324,10 +324,21 @@ class _TableScreenState extends ConsumerState<TableScreen>
   }
 
   Future<void> _ready() async {
+    final v = _last;
+    // The 4-card group must be the weakest, when the hand allows it.
+    if (v != null &&
+        RuleConfig.standard.fourCardWeakest &&
+        !HandEvaluator.fourCardIsWeakest(_groups) &&
+        HandEvaluator.fourCardWeakestArrangement(v.myHand) != null) {
+      _flash(context.l10n.errFourCardTooStrong);
+      audio.haptic(HapticKind.heavy);
+      return;
+    }
     audio.play(Sfx.button);
     audio.haptic(HapticKind.medium);
-    // Groups are played strongest first; show them in that order now.
-    setState(() => _groups = HandEvaluator.strongestFirst(_groups));
+    // Groups are played in order: 3-card groups strongest first, then the
+    // 4-card group; show them in that order now.
+    setState(() => _groups = HandEvaluator.playOrder(_groups));
     await session.submitArrangement(Arrangement(_groups));
   }
 
@@ -718,6 +729,9 @@ class _TableScreenState extends ConsumerState<TableScreen>
   }
 
   Widget _actions(PlayerView v, TableTheme theme, AppLocalizations l) {
+    final special = v.phase == GamePhase.arranging
+        ? BonusDetector.detect(v.myHand, RuleConfig.standard)
+        : const <Bonus>[];
     Widget bar;
     if (v.phase == GamePhase.arranging && v.myArrangement == null) {
       bar = Row(
@@ -737,6 +751,14 @@ class _TableScreenState extends ConsumerState<TableScreen>
           ),
           _iconAction(Icons.filter_list, l.sortSuit, _sortBySuit, theme),
           _iconAction(Icons.lightbulb_outline, l.suggest, _suggest, theme),
+          _iconAction(
+            Icons.auto_awesome,
+            l.showSpecial,
+            () => special.isEmpty ? _flash(l.showNothing) : _show(),
+            theme,
+            key: const Key('showIconButton'),
+            highlight: special.isNotEmpty,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: GoldButton(
@@ -752,9 +774,6 @@ class _TableScreenState extends ConsumerState<TableScreen>
     } else {
       bar = const SizedBox(height: 50);
     }
-    final special = v.phase == GamePhase.arranging
-        ? BonusDetector.detect(v.myHand, RuleConfig.standard)
-        : const <Bonus>[];
     if (special.isNotEmpty) {
       final allRanks = special.any((b) => b.type == BonusType.allRanks);
       final label = allRanks
@@ -794,8 +813,11 @@ class _TableScreenState extends ConsumerState<TableScreen>
     IconData icon,
     String label,
     VoidCallback? onTap,
-    TableTheme theme,
-  ) => Tooltip(
+    TableTheme theme, {
+    Key? key,
+    bool highlight = false,
+  }) => Tooltip(
+    key: key,
     message: label,
     child: Semantics(
       button: true,
@@ -809,13 +831,13 @@ class _TableScreenState extends ConsumerState<TableScreen>
               },
         radius: 24,
         child: SizedBox(
-          width: 44,
+          width: 40,
           height: 48,
           child: Icon(
             icon,
             color: onTap == null
                 ? theme.onSurface.withValues(alpha: 0.3)
-                : theme.accentSoft,
+                : (highlight ? theme.glow : theme.accentSoft),
           ),
         ),
       ),

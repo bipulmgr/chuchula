@@ -6,7 +6,7 @@ import { randomInt } from 'node:crypto';
 import {
   Card, cardCode, cardId, compareCards, fromId, parseCard,
 } from './card';
-import { bestIndex, evaluate, strongestFirst } from './evaluator';
+import { bestIndex, evaluate, fourCardIsWeakest, fourCardWeakestArrangement, playOrder } from './evaluator';
 import { Bonus, RuleConfig, STANDARD_RULES, detectBonuses, hasAllRanks } from './rules';
 import {
   GROUP_COUNT, GROUP_SIZES, GameMove, GameState, MatchResult, RoundResult,
@@ -208,6 +208,14 @@ export class ChuchulaEngine {
       if (!hand.has(cardId(c))) return { error: 'cardNotOwned', detail: cardCode(c) };
     }
     if (all.length !== hand.size) return { error: 'missingCards' };
+    // The 4-card group is played last and must be the weakest, unless no
+    // arrangement of this hand allows that.
+    if (state.rules.fourCardWeakest) {
+      const parsed = groups.map((g) => g.map(parseCard));
+      if (!fourCardIsWeakest(parsed) && fourCardWeakestArrangement(cards(state.hands[seat])) !== null) {
+        return { error: 'fourCardTooStrong' };
+      }
+    }
     return null;
   }
 
@@ -247,7 +255,7 @@ export class ChuchulaEngine {
         // Store canonical codes (e.g. "10H" not "10h"). Groups are played
         // strongest first, whatever order the player left them in.
         const groups = move.arrangement.map((g) => cards(g));
-        arrangements[move.seat] = (state.rules.strongestFirst ? strongestFirst(groups) : groups)
+        arrangements[move.seat] = (state.rules.strongestFirst ? playOrder(groups) : groups)
           .map(codes);
         let next = bump(state, { arrangements });
         if (next.arrangements.every((a) => a !== null)) {

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import '../game/engine/random_source.dart';
 import '../game/models/card.dart';
@@ -46,7 +47,13 @@ class EasyBot extends BotStrategy {
       hand.sort();
     }
     final groups = Arrangement.fromOrderedCards(hand).groups;
-    return Arrangement(HandEvaluator.spareToWeakest(groups));
+    // The 4-card group must be the weakest (played last); fix the cut up
+    // when it is not and the hand allows it.
+    if (!HandEvaluator.fourCardIsWeakest(groups)) {
+      final fixed = HandEvaluator.fourCardWeakestArrangement(view.myHand);
+      if (fixed != null) return Arrangement(fixed);
+    }
+    return Arrangement(HandEvaluator.playOrder(groups));
   }
 }
 
@@ -86,17 +93,17 @@ class ArrangementObjective {
 class ArrangementCandidate {
   ArrangementCandidate(this.groups, this.score);
 
-  /// Group masks, strongest first (the order they are played in).
+  /// Group masks in play order: the triples strongest first, then the
+  /// 4-card group.
   final List<int> groups;
   final double score;
 }
 
 /// Evaluates combinations against the strength opponents are likely to
-/// field in each position (strongest group first, and so on).
+/// field in each position (strongest 3-card group first, the 4-card group
+/// last).
 class MediumBot extends BotStrategy {
-  const MediumBot({this.quadCandidates = 60});
-
-  final int quadCandidates;
+  const MediumBot();
 
   @override
   BotDifficulty get difficulty => BotDifficulty.medium;
@@ -114,51 +121,71 @@ class MediumBot extends BotStrategy {
       a,
       objective,
       positions: PositionDistribution.randomGroups,
-      quadCandidates: quadCandidates,
     );
     return a.toArrangement(best.groups);
   }
 
-  /// Searches four-card groups (the strongest [quadCandidates], plus the
-  /// weakest few as a place to dump low cards) and every split of the rest
-  /// into triples. Groups are played strongest first, so each candidate is
-  /// sorted and scored position by position.
+  /// Searches every four-card group and every split of the rest into
+  /// triples. The 4-card group is played last and must be weaker than all
+  /// three triples; only if the hand allows no such arrangement is any
+  /// arrangement considered.
   static ArrangementCandidate searchArrangements(
     HandAnalysis a,
     ArrangementObjective objective, {
     required List<GroupDistribution> positions,
-    required int quadCandidates,
   }) {
-    final quads = List<int>.of(a.combos4)
-      ..sort((x, y) => a.strength[y].compareTo(a.strength[x]));
-    final dumps = math.max(1, quadCandidates ~/ 5);
-    final consider = {
-      ...quads.take(quadCandidates),
-      ...quads.reversed.take(dumps),
-    };
+    // Win chances per position, computed once per group.
+    final p3 = [
+      for (var i = 0; i < 3; i++)
+        () {
+          final p = Float64List(1 << 13);
+          for (final m in a.combos3) {
+            p[m] = positions[i].probabilityBeats(a.strength[m]);
+          }
+          return p;
+        }(),
+    ];
+    final p4 = Float64List(1 << 13);
+    for (final m in a.combos4) {
+      p4[m] = positions[3].probabilityBeats(a.strength[m]);
+    }
     ArrangementCandidate? best;
-    final masks = List<int>.filled(4, 0);
+    ArrangementCandidate? bestAny;
+    final t = List<int>.filled(3, 0);
     final probs = List<double>.filled(4, 0);
-    for (final q in consider) {
-      for (final part in HandAnalysis.triplePartitions(
-        HandAnalysis.fullMask & ~q,
-      )) {
-        masks
-          ..[0] = part[0]
-          ..[1] = part[1]
-          ..[2] = part[2]
-          ..[3] = q;
-        masks.sort((x, y) => a.strength[y].compareTo(a.strength[x]));
-        for (var i = 0; i < 4; i++) {
-          probs[i] = positions[i].probabilityBeats(a.strength[masks[i]]);
+    for (final q in a.combos4) {
+      final qs = a.strength[q];
+      final rest = [
+        for (var i = 0; i < 13; i++)
+          if (q & (1 << i) == 0) i,
+      ];
+      // Each triple's mask for this quad, by 9-bit pattern.
+      final local = <int, int>{};
+      int maskOf(int pattern) =>
+          local[pattern] ??= HandAnalysis.spread(pattern, rest);
+      for (final (x, y, z) in HandAnalysis.partitionPatterns) {
+        t
+          ..[0] = maskOf(x)
+          ..[1] = maskOf(y)
+          ..[2] = maskOf(z);
+        t.sort((x, y) => a.strength[y].compareTo(a.strength[x]));
+        final valid = a.strength[t[2]] > qs;
+        if (!valid && best != null) continue;
+        for (var i = 0; i < 3; i++) {
+          probs[i] = p3[i][t[i]];
         }
+        probs[3] = p4[q];
         final s = objective.score(probs);
-        if (best == null || s > best.score) {
-          best = ArrangementCandidate(List.of(masks), s);
+        if (valid) {
+          if (best == null || s > best.score) {
+            best = ArrangementCandidate([...t, q], s);
+          }
+        } else if (bestAny == null || s > bestAny.score) {
+          bestAny = ArrangementCandidate([...t, q], s);
         }
       }
     }
-    return best!;
+    return (best ?? bestAny)!;
   }
 }
 
@@ -167,11 +194,10 @@ class MediumBot extends BotStrategy {
 /// optimizes against the strength each opponent is likely to field in each
 /// group position.
 class HardBot extends BotStrategy {
-  const HardBot({this.seed, this.simulations = 20, this.quadCandidates = 100});
+  const HardBot({this.seed, this.simulations = 20});
 
   final int? seed;
   final int simulations;
-  final int quadCandidates;
 
   @override
   BotDifficulty get difficulty => BotDifficulty.hard;
@@ -187,8 +213,8 @@ class HardBot extends BotStrategy {
         if (!known.contains(c)) c,
     ];
 
-    const model = MediumBot(quadCandidates: 30);
-    // Strength each opponent fields in each position (strongest first).
+    const model = MediumBot();
+    // Strength each opponent fields in each position (play order).
     final samples = List.generate(kGroupCount, (_) => <int>[]);
     for (var i = 0; i < simulations; i++) {
       final hand = random.shuffled(unseen).take(kHandSize).toList();
@@ -211,7 +237,6 @@ class HardBot extends BotStrategy {
       a,
       ArrangementObjective.fromView(view),
       positions: cdfs,
-      quadCandidates: quadCandidates,
     );
     return a.toArrangement(best.groups);
   }

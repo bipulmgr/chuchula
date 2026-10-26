@@ -6,8 +6,9 @@ const int kSeatCount = 4;
 const int kHandSize = 13;
 const int kGroupCount = 4;
 
-/// Group sizes in a hand, ascending. Groups may sit in any position: they
-/// are played strongest first, so the four-card group can come anywhere.
+/// Group sizes in a hand, ascending. Players may leave groups in any
+/// position; they are played with the 3-card groups strongest first and
+/// the 4-card group last.
 const List<int> kGroupSizes = [3, 3, 3, 4];
 
 enum GamePhase { arranging, playing, roundOver, matchOver }

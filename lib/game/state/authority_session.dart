@@ -9,6 +9,7 @@ import '../engine/game_engine.dart';
 import '../models/game_state.dart';
 import '../models/moves.dart';
 import '../models/player_view.dart';
+import '../rules/hand_evaluator.dart';
 import 'game_session.dart';
 
 /// Computes a bot arrangement. The default runs the search on a background
@@ -27,12 +28,7 @@ Future<Arrangement> isolateBotRunner(BotStrategy bot, PlayerView view) {
 
 /// Smaller searches for the web build, where bots share the UI thread.
 BotStrategy _lighterForWeb(BotStrategy bot) => switch (bot) {
-  HardBot(:final seed) => HardBot(
-    seed: seed,
-    simulations: 8,
-    quadCandidates: 50,
-  ),
-  MediumBot() => const MediumBot(quadCandidates: 30),
+  HardBot(:final seed) => HardBot(seed: seed, simulations: 6),
   _ => bot,
 };
 
@@ -40,10 +36,12 @@ BotStrategy _lighterForWeb(BotStrategy bot) => switch (bot) {
 /// or takes too long, so a seat can never stay stuck "arranging".
 Arrangement fallbackArrangement(PlayerView view) {
   try {
-    return const MediumBot(quadCandidates: 12).arrange(view);
+    final groups = HandEvaluator.fourCardWeakestArrangement(view.myHand);
+    if (groups != null) return Arrangement(groups);
   } catch (_) {
-    return Arrangement.fromOrderedCards(List.of(view.myHand)..sort());
+    // Fall through to a plain sorted cut.
   }
+  return Arrangement.fromOrderedCards(List.of(view.myHand)..sort());
 }
 
 Future<Arrangement> inlineBotRunner(BotStrategy bot, PlayerView view) async =>

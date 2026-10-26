@@ -12,13 +12,15 @@ First version.
   taking over a seat that does not come back.
 - Online play through Firebase: anonymous sign-in, room codes, server
   authoritative Cloud Functions, private per-player views.
-- Groups are played strongest first, and the 4-card group can sit in any
-  position. 3- and 4-card groups rank on one ladder: a 4-card group is
-  named by the best hand in it, and a full 4-card color, run or double
-  run beats any 3-card hand of that kind. Otherwise the fourth card is a spare
-  that adds nothing; Suggest and bots move it to the weakest group.
+- The three 3-card groups are played strongest first and the 4-card
+  group last; it must be the weakest group (Ready is refused otherwise).
+  3- and 4-card groups rank on one ladder: a 4-card group is named by the
+  best hand in it, and a full 4-card color, run or double run beats any
+  3-card hand of that kind. Otherwise the fourth card is a spare that
+  adds nothing.
 - Once everyone is Ready, groups are revealed automatically.
-- Special hands are shown with a Show button while arranging: four of a
+- Special hands are shown with the Show button (always next to Suggest)
+  while arranging: four of a
   kind +4, six pairs +6, three trails +9 end the round; all thirteen
   ranks wins the match. Bots show theirs too.
 - Table with drag-and-drop or tap-to-swap arranging (single cards or

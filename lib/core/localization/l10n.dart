@@ -47,6 +47,7 @@ extension L10nNames on AppLocalizations {
     RuleError.duplicateCard ||
     RuleError.cardNotOwned ||
     RuleError.missingCards => errInvalidArrangement,
+    RuleError.fourCardTooStrong => errFourCardTooStrong,
     _ => errGeneric,
   };
 

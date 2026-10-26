@@ -103,28 +103,63 @@ export function evaluate(cards: Card[]): HandValue {
   return best!;
 }
 
-/**
- * If the 4-card group is not a full 4-card hand, moves its spare card to the
- * weakest 3-card group (no group gets weaker). Returns groups strongest first.
- */
-export function spareToWeakest(groups: Card[][]): Card[][] {
-  const sorted = strongestFirst(groups);
-  const q = sorted.findIndex((g) => g.length === 4);
-  const v = evaluate(sorted[q]);
-  let weakest = -1;
-  sorted.forEach((g, i) => { if (g.length === 3) weakest = i; });
-  if (v.fourCard || !v.spare || weakest < q) return sorted;
-  const spare = v.spare;
-  const next = [...sorted];
-  next[q] = sorted[q].filter((c) => c !== spare);
-  next[weakest] = [...sorted[weakest], spare];
-  return strongestFirst(next);
+/** Groups in play order: the three 3-card groups strongest first, then the 4-card group. */
+export function playOrder(groups: Card[][]): Card[][] {
+  const strength = new Map(groups.map((g) => [g, evaluate(g).strength]));
+  return [...groups].sort((a, b) =>
+    a.length !== b.length ? a.length - b.length : strength.get(b)! - strength.get(a)!);
 }
 
-/** Groups reordered strongest first, the order in which they are played. */
-export function strongestFirst(groups: Card[][]): Card[][] {
-  const strength = new Map(groups.map((g) => [g, evaluate(g).strength]));
-  return [...groups].sort((a, b) => strength.get(b)! - strength.get(a)!);
+/** True when the 4-card group is weaker than every 3-card group. */
+export function fourCardIsWeakest(groups: Card[][]): boolean {
+  const quads = groups.filter((g) => g.length === 4);
+  if (quads.length !== 1) return true;
+  const q = evaluate(quads[0]).strength;
+  return groups.filter((g) => g.length === 3).every((g) => evaluate(g).strength > q);
+}
+
+/**
+ * An arrangement of a 13-card hand whose 4-card group is weaker than all three
+ * 3-card groups, in play order, or null if there is none. Tries the weakest
+ * 4-card groups first.
+ */
+export function fourCardWeakestArrangement(hand: Card[]): Card[][] | null {
+  if (hand.length !== 13) return null;
+  const s3 = new Map<number, number>();
+  const quads: [number, number][] = [];
+  for (let a = 0; a < 13; a++) {
+    for (let b = a + 1; b < 13; b++) {
+      for (let c = b + 1; c < 13; c++) {
+        const m3 = (1 << a) | (1 << b) | (1 << c);
+        s3.set(m3, evaluate([hand[a], hand[b], hand[c]]).strength);
+        for (let d = c + 1; d < 13; d++) {
+          quads.push([m3 | (1 << d), evaluate([hand[a], hand[b], hand[c], hand[d]]).strength]);
+        }
+      }
+    }
+  }
+  quads.sort((x, y) => x[1] - y[1]);
+  const cardsOf = (m: number) => hand.filter((_, i) => m & (1 << i));
+  for (const [q, qs] of quads) {
+    const rest = [...Array(13).keys()].filter((i) => !(q & (1 << i)));
+    for (let x = 1; x < 9; x++) {
+      for (let y = x + 1; y < 9; y++) {
+        const t1 = (1 << rest[0]) | (1 << rest[x]) | (1 << rest[y]);
+        if (s3.get(t1)! <= qs) continue;
+        const left = rest.filter((i) => !(t1 & (1 << i)));
+        for (let u = 1; u < 6; u++) {
+          for (let v = u + 1; v < 6; v++) {
+            const t2 = (1 << left[0]) | (1 << left[u]) | (1 << left[v]);
+            if (s3.get(t2)! <= qs) continue;
+            const t3 = left.reduce((m, i) => (t2 & (1 << i) ? m : m | (1 << i)), 0);
+            if (s3.get(t3)! <= qs) continue;
+            return playOrder([cardsOf(t1), cardsOf(t2), cardsOf(t3), cardsOf(q)]);
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 /** Index of the strongest group, or -1 for an empty list. */

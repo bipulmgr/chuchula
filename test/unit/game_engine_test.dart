@@ -19,7 +19,11 @@ const strongHand = 'AS AH AD KS KH KD QS QH QD JS JH JD JC';
 const strong0 = 'AS AH AD KS KH KD QS QH QD JS JH JD JC';
 
 // Isolates group/sweep points from the hand bonuses that hand also earns.
-const noBonus = RuleConfig(threeTrailsPoints: 0, fourOfAKindPoints: 0);
+const noBonus = RuleConfig(
+  fourCardWeakest: false,
+  threeTrailsPoints: 0,
+  fourOfAKindPoints: 0,
+);
 
 void main() {
   group('dealing', () {
@@ -108,7 +112,7 @@ void main() {
       expect(e.validateArrangement(s, 0, a).error, RuleError.cardNotOwned);
     });
 
-    test('the 4-card group may sit anywhere; groups play strongest first', () {
+    test('the 4-card group plays last; 3-card groups strongest first', () {
       final e2 = fixedEngine([
         deckFor([strongHand]),
       ]);
@@ -122,22 +126,58 @@ void main() {
       ]);
       expect(e2.validateArrangement(s2, 0, weakFirst).isValid, isTrue);
       final next = e2.applyMove(s2, SubmitArrangement(0, weakFirst));
-      expect(next.arrangements[0]!.groups.map((g) => g.length), [4, 3, 3, 3]);
+      expect(next.arrangements[0]!.groups.map((g) => g.length), [3, 3, 3, 4]);
       expect(next.arrangements[0]!.groups.map((g) => g.first.code), [
-        'JS',
         'AS',
         'KS',
         'QS',
+        'JS',
       ]);
 
       // With the switch off, groups keep the submitted order.
       final e3 = fixedEngine([
         deckFor([strongHand]),
       ]);
-      final s3 = start(e3, rules: const RuleConfig(strongestFirst: false));
+      final s3 = start(
+        e3,
+        rules: const RuleConfig(strongestFirst: false, fourCardWeakest: false),
+      );
       final kept = e3.applyMove(s3, SubmitArrangement(0, weakFirst));
       expect(kept.arrangements[0]!.groups.first.length, 4);
       expect(kept.arrangements[0]!.groups[1].first.code, 'QS');
+    });
+
+    test('refuses a 4-card group stronger than a 3-card group', () {
+      const hand = '5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC';
+      final e2 = fixedEngine([
+        deckFor([hand]),
+      ]);
+      final s2 = start(e2, rules: RuleConfig.standard);
+      // Bipul's Suggest result: the double run padded to four cards.
+      final padded = Arrangement([
+        parseCards('5D 5H 6H 7H'),
+        parseCards('2D 3D AH'),
+        parseCards('2S 6S 8S'),
+        parseCards('10C KH AC'),
+      ]);
+      expect(
+        e2.validateArrangement(s2, 0, padded).error,
+        RuleError.fourCardTooStrong,
+      );
+      final fixed = Arrangement([
+        parseCards('5H 6H 7H'),
+        parseCards('2D 3D AC'),
+        parseCards('2S 6S 8S'),
+        parseCards('5D 10C KH AH'),
+      ]);
+      expect(e2.validateArrangement(s2, 0, fixed).isValid, isTrue);
+      // The switch turns the check off.
+      final s3 = start(
+        fixedEngine([
+          deckFor([hand]),
+        ]),
+      );
+      expect(e2.validateArrangement(s3, 0, padded).isValid, isTrue);
     });
   });
 
@@ -248,6 +288,7 @@ void main() {
         start(
           e,
           rules: const RuleConfig(
+            fourCardWeakest: false,
             sweepReplacesGroupPoints: false,
             threeTrailsPoints: 0,
             fourOfAKindPoints: 0,
@@ -287,7 +328,10 @@ void main() {
         seat: 0,
         groupWinners: [0, 1, 0, 2],
         bonuses: bonuses,
-        rules: const RuleConfig(bonusesStackWithGroupPoints: false),
+        rules: const RuleConfig(
+          fourCardWeakest: false,
+          bonusesStackWithGroupPoints: false,
+        ),
       );
       expect(larger.total, 4);
     });
@@ -296,7 +340,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
       ]);
-      const auto = RuleConfig(declareBonuses: false);
+      const auto = RuleConfig(fourCardWeakest: false, declareBonuses: false);
       var s = playRound(e, arrangeAll(e, start(e, rules: auto)));
       expect(
         s.lastRound!.bonuses[0],
@@ -394,7 +438,10 @@ void main() {
       final e = fixedEngine([
         deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
-      final s = start(e, rules: const RuleConfig(declareBonuses: false));
+      final s = start(
+        e,
+        rules: const RuleConfig(fourCardWeakest: false, declareBonuses: false),
+      );
       expect(s.phase, GamePhase.matchOver);
       expect(s.result!.winnerSeat, 1);
       expect(s.result!.reason, MatchEndReason.instantWin);
@@ -408,6 +455,7 @@ void main() {
       final s = start(
         e,
         rules: const RuleConfig(
+          fourCardWeakest: false,
           allRanksInstantWin: false,
           declareBonuses: false,
         ),
@@ -424,7 +472,10 @@ void main() {
         ]),
         deckFor([strongHand]),
       ]);
-      final s = start(e, rules: const RuleConfig(declareBonuses: false));
+      final s = start(
+        e,
+        rules: const RuleConfig(fourCardWeakest: false, declareBonuses: false),
+      );
       expect(s.phase, GamePhase.arranging);
       expect(s.hands[0].toSet(), parseCards(strongHand).toSet());
     });
@@ -435,7 +486,7 @@ void main() {
       expect(RoundScorer.matchWinner([20, 3, 0, 0], r), 0);
       expect(RoundScorer.matchWinner([22, 25, 0, 0], r), 1);
       expect(RoundScorer.matchWinner([22, 22, 0, 0], r), isNull);
-      const exact = RuleConfig(targetIsExact: true);
+      const exact = RuleConfig(fourCardWeakest: false, targetIsExact: true);
       expect(RoundScorer.matchWinner([21, 3, 0, 0], exact), isNull);
       expect(RoundScorer.matchWinner([20, 3, 0, 0], exact), 0);
       expect(RoundScorer.applyTarget(18, 3, exact), 0);

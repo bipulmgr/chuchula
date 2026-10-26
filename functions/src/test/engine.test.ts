@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { arrangeHand, botMove } from '../engine/bot';
 import { cardCode, fullDeck, parseCards } from '../engine/card';
 import { ChuchulaEngine, InvalidMoveError, dealHands, secureDecks } from '../engine/engine';
-import { evaluate } from '../engine/evaluator';
+import { evaluate, fourCardIsWeakest } from '../engine/evaluator';
 import { GameState, SeatInfo, parseMove, playerView } from '../engine/state';
 
 const seats: SeatInfo[] = [0, 1, 2, 3].map((i) => ({ id: `p${i}`, name: `P${i}`, isBot: false, avatar: i }));
@@ -52,18 +52,34 @@ describe('engine', () => {
     assert.equal(engine.validateArrangement(s, 0, bogus)?.error, 'cardNotOwned');
   });
 
-  it('accepts the 4-card group anywhere and plays groups strongest first', () => {
+  it('plays 3-card groups strongest first and the 4-card group last', () => {
     const engine = new ChuchulaEngine();
     const s = engine.startGame({ matchId: 'm', seats });
     const h = s.hands[0];
-    const groups = [h.slice(0, 4), h.slice(4, 7), h.slice(7, 10), h.slice(10, 13)];
-    const next = engine.applyMove(s, { type: 'arrange', seat: 0, arrangement: groups });
+    const legal = arrangeHand(h);
+    const next = engine.applyMove(s, { type: 'arrange', seat: 0, arrangement: [...legal].reverse() });
     const stored = next.arrangements[0]!;
-    assert.deepEqual(stored.map((g) => g.length).sort(), [3, 3, 3, 4]);
-    const strengths = stored.map((g) => evaluate(parseCards(g.join(' '))).strength);
+    assert.deepEqual(stored.map((g) => g.length), [3, 3, 3, 4]);
+    const strengths = stored.slice(0, 3).map((g) => evaluate(parseCards(g.join(' '))).strength);
     assert.deepEqual(strengths, [...strengths].sort((x, y) => y - x));
     const wrong = [h.slice(0, 4), h.slice(4, 8), h.slice(8, 11), h.slice(11, 13)];
     assert.equal(engine.validateArrangement(s, 0, wrong)?.error, 'wrongGroupSize');
+  });
+
+  it('refuses a 4-card group stronger than a 3-card group', () => {
+    const engine = new ChuchulaEngine();
+    const started = engine.startGame({ matchId: 'm', seats });
+    const hand = '5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC'.split(' ');
+    const s: GameState = { ...started, hands: [hand, ...started.hands.slice(1)] };
+    const padded = [['5D', '5H', '6H', '7H'], ['2D', '3D', 'AH'], ['2S', '6S', '8S'], ['10C', 'KH', 'AC']];
+    assert.equal(engine.validateArrangement(s, 0, padded)?.error, 'fourCardTooStrong');
+    const fixed = [['5H', '6H', '7H'], ['2D', '3D', 'AC'], ['2S', '6S', '8S'], ['5D', '10C', 'KH', 'AH']];
+    assert.equal(engine.validateArrangement(s, 0, fixed), null);
+    const off: GameState = { ...s, rules: { ...s.rules, fourCardWeakest: false } };
+    assert.equal(engine.validateArrangement(off, 0, padded), null);
+    // The server bot finds a legal arrangement for this hand.
+    const bot = arrangeHand(hand).map((g) => parseCards(g.join(' ')));
+    assert.ok(fourCardIsWeakest(bot));
   });
 
   it('ranks 3- and 4-card groups on one ladder', () => {
@@ -95,12 +111,12 @@ describe('engine', () => {
 });
 
 describe('server bot', () => {
-  it('uses every card exactly once in a 3-3-3-4 split, strongest first', () => {
+  it('uses every card once, triples strongest first, the 4-card group last', () => {
     const deck = fullDeck();
     for (let i = 0; i < 10; i++) {
       const hand = deck.slice(i * 4, i * 4 + 13).map(cardCode);
       const a = arrangeHand(hand);
-      assert.deepEqual(a.map((g) => g.length).sort(), [3, 3, 3, 4]);
+      assert.deepEqual(a.map((g) => g.length), [3, 3, 3, 4]);
       assert.deepEqual([...a.flat()].sort(), [...hand].sort());
       const strengths = a.map((g) => evaluate(parseCards(g.join(' '))).strength);
       assert.deepEqual(strengths, [...strengths].sort((x, y) => y - x));

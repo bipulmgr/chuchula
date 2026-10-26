@@ -151,7 +151,7 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
     steps.add({'move': m.toJson(), 'hash': fnv(canonical(s.toJson()))});
   }
 
-  const bot = MediumBot(quadCandidates: 20);
+  const bot = MediumBot();
   var checkpointRounds = 0;
   while (s.phase != GamePhase.matchOver) {
     switch (s.phase) {

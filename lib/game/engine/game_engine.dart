@@ -209,7 +209,7 @@ class ChuchulaGameEngine {
         '${groups.length}',
       );
     }
-    // One group of 4 and three of 3, in any position.
+    // One group of 4 and three of 3, in any submitted position.
     final sizes = [for (final g in groups) g.length]..sort();
     if (sizes.join(',') != kGroupSizes.join(',')) {
       return ValidationResult.fail(RuleError.wrongGroupSize, sizes.join('-'));
@@ -226,6 +226,13 @@ class ChuchulaGameEngine {
     }
     if (all.length != hand.length) {
       return const ValidationResult.fail(RuleError.missingCards);
+    }
+    // The 4-card group is played last and must be the weakest, unless no
+    // arrangement of this hand allows that.
+    if (state.rules.fourCardWeakest &&
+        !HandEvaluator.fourCardIsWeakest(groups) &&
+        HandEvaluator.fourCardWeakestArrangement(state.hands[seat]) != null) {
+      return const ValidationResult.fail(RuleError.fourCardTooStrong);
     }
     return const ValidationResult.ok();
   }
@@ -285,10 +292,11 @@ class ChuchulaGameEngine {
     switch (move) {
       case SubmitArrangement(:final seat, :final arrangement):
         final arrangements = List<Arrangement?>.of(state.arrangements);
-        // Groups are always played strongest first, whatever order the
-        // player left them in.
+        // Groups are always played in order (3-card groups strongest
+        // first, the 4-card group last), whatever order the player left
+        // them in.
         arrangements[seat] = state.rules.strongestFirst
-            ? Arrangement(HandEvaluator.strongestFirst(arrangement.groups))
+            ? Arrangement(HandEvaluator.playOrder(arrangement.groups))
             : arrangement;
         var next = state.copyWith(arrangements: arrangements);
         if (next.allReady) {
