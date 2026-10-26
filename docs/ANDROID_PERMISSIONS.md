@@ -12,6 +12,19 @@ needs no permissions.
 | `BLUETOOTH_CONNECT` | 12 and higher | Connect to paired phones and read their names. |
 | `BLUETOOTH_ADVERTISE` | 12 and higher | Make the host phone discoverable. |
 
+Added automatically by libraries (normal permissions, no prompt):
+
+| Permission | From | Why |
+|---|---|---|
+| `ACCESS_NETWORK_STATE` | Firebase | Lets Firestore detect when the connection drops and comes back. |
+| `WAKE_LOCK` | Firebase / AndroidX | Lets background work finish a short task. |
+| `com.bipulmgr.chuchula.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX | Internal signature permission that keeps the app's own broadcasts private. |
+
+Firebase also asks for `com.google.android.c2dm.permission.RECEIVE` and
+`READ_GSERVICES` (push messaging). The app does not use push, so the
+manifest removes both. CI fails if the release APK gains any permission
+not listed on this page.
+
 `android.hardware.bluetooth` is declared `required="false"`, so the app
 installs on devices without Bluetooth. The Bluetooth button then explains
 that the device has no Bluetooth.
