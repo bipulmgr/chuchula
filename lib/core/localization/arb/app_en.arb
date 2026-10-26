@@ -323,6 +323,10 @@
   "btMakeVisible": "Make visible",
   "btWaitingHost": "Connected. Waiting for the host to start…",
   "btPaired": "paired",
+  "retry": "Try again",
+  "btChooseRole": "Play with friends in the same room. One phone hosts; up to three others join.",
+  "btReconnecting": "Connection to the host dropped. Reconnecting…",
+  "btFailed": "Could not stay connected to the host.",
   "tutGoalTitle": "The goal",
   "tutGoal": "Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.",
   "@tutGoal": {

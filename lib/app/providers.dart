@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../audio/audio_service.dart';
 import '../core/theme/table_themes.dart';
+import '../multiplayer/bluetooth/bluetooth_platform.dart';
 import '../persistence/settings_repository.dart';
 
 /// Overridden in `main()` with the opened store.
@@ -51,3 +52,8 @@ class StatsNotifier extends Notifier<PlayerStats> {
     ref.read(localStoreProvider).saveStats(state);
   }
 }
+
+/// Overridden in tests with a fake.
+final bluetoothPlatformProvider = Provider<BluetoothPlatform>(
+  (ref) => MethodChannelBluetooth(),
+);

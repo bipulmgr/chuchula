@@ -62,8 +62,9 @@ abstract class GameSession {
 /// Shared plumbing for session implementations.
 abstract class BaseGameSession extends GameSession {
   final ValueNotifier<PlayerView?> viewNotifier = ValueNotifier(null);
-  final ValueNotifier<List<SeatConnection>> connectionsNotifier =
-      ValueNotifier(List.filled(kSeatCount, SeatConnection.connected));
+  final ValueNotifier<List<SeatConnection>> connectionsNotifier = ValueNotifier(
+    List.filled(kSeatCount, SeatConnection.connected),
+  );
   final ValueNotifier<Set<int>> thinkingNotifier = ValueNotifier(const {});
   final StreamController<SessionEvent> eventController =
       StreamController.broadcast();

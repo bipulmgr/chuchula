@@ -1,6 +1,28 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Online play (Firebase). Offline play never uses the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Bluetooth play, Android 11 and lower: install-time permissions, and
+         location is required by the OS for classic device discovery. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+
+    <!-- Bluetooth play, Android 12 and higher ("Nearby devices"). Scanning is
+         declared as never used to derive location. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <!-- Bluetooth is optional: the app installs on devices without it. -->
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+
     <application
-        android:label="chuchula"
+        android:label="Chuchula"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -16,10 +16,7 @@ class FeltBackground extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 450),
       decoration: BoxDecoration(gradient: theme.feltGradient),
-      child: CustomPaint(
-        painter: _FeltTexturePainter(theme),
-        child: child,
-      ),
+      child: CustomPaint(painter: _FeltTexturePainter(theme), child: child),
     );
   }
 }
@@ -43,7 +40,12 @@ class _FeltTexturePainter extends CustomPainter {
     // Ornamental inner border (corner motifs + thin gold line).
     final inset = 10.0;
     final r = RRect.fromRectAndRadius(
-      Rect.fromLTWH(inset, inset, size.width - inset * 2, size.height - inset * 2),
+      Rect.fromLTWH(
+        inset,
+        inset,
+        size.width - inset * 2,
+        size.height - inset * 2,
+      ),
       const Radius.circular(22),
     );
     canvas.drawRRect(
@@ -294,17 +296,26 @@ class _GoldButtonState extends State<GoldButton> {
               duration: const Duration(milliseconds: 200),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   gradient: widget.primary
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [t.accentSoft, t.accent, const Color(0xFFB27F25)],
+                          colors: [
+                            t.accentSoft,
+                            t.accent,
+                            const Color(0xFFB27F25),
+                          ],
                         )
                       : null,
-                  color: widget.primary ? null : t.surface.withValues(alpha: 0.85),
+                  color: widget.primary
+                      ? null
+                      : t.surface.withValues(alpha: 0.85),
                   border: Border.all(
                     color: widget.primary
                         ? const Color(0xFFFFF1C4)

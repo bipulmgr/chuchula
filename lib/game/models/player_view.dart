@@ -21,7 +21,7 @@ class PlayerView {
     required this.turnSeat,
     required this.roundPlays,
     required this.groupWinners,
-    required this.lastRound,
+    required this.history,
     required this.result,
     required this.version,
   });
@@ -42,7 +42,7 @@ class PlayerView {
     turnSeat: s.turnSeat,
     roundPlays: s.roundPlays,
     groupWinners: s.groupWinners,
-    lastRound: s.lastRound,
+    history: s.history,
     result: s.result,
     version: s.version,
   );
@@ -62,7 +62,12 @@ class PlayerView {
   final int? turnSeat;
   final List<List<List<PlayingCard>?>> roundPlays;
   final List<int> groupWinners;
-  final RoundResult? lastRound;
+
+  /// Completed rounds of this match. Every group in them was revealed to
+  /// all players, so sharing them leaks nothing.
+  final List<RoundResult> history;
+
+  RoundResult? get lastRound => history.isEmpty ? null : history.last;
   final MatchResult? result;
   final int version;
 
@@ -97,7 +102,7 @@ class PlayerView {
         ],
     ],
     'groupWinners': groupWinners,
-    'lastRound': lastRound?.toJson(),
+    'history': [for (final r in history) r.toJson()],
     'result': result?.toJson(),
     'version': version,
   };
@@ -130,11 +135,10 @@ class PlayerView {
           [for (final p in g as List) p == null ? null : cards(p)],
       ],
       groupWinners: (json['groupWinners'] as List).cast<int>(),
-      lastRound: json['lastRound'] == null
-          ? null
-          : RoundResult.fromJson(
-              (json['lastRound'] as Map).cast<String, dynamic>(),
-            ),
+      history: [
+        for (final r in json['history'] as List)
+          RoundResult.fromJson((r as Map).cast<String, dynamic>()),
+      ],
       result: json['result'] == null
           ? null
           : MatchResult.fromJson(

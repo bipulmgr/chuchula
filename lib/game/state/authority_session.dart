@@ -13,8 +13,10 @@ import 'game_session.dart';
 
 /// Computes a bot arrangement. The default runs the search on a background
 /// isolate so the UI never janks; tests inject a synchronous runner.
-typedef BotRunner =
-    Future<Arrangement> Function(BotStrategy bot, PlayerView view);
+typedef BotRunner = Future<Arrangement> Function(
+  BotStrategy bot,
+  PlayerView view,
+);
 
 Future<Arrangement> isolateBotRunner(BotStrategy bot, PlayerView view) =>
     Isolate.run(() => bot.arrange(view));
@@ -73,12 +75,11 @@ class AuthorityGameSession extends BaseGameSession {
        _bots = Map.of(bots),
        _remotes = Map.of(remoteSeats) {
     for (final entry in _remotes.entries) {
-      _subs.add(
-        entry.value.moves.listen((m) => _onRemoteMove(entry.key, m)),
-      );
+      _subs.add(entry.value.moves.listen((m) => _onRemoteMove(entry.key, m)));
       entry.value.isConnected.addListener(() => _onRemoteConnection(entry.key));
     }
     _publish();
+    scheduleMicrotask(_schedule);
   }
 
   final ChuchulaGameEngine engine;
@@ -117,8 +118,7 @@ class AuthorityGameSession extends BaseGameSession {
       _applyLocal(PlayGroup(localSeat, _state.groupIndex));
 
   @override
-  Future<void> startNextRound() async =>
-      _applyLocal(StartNextRound(localSeat));
+  Future<void> startNextRound() async => _applyLocal(StartNextRound(localSeat));
 
   void _applyLocal(GameMove move) {
     final r = engine.validateMove(_state, move);

@@ -187,6 +187,10 @@ s('btHostHint', 'Make this phone visible, then ask friends to tap "Join a game".
 s('btMakeVisible', 'Make visible', 'देखिने बनाउनुहोस्')
 s('btWaitingHost', 'Connected. Waiting for the host to start…', 'जडान भयो। होस्टले सुरु गर्ने प्रतीक्षा…')
 s('btPaired', 'paired', 'जोडिएको')
+s('retry', 'Try again', 'फेरि प्रयास गर्नुहोस्')
+s('btChooseRole', 'Play with friends in the same room. One phone hosts; up to three others join.', 'एउटै ठाउँका साथीहरूसँग खेल्नुहोस्। एउटा फोनले होस्ट गर्छ; बढीमा तीनवटा जोडिन्छन्।')
+s('btReconnecting', 'Connection to the host dropped. Reconnecting…', 'होस्टसँगको जडान टुट्यो। पुनः जडान गर्दै…')
+s('btFailed', 'Could not stay connected to the host.', 'होस्टसँग जडान कायम राख्न सकिएन।')
 # Tutorial
 s('tutGoalTitle', 'The goal', 'लक्ष्य')
 s('tutGoal', 'Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.', 'चार खेलाडीलाई १३–१३ कार्ड बाँडिन्छ। तिनलाई ३, ३, ३ र ४ कार्डका चार समूहमा मिलाउनुहोस्। समूह र बोनस जितेर पहिले {target} अंक पुग्नुहोस्।', target='int')

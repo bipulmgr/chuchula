@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -118,6 +119,7 @@ class LocalStore {
   static const _settingsKey = 'settings.v1';
   static const _savedMatchKey = 'savedMatch.v1';
   static const _statsKey = 'stats.v1';
+  static const _clientIdKey = 'clientId.v1';
 
   static Future<LocalStore> open() async =>
       LocalStore(await SharedPreferences.getInstance());
@@ -154,6 +156,17 @@ class LocalStore {
       _prefs.setString(_savedMatchKey, jsonEncode(json));
 
   Future<void> clearSavedMatch() => _prefs.remove(_savedMatchKey);
+
+  /// A random id identifying this install to Bluetooth hosts, so a dropped
+  /// player can reclaim their seat.
+  String clientId() {
+    final existing = _prefs.getString(_clientIdKey);
+    if (existing != null) return existing;
+    final r = Random.secure();
+    final id = List.generate(16, (_) => r.nextInt(16).toRadixString(16)).join();
+    _prefs.setString(_clientIdKey, id);
+    return id;
+  }
 
   PlayerStats loadStats() {
     final raw = _prefs.getString(_statsKey);

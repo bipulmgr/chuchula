@@ -385,7 +385,11 @@ class CardBackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
       ..color = theme.accent;
-    for (var r = size.width * 0.08; r < size.width * 0.48; r += size.width * 0.1) {
+    for (
+      var r = size.width * 0.08;
+      r < size.width * 0.48;
+      r += size.width * 0.1
+    ) {
       canvas.drawCircle(c, r, stroke);
     }
     for (var i = 0; i < 16; i++) {
@@ -408,7 +412,8 @@ class CardBackPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..color = const Color(0xFF1E3A5F),
     );
-    final fill = Paint()..color = const Color(0xFFE88FA8).withValues(alpha: 0.9);
+    final fill = Paint()
+      ..color = const Color(0xFFE88FA8).withValues(alpha: 0.9);
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
@@ -428,7 +433,11 @@ class CardBackPainter extends CustomPainter {
       canvas.drawPath(petal, line);
       canvas.restore();
     }
-    for (double y = size.height * 0.68; y < size.height; y += size.height * 0.06) {
+    for (
+      double y = size.height * 0.68;
+      y < size.height;
+      y += size.height * 0.06
+    ) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
     }
   }
