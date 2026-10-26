@@ -189,7 +189,9 @@ class HandAnalysis {
       if (mask & (1 << i) != 0) i,
   ];
 
-  /// The arrangement for group [masks], in the order given.
-  Arrangement toArrangement(List<int> masks) =>
-      Arrangement([for (final m in masks) cardsOf(m)]);
+  /// The arrangement for group [masks], strongest first, with a spare card
+  /// moved off a strong group (see [HandEvaluator.spareToWeakest]).
+  Arrangement toArrangement(List<int> masks) => Arrangement(
+    HandEvaluator.spareToWeakest([for (final m in masks) cardsOf(m)]),
+  );
 }

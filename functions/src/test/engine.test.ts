@@ -72,6 +72,8 @@ describe('engine', () => {
     assert.ok(v('8S 6S 4S 2S').strength > v('AH 9H 5H').strength);
     assert.ok(v('2C 3D 4H').strength > v('8S 6S 4S 2S').strength);
     assert.ok(v('2C 2D 2H').strength > v('5H 6H 7H 8H').strength);
+    // A spare fourth card adds nothing.
+    assert.equal(v('5D 5H 6H 7H').strength, v('5H 6H 7H').strength);
   });
 
   it('plays a whole match with server bots', () => {

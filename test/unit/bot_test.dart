@@ -6,6 +6,7 @@ import 'package:chuchula/game/models/card.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/models/moves.dart';
 import 'package:chuchula/game/models/player_view.dart';
+import 'package:chuchula/game/rules/hand_evaluator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_helpers.dart';
@@ -95,5 +96,37 @@ void main() {
     final strong = wins[0] + wins[1];
     final weak = wins[2] + wins[3];
     expect(strong, greaterThan(weak), reason: 'wins: $wins');
+  });
+
+  test("Suggest on Bipul's hand keeps the spare off the double run", () {
+    final hand = parseCards('5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC');
+    for (final bot in [const MediumBot(), HardBot(seed: 3)]) {
+      final a = bot is MediumBot
+          ? bot.arrangeHand(hand, const ArrangementObjective())
+          : bot.arrange(
+              PlayerView.of(
+                start(
+                  fixedEngine([
+                    deckFor(['5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC']),
+                  ]),
+                ),
+                0,
+              ),
+            );
+      final quad = a.groups.singleWhere((g) => g.length == 4);
+      final value = HandEvaluator.evaluate(quad);
+      // Either a real 4-card hand, or the spare sits on the weakest group.
+      if (!value.fourCard) {
+        expect(
+          identical(quad, a.groups.last),
+          isTrue,
+          reason: '${bot.runtimeType}: ${a.groups}',
+        );
+      }
+      // Suggest (the medium bot) leads with the 5-6-7 hearts double run.
+      if (bot is MediumBot) {
+        expect(a.groups.first.map((c) => c.code).toSet(), {'5H', '6H', '7H'});
+      }
+    }
   });
 }

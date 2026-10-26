@@ -28,6 +28,7 @@ class HandValue implements Comparable<HandValue> {
     required this.keys,
     required this.tieBreakSuit,
     required this.strength,
+    this.spare,
   });
 
   final int size;
@@ -46,6 +47,10 @@ class HandValue implements Comparable<HandValue> {
 
   /// A single integer encoding of the value; larger is stronger.
   final int strength;
+
+  /// The card that does not count, in a 4-card group that is not a full
+  /// 4-card hand.
+  final PlayingCard? spare;
 
   @override
   int compareTo(HandValue other) => strength.compareTo(other.strength);
@@ -94,8 +99,9 @@ class HandEvaluator {
       final (category, keys) = _classify(cards);
       return _value(3, category, false, keys, tieBreakSuit);
     }
-    // Four cards: the full four-card hand if all four make one, otherwise
-    // the best three cards with the fourth as a final kicker.
+    // Four cards: the full four-card hand if all four make one. Otherwise
+    // the group is worth exactly its best three cards; the spare fourth
+    // card adds nothing (not even a tie-break).
     HandValue? best;
     final (category, keys) = _classify(cards);
     if (fourCardCategories.contains(category)) {
@@ -107,10 +113,14 @@ class HandEvaluator {
           if (i != skip) cards[i],
       ];
       final (c3, k3) = _classify(three);
-      final v = _value(4, c3, false, [
-        ...k3,
-        cards[skip].rank.value,
-      ], tieBreakSuit);
+      final v = _value(
+        4,
+        c3,
+        false,
+        k3,
+        _tieBreakSuit(three),
+        spare: cards[skip],
+      );
       if (best == null || v > best) best = v;
     }
     return best!;
@@ -121,8 +131,9 @@ class HandEvaluator {
     HandCategory category,
     bool fourCard,
     List<int> keys,
-    Suit tieBreakSuit,
-  ) {
+    Suit tieBreakSuit, {
+    PlayingCard? spare,
+  }) {
     var strength = category.index * 2 + (fourCard ? 1 : 0);
     for (var i = 0; i < 4; i++) {
       strength = strength * 16 + (i < keys.length ? keys[i] : 0);
@@ -135,6 +146,7 @@ class HandEvaluator {
       keys: List.unmodifiable(keys),
       tieBreakSuit: tieBreakSuit,
       strength: strength,
+      spare: spare,
     );
   }
 
@@ -181,6 +193,28 @@ class HandEvaluator {
     }
     if (topCount == 2) return (HandCategory.pair, grouped);
     return (HandCategory.highCard, values);
+  }
+
+  /// Bot and Suggest tidy-up: if the 4-card group is not a full 4-card
+  /// hand, its spare card is moved to the weakest 3-card group, so a strong
+  /// hand is not padded with a card that adds nothing. No group gets
+  /// weaker. Returns the groups strongest first.
+  static List<List<PlayingCard>> spareToWeakest(
+    List<List<PlayingCard>> groups,
+  ) {
+    final sorted = strongestFirst(groups);
+    final q = sorted.indexWhere((g) => g.length == 4);
+    final value = evaluate(sorted[q]);
+    final weakest = sorted.lastIndexWhere((g) => g.length == 3);
+    if (value.fourCard || value.spare == null || weakest < q) return sorted;
+    final spare = value.spare!;
+    final next = List.of(sorted);
+    next[q] = [
+      for (final c in sorted[q])
+        if (c != spare) c,
+    ];
+    next[weakest] = [...sorted[weakest], spare];
+    return strongestFirst(next);
   }
 
   /// [groups] reordered strongest first, the order in

@@ -34,7 +34,9 @@ The match ends when a player reaches the target score (20).
 
 3-card and 4-card groups are ranked on one ladder. A 4-card group counts
 as the best hand inside it: three spades and a heart make a Color, and
-5-6-7 with a K is a Run.
+5-6-7 with a K is a Run. Unless all four cards make the hand, the fourth
+card is a spare and adds nothing: 5♦ 5♥ 6♥ 7♥ is worth exactly the same
+as 5♥ 6♥ 7♥ (a 3-card double run).
 
 | Rank | Name | Example |
 |---|---|---|
@@ -55,9 +57,11 @@ a higher kind: a run, double run, trail or four of a kind. The same
 holds for 4-card runs and double runs. The app labels these "4-card
 Color", "4-card Run" and so on.
 
-**Within a kind.** Compare the deciding ranks of the hand. If those are
-equal, a 4-card group's extra card counts as one more kicker, so it beats
-a 3-card group with the same three cards.
+**The spare card.** Because a spare adds nothing, padding a strong group
+with it gains nothing. Suggest and the bots therefore aim for full 4-card
+hands, and otherwise put the spare on the weakest group, where it may
+help (a 4-card group of 2♦ 3♦ A♥ 5♦ is still a Color by its best three
+cards).
 
 **Sequences.** Aces are high or low. A-K-Q (A-K-Q-J) is the highest run,
 A-2-3 (A-2-3-4) is second, then K-Q-J and so on down to 4-3-2. Runs do not
@@ -72,7 +76,7 @@ highest card decides: spades > hearts > diamonds > clubs. Every card is
 unique, so there is always a winner. *(Interim.)*
 
 *(Interim: the order of kinds follows Teen Patti with four of a kind on
-top; two pair sits between Color and Pair; the extra-card kicker rule.)*
+top; two pair sits between Color and Pair.)*
 
 ## Scoring
 
@@ -118,14 +122,14 @@ These follow the interim answers above until confirmed:
 4. If two players could show, does the first to show win, or the bigger special?
 5. Is the target "20 or more"? What happens with a tie above 20?
 6. Are exact ties broken by suit, or is the point split?
-7. Where do two pair and the 4-card group's extra card rank (see above)?
+7. Where does two pair rank (see above)?
 
 Confirmed by Bipul on 2026-10-26: groups are revealed automatically
 once everyone is ready; special hands are shown during arranging and end
 the round (4, 6, 9 points) or the match (all thirteen ranks); groups are
 played strongest first with
 the 4-card group anywhere; a 4-card group is named by the best hand in
-it; a full 4-card hand beats a 3-card hand of the same kind.
+it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourth card is a spare that adds nothing.
 
 ## Rule switches
 

@@ -124,8 +124,11 @@ void main() {
       expectStronger('2S 5S 7S', 'AS AH KD KC');
       expectStronger('2S 2H 3D 3C', 'AS AH KD');
       expectStronger('2S 2H 5D', 'AS KH 9D 7C');
-      // Same best three cards: the fourth card decides.
-      expectStronger('AS JS 8S KH', 'AD JD 8D');
+      // A spare fourth card adds nothing: equal best three cards go to the
+      // suit tie-break, so the K does not help the diamonds.
+      expectStronger('AS JS 8S', 'AD JD 8D KH');
+      expect(v('5D 5H 6H 7H').spare, PlayingCard.parse('5D'));
+      expect(v('5D 5H 6H 7H').strength, v('5H 6H 7H').strength);
     });
 
     test('four-card sequences with aces', () {
@@ -160,6 +163,34 @@ void main() {
       '3D 10D JD KD',
       '8C JC KC',
       '8H AS AH',
+    ]);
+  });
+
+  test("Suggest's hand: the spare 5D moves off the double run", () {
+    final groups = HandEvaluator.spareToWeakest([
+      parseCards('5D 5H 6H 7H'),
+      parseCards('2D 3D AH'),
+      parseCards('2S 6S 8S'),
+      parseCards('10C KH AC'),
+    ]);
+    expect(groups.map((g) => g.map((c) => c.code).join(' ')), [
+      '5H 6H 7H',
+      '2D 3D AH',
+      '2S 6S 8S',
+      '10C KH AC 5D',
+    ]);
+    // A full 4-card hand keeps all four cards.
+    final full = HandEvaluator.spareToWeakest([
+      parseCards('2H 5H 9H JH'),
+      parseCards('2D 3D AH'),
+      parseCards('2S 6S 8S'),
+      parseCards('10C KH AC'),
+    ]);
+    expect(full.singleWhere((g) => g.length == 4).map((c) => c.code), [
+      '2H',
+      '5H',
+      '9H',
+      'JH',
     ]);
   });
 

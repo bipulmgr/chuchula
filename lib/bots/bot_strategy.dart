@@ -46,7 +46,7 @@ class EasyBot extends BotStrategy {
       hand.sort();
     }
     final groups = Arrangement.fromOrderedCards(hand).groups;
-    return Arrangement(HandEvaluator.strongestFirst(groups));
+    return Arrangement(HandEvaluator.spareToWeakest(groups));
   }
 }
 

@@ -1,7 +1,7 @@
 // A simple server-side bot. It receives only its own PlayerView (its own
 // hand), so it cannot see hidden opponent cards or the deck.
 import { Card, cardCode, parseCard } from './card';
-import { CATEGORIES, evaluate, strongestFirst } from './evaluator';
+import { CATEGORIES, evaluate, spareToWeakest } from './evaluator';
 import { STANDARD_RULES, detectBonuses } from './rules';
 import { ArrangementJson, GameMove, PlayerView } from './state';
 
@@ -65,7 +65,7 @@ export function arrangeHand(handCodes: string[]): ArrangementJson {
     }
   }
   const groups = bestMasks.map((m) => hand.filter((_, i) => m & (1 << i)));
-  return strongestFirst(groups).map((g) => g.map(cardCode));
+  return spareToWeakest(groups).map((g) => g.map(cardCode));
 }
 
 function canShow(handCodes: string[]): boolean {

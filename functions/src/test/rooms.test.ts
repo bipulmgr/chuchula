@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { botMove } from '../engine/bot';
+import { arrangeHand, botMove } from '../engine/bot';
 import { ChuchulaEngine } from '../engine/engine';
 import { GameState, playerView } from '../engine/state';
 import * as rooms from '../rooms';
@@ -63,14 +63,20 @@ describe('rooms', () => {
     const { room, state } = rooms.startMatch(lobby(), 'host', 5, engine, 'm');
     assert.equal(room!.status, 'playing');
     assert.deepEqual(room!.seats.map((s) => s.isBot), [false, false, true, true]);
-    // Bots arranged straight away; humans still need to.
-    assert.deepEqual(state!.arrangements.map((a) => a !== null), [false, false, true, true]);
+    // Bots acted straight away (arranged, or showed a special hand and
+    // ended the round); humans still need to arrange.
+    if (state!.phase === 'arranging') {
+      assert.deepEqual(state!.arrangements.map((a) => a !== null), [false, false, true, true]);
+    } else {
+      assert.ok([2, 3].includes(state!.history.at(-1)!.shownSeat!));
+    }
   });
 
   it('a seat can only move for itself', () => {
     const { room, state } = rooms.startMatch(lobby(), 'host', 5, engine, 'm');
-    const view = playerView(state!, 0);
-    const move = botMove(view)!;
+    // Built directly: a bot may already have ended the round by showing a
+    // special hand, so botMove could have nothing to do.
+    const move = { type: 'arrange' as const, seat: 0, arrangement: arrangeHand(state!.hands[0]) };
     assert.throws(() => rooms.submitMove(room!, state!, 'maya', move, 6, engine), reason('invalidSeat'));
     assert.throws(() => rooms.submitMove(room!, state!, 'stranger', move, 6, engine), reason('not-in-room'));
     assert.throws(() => rooms.submitMove(room!, state!, 'host', { type: 'x' }, 6, engine), reason('bad-request'));

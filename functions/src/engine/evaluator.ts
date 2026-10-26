@@ -24,6 +24,8 @@ export interface HandValue {
   keys: number[];
   tieBreakSuit: number;
   strength: number;
+  /** The card that does not count, in a 4-card group that is not a full 4-card hand. */
+  spare?: Card;
 }
 
 function sequenceKey(desc: number[]): number | null {
@@ -59,13 +61,21 @@ function classify(cards: Card[]): [HandCategory, number[]] {
   return ['highCard', values];
 }
 
+function tieBreakSuitOf(cards: Card[]): number {
+  const highest = Math.max(...cards.map((c) => c.rank));
+  return Math.max(...cards.filter((c) => c.rank === highest).map((c) => c.suit));
+}
+
 function value(
   size: number, category: HandCategory, fourCard: boolean, keys: number[], tieBreakSuit: number,
+  spare?: Card,
 ): HandValue {
   let strength = CATEGORIES.indexOf(category) * 2 + (fourCard ? 1 : 0);
   for (let i = 0; i < 4; i++) strength = strength * 16 + (i < keys.length ? keys[i] : 0);
   strength = strength * 4 + tieBreakSuit;
-  return { size, category, fourCard, keys, tieBreakSuit, strength };
+  return spare
+    ? { size, category, fourCard, keys, tieBreakSuit, strength, spare }
+    : { size, category, fourCard, keys, tieBreakSuit, strength };
 }
 
 export function evaluate(cards: Card[]): HandValue {
@@ -76,24 +86,39 @@ export function evaluate(cards: Card[]): HandValue {
   if (new Set(cards.map(cardId)).size !== size) {
     throw new Error('A group cannot contain duplicate cards');
   }
-  const highest = Math.max(...cards.map((c) => c.rank));
-  const tieBreakSuit = Math.max(
-    ...cards.filter((c) => c.rank === highest).map((c) => c.suit),
-  );
+  const tieBreakSuit = tieBreakSuitOf(cards);
   const [category, keys] = classify(cards);
   if (size === 3) return value(3, category, false, keys, tieBreakSuit);
-  // Four cards: the full four-card hand if all four make one, otherwise the
-  // best three cards with the fourth as a final kicker.
+  // Four cards: the full four-card hand if all four make one. Otherwise the
+  // group is worth exactly its best three cards; the spare adds nothing.
   let best: HandValue | null = FOUR_CARD_CATEGORIES.has(category)
     ? value(4, category, true, keys, tieBreakSuit)
     : null;
   for (let skip = 0; skip < 4; skip++) {
     const three = cards.filter((_, i) => i !== skip);
     const [c3, k3] = classify(three);
-    const v = value(4, c3, false, [...k3, cards[skip].rank], tieBreakSuit);
+    const v = value(4, c3, false, k3, tieBreakSuitOf(three), cards[skip]);
     if (best === null || v.strength > best.strength) best = v;
   }
   return best!;
+}
+
+/**
+ * If the 4-card group is not a full 4-card hand, moves its spare card to the
+ * weakest 3-card group (no group gets weaker). Returns groups strongest first.
+ */
+export function spareToWeakest(groups: Card[][]): Card[][] {
+  const sorted = strongestFirst(groups);
+  const q = sorted.findIndex((g) => g.length === 4);
+  const v = evaluate(sorted[q]);
+  let weakest = -1;
+  sorted.forEach((g, i) => { if (g.length === 3) weakest = i; });
+  if (v.fourCard || !v.spare || weakest < q) return sorted;
+  const spare = v.spare;
+  const next = [...sorted];
+  next[q] = sorted[q].filter((c) => c !== spare);
+  next[weakest] = [...sorted[weakest], spare];
+  return strongestFirst(next);
 }
 
 /** Groups reordered strongest first, the order in which they are played. */
