@@ -140,6 +140,29 @@ void main() {
     });
   });
 
+  test("Bipul's round: Pemba and Sita play strongest first", () {
+    List<String> order(List<String> groups) => [
+      for (final g in HandEvaluator.strongestFirst([
+        for (final c in groups) parseCards(c),
+      ]))
+        g.map((c) => c.code).join(' '),
+    ];
+    // Pemba: the 4-card double run beats both runs, so it comes second.
+    expect(order(['2C 2D 2H', '9C 10C JD', '4S 5H 6H', '6S 7S 8S 9S']), [
+      '2C 2D 2H',
+      '6S 7S 8S 9S',
+      '9C 10C JD',
+      '4S 5H 6H',
+    ]);
+    // Sita: the 4-card color beats the 3-card color and the pair.
+    expect(order(['4C 5C 6C', '8C JC KC', '8H AS AH', '3D 10D JD KD']), [
+      '4C 5C 6C',
+      '3D 10D JD KD',
+      '8C JC KC',
+      '8H AS AH',
+    ]);
+  });
+
   test('strongestFirst orders groups for play', () {
     final groups = [
       parseCards('2S 5H 9D'),
