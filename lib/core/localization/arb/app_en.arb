@@ -396,6 +396,16 @@
   "connecting": "Connecting…",
   "roomNotFound": "No open room has that code.",
   "roomFull": "That room is full.",
+  "roomStarted": "That match has already started. Only its players can rejoin.",
+  "rejoinRoom": "Rejoin room {code}",
+  "@rejoinRoom": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "rejoinRoomSub": "Your last match may still be going",
   "hostLabel": "Host",
   "copyCode": "Copy code",
   "codeCopied": "Code copied",

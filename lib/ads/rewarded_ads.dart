@@ -78,14 +78,14 @@ class AdMobRewardedAds extends RewardedAds {
 
   static const androidTestUnitId = 'ca-app-pub-3940256099942544/5224354917';
   static const iosTestUnitId = 'ca-app-pub-3940256099942544/1712485313';
-  static const androidUnitId = String.fromEnvironment(
-    'ADMOB_REWARDED_ID',
-    defaultValue: androidTestUnitId,
-  );
-  static const iosUnitId = String.fromEnvironment(
-    'ADMOB_REWARDED_ID_IOS',
-    defaultValue: iosTestUnitId,
-  );
+  // An empty value (e.g. `ADMOB_REWARDED_ID=` in .env) means "use the
+  // test unit", like leaving it out.
+  static const _androidUnitId = String.fromEnvironment('ADMOB_REWARDED_ID');
+  static const _iosUnitId = String.fromEnvironment('ADMOB_REWARDED_ID_IOS');
+  static String get androidUnitId =>
+      _androidUnitId.isEmpty ? androidTestUnitId : _androidUnitId;
+  static String get iosUnitId =>
+      _iosUnitId.isEmpty ? iosTestUnitId : _iosUnitId;
 
   static String get unitId =>
       defaultTargetPlatform == TargetPlatform.iOS ? iosUnitId : androidUnitId;
