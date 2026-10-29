@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.8'
+
+jobs:
+  test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed $(git ls-files '*.dart')
+      - run: flutter analyze
+      - run: flutter test --reporter expanded
+
+  functions:
+    name: Cloud Functions and Firestore rules
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('functions/package-lock.json') }}
+      - run: npm ci
+      - name: Engine, parity, rooms and bot tests
+        run: npm test
+      - name: Security rules (Firestore emulator)
+        run: npm run test:rules
+      - name: Full online match (Functions, Firestore and Auth emulators)
+        run: npm run test:e2e
+
+  android:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free runner disk space
+        # Release builds for three ABIs need more room than the default
+        # image leaves free. The Android SDK is kept.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/node_modules /usr/share/swift || true
+          df -h /
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Limit Gradle memory
+        # The project's 8 GB Gradle heap plus the Kotlin daemon and R8 can
+        # exhaust the runner, which then shuts down mid-build. The user
+        # Gradle properties take precedence over the project's.
+        run: |
+          mkdir -p ~/.gradle
+          cat >> ~/.gradle/gradle.properties <<'PROPS'
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError
+          kotlin.daemon.jvmargs=-Xmx2g
+          PROPS
+      - name: Build debug APK
+        run: |
+          flutter build apk --debug
+          # Free the debug build's daemons before the release build.
+          (cd android && ./gradlew --stop)
+      - name: Build release APK
+        # Signed with the release keystore when the ANDROID_KEYSTORE_* secrets
+        # exist; otherwise android/app/build.gradle.kts falls back to the
+        # debug key and the APK is for testing only.
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          fi
+          flutter build apk --release
+      - name: Verify APKs
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/chuchula-release.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/chuchula-debug.apk
+          for f in dist/*.apk; do
+            echo "== $f"; ls -l "$f"; sha256sum "$f"
+            unzip -tq "$f"
+            "$BT/aapt2" dump badging "$f" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|uses-permission)"
+            "$BT/apksigner" verify --print-certs "$f" | head -5
+          done
+          # Fail if the merged manifest gains a permission that is not
+          # documented in docs/ANDROID_PERMISSIONS.md.
+          allowed='INTERNET|ACCESS_NETWORK_STATE|WAKE_LOCK|BLUETOOTH|BLUETOOTH_ADMIN|ACCESS_FINE_LOCATION|BLUETOOTH_SCAN|BLUETOOTH_CONNECT|BLUETOOTH_ADVERTISE|com.bipulmgr.chuchula.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION|com.google.android.gms.permission.AD_ID|ACCESS_ADSERVICES_AD_ID|ACCESS_ADSERVICES_ATTRIBUTION'
+          "$BT/aapt2" dump badging dist/chuchula-release.apk | sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" \
+            | sed 's/^android\.permission\.//' > perms.txt
+          cat perms.txt
+          if grep -vxE "$allowed" perms.txt; then
+            echo "::error::Unexpected Android permission(s) above"; exit 1
+          fi
+      - uses: actions/upload-artifact@v5
+        with:
+          name: chuchula-apks
+          path: dist/*.apk
+          if-no-files-found: error

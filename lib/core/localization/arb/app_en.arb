@@ -1,0 +1,468 @@
+{
+  "@@locale": "en",
+  "appTitle": "Chuchula",
+  "tagline": "The Nepali card game of four groups",
+  "playOffline": "Play offline",
+  "playOfflineSub": "You against three bots",
+  "playOnline": "Play online",
+  "playOnlineSub": "Create or join a room with a code",
+  "bluetoothPlay": "Bluetooth play",
+  "bluetoothPlaySub": "Nearby phones, no internet needed",
+  "howToPlay": "How to play",
+  "settings": "Settings",
+  "resumeMatch": "Resume match",
+  "resumeMatchSub": "Round {round} · you have {score} points",
+  "@resumeMatchSub": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineReady": "Offline play is always available",
+  "statsLine": "{won} wins from {played} matches · {sweeps} sweeps",
+  "@statsLine": {
+    "placeholders": {
+      "won": {
+        "type": "int"
+      },
+      "played": {
+        "type": "int"
+      },
+      "sweeps": {
+        "type": "int"
+      }
+    }
+  },
+  "cashPoints": "Cash points",
+  "cashBalance": "Cash points: {points}",
+  "@cashBalance": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "watchAd": "Watch an ad for +{points}",
+  "@watchAd": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "adRewarded": "+{points} cash points added!",
+  "@adRewarded": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "adUnavailable": "No reward this time. The ad was not available or was closed early.",
+  "adsAndroidOnly": "Ads for cash points are available in the Android app.",
+  "needCash": "You need {min} cash points to start a match. Watch an ad to get {reward} more.",
+  "@needCash": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "reward": {
+        "type": "int"
+      }
+    }
+  },
+  "pointsTable": "Points table",
+  "roundColumn": "Round",
+  "totalColumn": "Total",
+  "noRoundsYet": "No rounds finished yet.",
+  "newMatch": "New match",
+  "yourName": "Your name",
+  "defaultPlayerName": "You",
+  "difficulty": "Bot difficulty",
+  "easy": "Easy",
+  "medium": "Medium",
+  "hard": "Hard",
+  "easyDesc": "Relaxed bots that group cards simply.",
+  "mediumDesc": "Balanced bots that weigh every combination.",
+  "hardDesc": "Bots that model what opponents are likely to hold.",
+  "targetScore": "First to {target} points wins",
+  "@targetScore": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "startMatch": "Deal the cards",
+  "roundLabel": "Round {round}",
+  "@roundLabel": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "groupLabel": "Group {group}",
+  "@groupLabel": {
+    "placeholders": {
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "arrangeHint": "Swap cards by dragging one onto another. Drag a group by its label to swap whole groups. The 3-card groups play strongest first; the 4-card group plays last and must be your weakest.",
+  "swapGroupLabel": "Group {group}, {category}. Drag onto another group, or tap two group labels, to swap them.",
+  "@swapGroupLabel": {
+    "placeholders": {
+      "group": {
+        "type": "int"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "ready": "Ready",
+  "showSpecial": "Show",
+  "showMenuTitle": "Show a special hand",
+  "showChoice": "{hand} +{points}",
+  "@showChoice": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      },
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "showChoiceWin": "{hand}: wins the match",
+  "@showChoiceWin": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "showMissing": "{hand} is not in your hand. Nothing was shown.",
+  "@showMissing": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "handShown": "{name} showed {hand}",
+  "@handShown": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "revealing": "Revealing groups…",
+  "readyCheck": "Ready",
+  "waitingForOthers": "Waiting for the other players…",
+  "thinking": "Arranging…",
+  "undo": "Undo",
+  "reset": "Reset",
+  "sortRank": "Sort by rank",
+  "sortSuit": "Sort by suit",
+  "suggest": "Suggest",
+  "playGroup": "Play group {group}",
+  "@playGroup": {
+    "placeholders": {
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "yourTurn": "Your turn",
+  "turnOf": "{name}'s turn",
+  "@turnOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupWinner": "{name} wins group {group}",
+  "@groupWinner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "youWinGroup": "You win group {group}!",
+  "@youWinGroup": {
+    "placeholders": {
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "scores": "Scores",
+  "pointsShort": "{points} pts",
+  "@pointsShort": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "dealing": "Dealing…",
+  "rules": "Rules",
+  "menu": "Menu",
+  "selectedCard": "Selected",
+  "cardInGroup": "{card}, group {group}",
+  "@cardInGroup": {
+    "placeholders": {
+      "card": {
+        "type": "String"
+      },
+      "group": {
+        "type": "int"
+      }
+    }
+  },
+  "seatScore": "{name}, {score} points",
+  "@seatScore": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "roundSummary": "Round {round} results",
+  "@roundSummary": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "nextRound": "Next round",
+  "waitingForHost": "Waiting for the host to deal…",
+  "total": "Total",
+  "thisRound": "This round",
+  "sweep": "Clean sweep: all four groups!",
+  "bonusFourOfAKind": "Four of a kind",
+  "bonusSixPairs": "Six pairs",
+  "bonusThreeTrails": "Three trails",
+  "bonusAllRanks": "All thirteen ranks",
+  "bonusBy": "{name}: {bonus} +{points}",
+  "@bonusBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "bonus": {
+        "type": "String"
+      },
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "matchWon": "You won the match!",
+  "matchLost": "{name} won the match",
+  "@matchLost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "instantWin": "Instant win with all thirteen ranks!",
+  "playAgain": "Play again",
+  "home": "Home",
+  "leaveMatch": "Leave the match?",
+  "leaveOfflineBody": "Your match is saved. You can resume it from the home screen.",
+  "leaveOnlineBody": "Other players will continue; a bot takes your seat if you do not return.",
+  "leave": "Leave",
+  "stay": "Stay",
+  "cancel": "Cancel",
+  "close": "Close",
+  "catHighCard": "High card",
+  "catPair": "Pair",
+  "catTwoPair": "Two pair",
+  "catColor": "Color",
+  "catSequence": "Run",
+  "catTrail": "Trail",
+  "catPureSequence": "Double run",
+  "catFourOfAKind": "Four of a kind",
+  "catFourCard": "4-card {category}",
+  "@catFourCard": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "soundSection": "Sound",
+  "appearanceSection": "Appearance",
+  "gameSection": "Game",
+  "music": "Music",
+  "soundEffects": "Sound effects",
+  "musicVolume": "Music volume",
+  "sfxVolume": "Effects volume",
+  "haptics": "Vibration",
+  "tableTheme": "Table theme",
+  "cardBack": "Card back",
+  "language": "Language",
+  "systemLanguage": "Device language",
+  "musicTrack": "Music track",
+  "trackHimalaya": "Himalayan evening",
+  "trackFestival": "Festival",
+  "trackCalm": "Calm bowls",
+  "soundSet": "Sound style",
+  "soundClassic": "Classic",
+  "soundSoft": "Soft",
+  "soundArcade": "Arcade",
+  "showSuggestSetting": "Show the Suggest button",
+  "reducedMotion": "Reduce animations",
+  "themeEmerald": "Emerald",
+  "themeDashain": "Dashain",
+  "themeTihar": "Tihar",
+  "themeHimalaya": "Himalaya",
+  "backDhaka": "Dhaka",
+  "backMandala": "Mandala",
+  "backLotus": "Lotus",
+  "backClassic": "Classic",
+  "about": "About",
+  "aboutBody": "Original artwork, music and sounds are generated for Chuchula. Fonts: Mukta and Yatra One (SIL Open Font License).",
+  "errNotYourTurn": "It's not your turn yet.",
+  "errFourCardTooStrong": "The 4-card group plays last and must be your weakest group. Rearrange it, or tap Suggest.",
+  "errInvalidArrangement": "That arrangement isn't valid.",
+  "errGeneric": "That move isn't allowed right now.",
+  "connectionLost": "Lost connection with {name}. Waiting for them to return…",
+  "@connectionLost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionRestored": "Reconnected",
+  "statusBot": "Bot",
+  "statusConnected": "Online",
+  "statusReconnecting": "Reconnecting",
+  "statusDisconnected": "Offline",
+  "statusYou": "You",
+  "onlineTitle": "Online play",
+  "onlineNotConfigured": "Online play is not set up in this build. It needs a Firebase project; see docs/FIREBASE_SETUP.md. Offline and Bluetooth play work without it.",
+  "onlineError": "Could not reach the game server: {message}",
+  "@onlineError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "createRoom": "Create a room",
+  "joinWithCode": "Join with a code",
+  "roomCode": "Room code",
+  "join": "Join",
+  "waitingRoom": "Room {code}",
+  "@waitingRoom": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCode": "Share this code with up to three friends.",
+  "fillWithBots": "Empty seats are filled with bots when you start.",
+  "startGame": "Start game",
+  "seatEmpty": "Empty seat",
+  "connecting": "Connecting…",
+  "roomNotFound": "No open room has that code.",
+  "roomFull": "That room is full.",
+  "hostLabel": "Host",
+  "copyCode": "Copy code",
+  "codeCopied": "Code copied",
+  "btHost": "Host a game",
+  "btHostSub": "This phone deals and keeps score",
+  "btJoin": "Join a game",
+  "btJoinSub": "Connect to a friend's phone",
+  "btPermissionRationale": "Chuchula uses Bluetooth only to find and connect to nearby phones for a local game.",
+  "btPermissionDenied": "Bluetooth permission was denied. Allow \"Nearby devices\" in system settings to play over Bluetooth.",
+  "grantPermission": "Allow Bluetooth",
+  "openSettings": "Open settings",
+  "btDisabled": "Bluetooth is turned off.",
+  "turnOn": "Turn on",
+  "btUnsupported": "This device does not support Bluetooth.",
+  "btScanning": "Searching for nearby phones…",
+  "btScan": "Search again",
+  "btDevices": "Phones",
+  "btNoDevices": "No phones found yet. Make sure the host has tapped \"Make visible\".",
+  "btWaitingPlayers": "{joined} of 3 friends joined",
+  "@btWaitingPlayers": {
+    "placeholders": {
+      "joined": {
+        "type": "int"
+      }
+    }
+  },
+  "btConnectFailed": "Could not connect to {name}.",
+  "@btConnectFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "btHostHint": "Make this phone visible, then ask friends to tap \"Join a game\".",
+  "btMakeVisible": "Make visible",
+  "btWaitingHost": "Connected. Waiting for the host to start…",
+  "btPaired": "paired",
+  "retry": "Try again",
+  "btChooseRole": "Play with friends in the same room. One phone hosts; up to three others join.",
+  "btReconnecting": "Connection to the host dropped. Reconnecting…",
+  "btFailed": "Could not stay connected to the host.",
+  "tutGoalTitle": "The goal",
+  "tutGoal": "Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.",
+  "@tutGoal": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "tutArrangeTitle": "Arrange",
+  "tutArrange": "Your hand sits along the bottom, already split into the four groups. Drag a card onto another card to swap them, or tap two cards. Drag a group by its label to swap whole groups. Tap Ready when you are happy. Nobody sees your groups until they are played.",
+  "tutPlayTitle": "Play",
+  "tutPlay": "Once everyone is Ready, the groups are revealed automatically: everyone's strongest 3-card group first, then the next two, and the 4-card groups last. Your 4-card group must be your weakest group. The strongest group in each turn wins it, and its owner leads the next one.",
+  "tutRankTitle": "Ranking",
+  "tutRank3": "Four of a kind > Trail (three of a kind) > Double run (run in one suit) > Run > Color (same suit) > Two pair > Pair > High card. A-K-Q is the top run, then A-2-3.",
+  "tutRank4Title": "The 4-card group",
+  "tutRank4": "It is always played last and must be your weakest group. It counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
+  "tutTieTitle": "Ties",
+  "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
+  "tutScoreTitle": "Scoring",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (✨) and pick the special you hold to end the round: four of a kind +4, six pairs +6 or three trails +9. Showing one card of every rank (A to K) wins the match.",
+  "tutEndTitle": "Winning",
+  "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
+  "@tutEnd": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "tutInterim": "Some house rules are still being confirmed and may change."
+}

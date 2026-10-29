@@ -1,0 +1,64 @@
+# Firebase setup (online play)
+
+Online play needs your own Firebase project. Without it the app still
+builds and runs; the Online button explains that online play is not set
+up. Offline and Bluetooth play never need Firebase.
+
+## 1. Create the project
+
+1. Create a project at <https://console.firebase.google.com>.
+2. **Build → Authentication → Sign-in method:** enable **Anonymous**.
+3. **Build → Firestore Database:** create a database in production mode.
+4. Cloud Functions need the **Blaze** (pay as you go) plan. Normal play
+   uses a few function calls per move; set a budget alert.
+5. **Project settings → Your apps → Add app → Web** (the Flutter app
+   uses the web options; no `google-services.json` is needed). Copy the
+   `apiKey`, `appId`, `messagingSenderId`, `projectId` and
+   `storageBucket` into `.env` (see `.env.example`).
+
+## 2. Deploy the server
+
+```sh
+npm install -g firebase-tools
+firebase login
+cp .firebaserc.example .firebaserc   # put your project id in it
+cd functions && npm ci && cd ..
+firebase deploy --only functions,firestore
+```
+
+This deploys the callables (`createRoom`, `joinRoom`, `leaveRoom`,
+`startMatch`, `submitMove`, `heartbeat`), the `cleanupRooms` schedule and
+`firestore.rules`. The default region is `us-central1`. To change it, set
+`FUNCTIONS_REGION` for the functions and `FIREBASE_FUNCTIONS_REGION` in
+`.env` to the same value.
+
+No service-account keys are needed or stored: deployed functions use
+their runtime identity.
+
+## 3. Build the app
+
+```sh
+flutter build apk --release --dart-define-from-file=.env
+```
+
+## Data model
+
+| Path | Contents | Who can read |
+|---|---|---|
+| `rooms/{id}` | Code, host, status, seat names, heartbeats | Any signed-in player |
+| `rooms/{id}/private/state` | Full game state, all hands | Nobody (functions only) |
+| `rooms/{id}/views/{uid}` | That player's view (their hand + public table) | Only that player |
+
+Clients cannot write anything. Every change goes through a function,
+which validates the move with the rules engine.
+
+## Local emulators
+
+```sh
+cd functions
+npm run serve          # Functions, Firestore and Auth emulators
+```
+
+Then run the app with `FIREBASE_EMULATOR_HOST=10.0.2.2` (Android
+emulator) or your computer's LAN address (real phone), plus any values
+for the other keys and `FIREBASE_PROJECT_ID=demo-chuchula`.
