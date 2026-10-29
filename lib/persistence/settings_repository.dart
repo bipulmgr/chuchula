@@ -200,6 +200,16 @@ class LocalStore {
 
   Future<void> clearSavedMatch() => _prefs.remove(_savedMatchKey);
 
+  static const _lastRoomKey = 'online.lastRoom.v1';
+
+  /// Code of the online room this player was last in, so the lobby can
+  /// offer to rejoin after the app was closed mid-match.
+  String? loadLastRoomCode() => _prefs.getString(_lastRoomKey);
+
+  Future<void> saveLastRoomCode(String? code) => code == null
+      ? _prefs.remove(_lastRoomKey)
+      : _prefs.setString(_lastRoomKey, code);
+
   Wallet loadWallet() {
     final raw = _prefs.getString(_walletKey);
     if (raw == null) return const Wallet();

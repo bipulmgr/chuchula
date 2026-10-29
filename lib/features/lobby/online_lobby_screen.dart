@@ -72,10 +72,15 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
       final id = await action();
       _watch(id);
     } on OnlineException catch (e) {
+      if (e.code == 'room-not-found' || e.code == 'already-started') {
+        // The remembered room is gone or was never ours.
+        _forgetRoom();
+      }
       setState(() {
         _error = switch (e.code) {
           'room-not-found' => l.roomNotFound,
           'room-full' => l.roomFull,
+          'already-started' => l.roomStarted,
           _ => l.onlineError(e.message ?? e.code),
         };
       });
@@ -91,6 +96,13 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     _roomId = roomId;
     _roomSub = _service!.watchRoom(roomId).listen((room) {
       if (!mounted) return;
+      final store = ref.read(localStoreProvider);
+      if (room.status == RoomStatus.finished ||
+          room.status == RoomStatus.abandoned) {
+        _forgetRoom();
+      } else if (store.loadLastRoomCode() != room.code) {
+        store.saveLastRoomCode(room.code);
+      }
       setState(() => _room = room);
       if (room.status == RoomStatus.playing && !_inGame) _openTable(roomId);
     });
@@ -114,7 +126,10 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     await _roomSub?.cancel();
   }
 
+  void _forgetRoom() => ref.read(localStoreProvider).saveLastRoomCode(null);
+
   Future<void> _leave() async {
+    _forgetRoom();
     final id = _roomId;
     await _roomSub?.cancel();
     setState(() {
@@ -188,60 +203,76 @@ class _OnlineLobbyScreenState extends ConsumerState<OnlineLobbyScreen> {
     );
   }
 
-  Widget _menu(TableTheme theme, AppLocalizations l) => GoldPanel(
-    theme: theme,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GoldButton(
-          theme: theme,
-          label: l.createRoom,
-          icon: Icons.add_circle,
-          onPressed: _busy
-              ? null
-              : () => _run(() => _service!.createRoom(_name)),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          l.joinWithCode,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _code,
-          textCapitalization: TextCapitalization.characters,
-          maxLength: 6,
-          style: TextStyle(
-            color: theme.onSurface,
-            letterSpacing: 4,
-            fontSize: 20,
+  Widget _menu(TableTheme theme, AppLocalizations l) {
+    final last = ref.read(localStoreProvider).loadLastRoomCode();
+    return GoldPanel(
+      theme: theme,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (last != null) ...[
+            GoldButton(
+              key: const Key('rejoinRoomButton'),
+              theme: theme,
+              label: l.rejoinRoom(last),
+              subtitle: l.rejoinRoomSub,
+              icon: Icons.replay,
+              onPressed: _busy
+                  ? null
+                  : () => _run(() => _service!.joinRoom(last, _name)),
+            ),
+            const SizedBox(height: 12),
+          ],
+          GoldButton(
+            theme: theme,
+            label: l.createRoom,
+            icon: Icons.add_circle,
+            onPressed: _busy
+                ? null
+                : () => _run(() => _service!.createRoom(_name)),
           ),
-          decoration: InputDecoration(
-            labelText: l.roomCode,
-            labelStyle: TextStyle(color: theme.accentSoft),
+          const SizedBox(height: 18),
+          Text(
+            l.joinWithCode,
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-        ),
-        GoldButton(
-          theme: theme,
-          label: l.join,
-          icon: Icons.login,
-          primary: false,
-          onPressed: _busy
-              ? null
-              : () => _run(() => _service!.joinRoom(_code.text, _name)),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(color: Color(0xFFFFB0A0))),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _code,
+            textCapitalization: TextCapitalization.characters,
+            maxLength: 6,
+            style: TextStyle(
+              color: theme.onSurface,
+              letterSpacing: 4,
+              fontSize: 20,
+            ),
+            decoration: InputDecoration(
+              labelText: l.roomCode,
+              labelStyle: TextStyle(color: theme.accentSoft),
+            ),
+          ),
+          GoldButton(
+            theme: theme,
+            label: l.join,
+            icon: Icons.login,
+            primary: false,
+            onPressed: _busy
+                ? null
+                : () => _run(() => _service!.joinRoom(_code.text, _name)),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: Color(0xFFFFB0A0))),
+          ],
+          if (_busy) ...[
+            const SizedBox(height: 12),
+            Center(child: CircularProgressIndicator(color: theme.accent)),
+          ],
         ],
-        if (_busy) ...[
-          const SizedBox(height: 12),
-          Center(child: CircularProgressIndicator(color: theme.accent)),
-        ],
-      ],
-    ),
-  );
+      ),
+    );
+  }
 
   Widget _waitingRoom(TableTheme theme, AppLocalizations l, RoomInfo room) {
     final isHost = room.hostUid == _service!.uid;

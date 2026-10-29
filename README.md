@@ -40,6 +40,7 @@ to `.env`, fill it in, and add `--dart-define-from-file=.env`.
 | [GAME_RULES](docs/GAME_RULES.md) | Rules, rankings, scoring, rule switches, open questions |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Engine, sessions, Bluetooth and online design, bots |
 | [ANDROID_PERMISSIONS](docs/ANDROID_PERMISSIONS.md) | Every permission and why |
+| [STORE_RELEASE](docs/STORE_RELEASE.md) | Step-by-step Google Play and App Store release, Firebase and AdMob setup |
 | [BUILD_AND_RELEASE](docs/BUILD_AND_RELEASE.md) | Building, signing, CI artifacts, versioning |
 | [TESTING](docs/TESTING.md) | Test suites, CI, manual device checklist |
 | [FIREBASE_SETUP](docs/FIREBASE_SETUP.md) | Firebase project, deploying functions and rules |
