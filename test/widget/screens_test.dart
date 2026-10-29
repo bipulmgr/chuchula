@@ -1,3 +1,4 @@
+import 'package:chuchula/ads/rewarded_ads.dart';
 import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/core/theme/table_themes.dart';
 import 'package:chuchula/features/lobby/bluetooth_lobby_screen.dart';
@@ -40,8 +41,54 @@ void main() {
       expect(find.text('+50 cash points added!'), findsOneWidget);
     });
 
+    testWidgets('home loads an ad in advance', (tester) async {
+      final ads = FakeAds();
+      await pumpApp(tester, ads: ads);
+      await tester.pumpAndSettle();
+      expect(ads.prepared, 1);
+    });
+
+    testWidgets('no fill says to try again', (tester) async {
+      await pumpApp(tester, ads: FakeAds(outcome: AdOutcome.unavailable));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('No ad is available'), findsOneWidget);
+    });
+
+    testWidgets('the debug test ad pays only when watched to the end', (
+      tester,
+    ) async {
+      final ads = DemoRewardedAds(length: const Duration(seconds: 2));
+      await pumpApp(tester, ads: ads);
+      await tester.pumpAndSettle();
+      Future<String?> balance() async =>
+          tester.widget<Text>(find.byKey(const Key('walletBalance'))).data;
+
+      // Closed at once: nothing.
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('demoAd')), findsOneWidget);
+      expect(find.text('Reward in 2 s'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('closeDemoAd')));
+      await tester.pumpAndSettle();
+      expect(await balance(), '100');
+      expect(find.textContaining('closed early'), findsOneWidget);
+
+      // Watched to the end: +50.
+      await tester.tap(find.byKey(const Key('watchAdButton')));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Reward earned'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('closeDemoAd')));
+      await tester.pumpAndSettle();
+      expect(await balance(), '150');
+      expect(find.text('+50 cash points added!'), findsOneWidget);
+    });
+
     testWidgets('an ad closed early gives nothing', (tester) async {
-      await pumpApp(tester, ads: FakeAds(earn: false));
+      await pumpApp(tester, ads: FakeAds(outcome: AdOutcome.closedEarly));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('watchAdButton')));
       await tester.pumpAndSettle();
@@ -49,7 +96,7 @@ void main() {
         tester.widget<Text>(find.byKey(const Key('walletBalance'))).data,
         '100',
       );
-      expect(find.textContaining('No reward this time'), findsOneWidget);
+      expect(find.textContaining('closed early'), findsOneWidget);
     });
 
     testWidgets('without ads support the player is told why', (tester) async {
@@ -57,7 +104,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('watchAdButton')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Android app'), findsOneWidget);
+      expect(find.textContaining('iPhone apps'), findsOneWidget);
     });
 
     testWidgets('below 50 a new match asks for an ad first', (tester) async {

@@ -75,18 +75,22 @@ class FakeBluetooth implements BluetoothPlatform {
 }
 
 /// Rewarded ads that finish instantly.
-class FakeAds implements RewardedAds {
-  FakeAds({this.supported = true, this.earn = true});
+class FakeAds extends RewardedAds {
+  FakeAds({this.supported = true, this.outcome = AdOutcome.rewarded});
 
   @override
   final bool supported;
-  bool earn;
+  AdOutcome outcome;
   int shown = 0;
+  int prepared = 0;
 
   @override
-  Future<bool> show() async {
+  Future<void> prepare() async => prepared++;
+
+  @override
+  Future<AdOutcome> show(BuildContext context) async {
     shown++;
-    return earn;
+    return outcome;
   }
 }
 

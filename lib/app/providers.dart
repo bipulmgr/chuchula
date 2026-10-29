@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ads/rewarded_ads.dart';
@@ -60,7 +61,7 @@ final bluetoothPlatformProvider = Provider<BluetoothPlatform>(
   (ref) => MethodChannelBluetooth(),
 );
 
-/// Overridden in `main()` on Android with AdMob.
+/// Overridden in `main()` with [platformRewardedAds].
 final rewardedAdsProvider = Provider<RewardedAds>(
   (ref) => const NoRewardedAds(),
 );
@@ -81,13 +82,13 @@ class WalletNotifier extends Notifier<Wallet> {
   }
 
   /// Shows a rewarded ad and adds [CashPoints.adReward] if it was watched
-  /// to the end. Returns whether the reward was given.
-  Future<bool> watchAd() async {
-    final earned = await ref.read(rewardedAdsProvider).show();
-    if (earned) {
+  /// to the end.
+  Future<AdOutcome> watchAd(BuildContext context) async {
+    final outcome = await ref.read(rewardedAdsProvider).show(context);
+    if (outcome == AdOutcome.rewarded) {
       _save(state.copyWith(balance: state.balance + CashPoints.adReward));
     }
-    return earned;
+    return outcome;
   }
 
   /// Applies the local player's share of a finished match, once per match.

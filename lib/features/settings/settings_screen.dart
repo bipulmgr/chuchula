@@ -271,6 +271,7 @@ class SettingsScreen extends ConsumerWidget {
                     s.reducedMotion,
                     (v) => n.update((x) => x.copyWith(reducedMotion: v)),
                   ),
+                  _AdPrivacyTile(theme: theme),
                 ],
               ),
             ),
@@ -363,5 +364,41 @@ class _Choice extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+/// Lets players in consent regions change their ad choices (an AdMob
+/// requirement). Hidden where no consent form applies.
+class _AdPrivacyTile extends ConsumerStatefulWidget {
+  const _AdPrivacyTile({required this.theme});
+
+  final TableTheme theme;
+
+  @override
+  ConsumerState<_AdPrivacyTile> createState() => _AdPrivacyTileState();
+}
+
+class _AdPrivacyTileState extends ConsumerState<_AdPrivacyTile> {
+  late final Future<bool> _required = ref
+      .read(rewardedAdsProvider)
+      .privacyOptionsRequired();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<bool>(
+    future: _required,
+    builder: (context, snap) {
+      if (snap.data != true) return const SizedBox.shrink();
+      final l = context.l10n;
+      return ListTile(
+        key: const Key('adPrivacyTile'),
+        leading: Icon(Icons.privacy_tip, color: widget.theme.accent),
+        title: Text(
+          l.adPrivacy,
+          style: TextStyle(color: widget.theme.onSurface),
+        ),
+        subtitle: Text(l.adPrivacySub),
+        onTap: () => ref.read(rewardedAdsProvider).showPrivacyOptions(),
+      );
+    },
   );
 }

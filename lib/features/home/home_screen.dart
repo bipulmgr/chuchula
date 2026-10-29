@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ads/rewarded_ads.dart';
 import '../../app/providers.dart';
 import '../../audio/audio_service.dart';
 import '../../bots/bot_strategy.dart';
@@ -31,11 +32,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   )..forward();
 
   SavedMatch? _saved;
+  bool _adBusy = false;
 
   @override
   void initState() {
     super.initState();
     _loadSaved();
+    // Consent form (where required) and the first ad load, after the first
+    // frame so the form has a screen to show over.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(rewardedAdsProvider).prepare();
+    });
   }
 
   void _loadSaved() {
@@ -79,6 +86,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   /// Shows a rewarded ad and reports the outcome.
   Future<void> _watchAd() async {
+    if (_adBusy) return;
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     ref.read(audioServiceProvider).play(Sfx.button);
@@ -86,14 +94,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       messenger.showSnackBar(SnackBar(content: Text(l.adsAndroidOnly)));
       return;
     }
-    final earned = await ref.read(walletProvider.notifier).watchAd();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          earned ? l.adRewarded(CashPoints.adReward) : l.adUnavailable,
+    setState(() => _adBusy = true);
+    final AdOutcome outcome;
+    try {
+      outcome = await ref.read(walletProvider.notifier).watchAd(context);
+    } finally {
+      if (mounted) setState(() => _adBusy = false);
+    }
+    if (outcome == AdOutcome.rewarded) {
+      ref.read(audioServiceProvider).play(Sfx.achievement);
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(switch (outcome) {
+            AdOutcome.rewarded => l.adRewarded(CashPoints.adReward),
+            AdOutcome.closedEarly => l.adClosedEarly,
+            AdOutcome.unavailable => l.adUnavailable,
+          }),
         ),
-      ),
-    );
+      );
   }
 
   Future<void> _newOffline() async {
@@ -240,6 +261,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     theme: theme,
                                     balance: ref.watch(walletProvider).balance,
                                     onWatchAd: _watchAd,
+                                    loading: _adBusy,
                                   ),
                                 ),
                               ),
@@ -358,11 +380,15 @@ class _WalletChip extends StatelessWidget {
     required this.theme,
     required this.balance,
     required this.onWatchAd,
+    this.loading = false,
   });
 
   final TableTheme theme;
   final int balance;
   final VoidCallback onWatchAd;
+
+  /// An ad is loading or showing.
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -397,21 +423,30 @@ class _WalletChip extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Tooltip(
-              message: l.watchAd(CashPoints.adReward),
+              message: loading ? l.adLoading : l.watchAd(CashPoints.adReward),
               child: TextButton.icon(
                 key: const Key('watchAdButton'),
-                onPressed: onWatchAd,
+                onPressed: loading ? null : onWatchAd,
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   minimumSize: const Size(0, 36),
                   shape: const StadiumBorder(),
                   backgroundColor: theme.accent.withValues(alpha: 0.18),
                 ),
-                icon: Icon(
-                  Icons.ondemand_video,
-                  size: 18,
-                  color: theme.accentSoft,
-                ),
+                icon: loading
+                    ? SizedBox.square(
+                        key: const Key('adLoading'),
+                        dimension: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.accentSoft,
+                        ),
+                      )
+                    : Icon(
+                        Icons.ondemand_video,
+                        size: 18,
+                        color: theme.accentSoft,
+                      ),
                 label: Text(
                   '+${CashPoints.adReward}',
                   style: TextStyle(

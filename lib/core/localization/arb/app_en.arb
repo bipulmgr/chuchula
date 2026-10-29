@@ -62,8 +62,12 @@
       }
     }
   },
-  "adUnavailable": "No reward this time. The ad was not available or was closed early.",
-  "adsAndroidOnly": "Ads for cash points are available in the Android app.",
+  "adUnavailable": "No ad is available right now. Check your internet and try again in a minute.",
+  "adClosedEarly": "The ad was closed early, so no points this time. Watch to the end to get the reward.",
+  "adLoading": "Loading ad...",
+  "adsAndroidOnly": "Ads for cash points are available in the Android and iPhone apps.",
+  "adPrivacy": "Ad privacy choices",
+  "adPrivacySub": "Change how ads may use your data",
   "needCash": "You need {min} cash points to start a match. Watch an ad to get {reward} more.",
   "@needCash": {
     "placeholders": {
