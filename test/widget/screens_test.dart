@@ -5,8 +5,10 @@ import 'package:chuchula/features/lobby/bluetooth_lobby_screen.dart';
 import 'package:chuchula/features/lobby/online_lobby_screen.dart';
 import 'package:chuchula/features/settings/settings_screen.dart';
 import 'package:chuchula/features/tutorial/how_to_play_screen.dart';
+import 'package:chuchula/multiplayer/bluetooth/bluetooth_platform.dart';
 import 'package:chuchula/persistence/settings_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_app.dart';
@@ -303,6 +305,84 @@ void main() {
       await tester.tap(find.text('Join a game'));
       await tester.pumpAndSettle();
       expect(find.text('Friend phone'), findsOneWidget);
+    });
+
+    testWidgets('headphones and other gadgets are not listed', (tester) async {
+      final bt = FakeBluetooth(
+        granted: true,
+        paired: const [
+          BtDevice(name: 'Friend phone', address: '00:11', kind: 'phone'),
+          BtDevice(name: 'Earbuds', address: '00:22', kind: 'other'),
+        ],
+      );
+      await pumpApp(tester, home: const BluetoothLobbyScreen(), bluetooth: bt);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join a game'));
+      await tester.pumpAndSettle();
+      bt.discoveredController
+        ..add(const BtDevice(name: 'Tablet', address: '00:33'))
+        ..add(const BtDevice(name: 'Car kit', address: '00:44', kind: 'other'));
+      await tester.pumpAndSettle();
+      expect(find.text('Friend phone'), findsOneWidget);
+      expect(find.text('Tablet'), findsOneWidget);
+      expect(find.text('Earbuds'), findsNothing);
+      expect(find.text('Car kit'), findsNothing);
+    });
+
+    testWidgets('Retry after a failed connection goes back to the list', (
+      tester,
+    ) async {
+      final bt = FakeBluetooth(granted: true, failConnect: true);
+      await pumpApp(tester, home: const BluetoothLobbyScreen(), bluetooth: bt);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join a game'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Friend phone'));
+      // Five reconnect attempts with growing delays, then failure.
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(
+        find.text('Could not stay connected to the host.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Friend phone'), findsOneWidget);
+      expect(find.text('Could not stay connected to the host.'), findsNothing);
+    });
+
+    testWidgets('hosting asks to make the phone visible', (tester) async {
+      final bt = FakeBluetooth(granted: true);
+      await pumpApp(tester, home: const BluetoothLobbyScreen(), bluetooth: bt);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Host a game'));
+      await tester.pumpAndSettle();
+      expect(bt.discoverableRequests, 1);
+    });
+
+    testWidgets('a host that cannot open its socket says why', (tester) async {
+      final bt = FakeBluetooth(granted: true);
+      await pumpApp(tester, home: const BluetoothLobbyScreen(), bluetooth: bt);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Host a game'));
+      await tester.pumpAndSettle();
+      bt.hosted.addError(PlatformException(code: 'bluetooth', message: 'off'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Could not start hosting: off'),
+        findsOneWidget,
+      );
+      expect(find.text('Host a game'), findsOneWidget);
+    });
+
+    testWidgets('Android 11 with Location off gets a hint', (tester) async {
+      final bt = FakeBluetooth(granted: true, locationOff: true);
+      await pumpApp(tester, home: const BluetoothLobbyScreen(), bluetooth: bt);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join a game'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('btLocationOff')), findsOneWidget);
     });
   });
 }

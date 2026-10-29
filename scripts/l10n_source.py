@@ -222,6 +222,8 @@ s('retry', 'Try again', 'फेरि प्रयास गर्नुहो�
 s('btChooseRole', 'Play with friends in the same room. One phone hosts; up to three others join.', 'एउटै ठाउँका साथीहरूसँग खेल्नुहोस्। एउटा फोनले होस्ट गर्छ; बढीमा तीनवटा जोडिन्छन्।')
 s('btReconnecting', 'Connection to the host dropped. Reconnecting…', 'होस्टसँगको जडान टुट्यो। पुनः जडान गर्दै…')
 s('btFailed', 'Could not stay connected to the host.', 'होस्टसँग जडान कायम राख्न सकिएन।')
+s('btHostFailed', 'Could not start hosting: {reason}. Check that Bluetooth is on and try again.', 'होस्ट सुरु गर्न सकिएन: {reason}। ब्लुटुथ खुला छ कि जाँचेर फेरि प्रयास गर्नुहोस्।', reason='String')
+s('btLocationOff', 'On this Android version, phones can only be found while Location is turned on.', 'यो एन्ड्रोइड संस्करणमा, लोकेसन खुला हुँदा मात्र फोन भेटिन्छ।')
 # Tutorial
 s('tutGoalTitle', 'The goal', 'लक्ष्य')
 s('tutGoal', 'Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.', 'चार खेलाडीलाई १३–१३ कार्ड बाँडिन्छ। तिनलाई ३, ३, ३ र ४ कार्डका चार समूहमा मिलाउनुहोस्। समूह र बोनस जितेर पहिले {target} अंक पुग्नुहोस्।', target='int')

@@ -9,11 +9,19 @@ class BtDevice {
     required this.name,
     required this.address,
     this.paired = false,
+    this.kind = 'unknown',
   });
 
   final String name;
   final String address;
   final bool paired;
+
+  /// 'phone', 'computer' (tablets often report this), 'unknown' or 'other'
+  /// (headphones, watches, cars, TVs...).
+  final String kind;
+
+  /// Whether this could be a phone or tablet running Chuchula.
+  bool get canHostGame => kind != 'other';
 
   factory BtDevice.fromMap(Map<dynamic, dynamic> m) => BtDevice(
     name: (m['name'] as String?)?.trim().isNotEmpty == true
@@ -21,6 +29,7 @@ class BtDevice {
         : m['address'] as String,
     address: m['address'] as String,
     paired: m['paired'] as bool? ?? false,
+    kind: m['kind'] as String? ?? 'unknown',
   );
 
   @override
@@ -36,11 +45,15 @@ class BtState {
     required this.supported,
     required this.enabled,
     required this.permissionsGranted,
+    this.locationOff = false,
   });
 
   final bool supported;
   final bool enabled;
   final bool permissionsGranted;
+
+  /// Android 11 and lower: discovery needs the Location switch on.
+  final bool locationOff;
 }
 
 /// Bluetooth Classic (RFCOMM) bridge to the Kotlin implementation in
@@ -79,6 +92,8 @@ abstract class BluetoothPlatform {
   Future<LineConnection> connect(String address);
 
   Future<void> openAppSettings();
+
+  Future<void> openLocationSettings();
 }
 
 class MethodChannelBluetooth implements BluetoothPlatform {
@@ -119,6 +134,7 @@ class MethodChannelBluetooth implements BluetoothPlatform {
       supported: m['supported'] as bool? ?? false,
       enabled: m['enabled'] as bool? ?? false,
       permissionsGranted: m['permissions'] as bool? ?? false,
+      locationOff: m['locationOff'] as bool? ?? false,
     );
   }
 
@@ -155,9 +171,13 @@ class MethodChannelBluetooth implements BluetoothPlatform {
   @override
   Stream<LineConnection> host() {
     _accepted?.close();
-    _accepted = StreamController<LineConnection>.broadcast();
-    _method.invokeMethod('startServer');
-    return _accepted!.stream;
+    final accepted = _accepted = StreamController<LineConnection>.broadcast();
+    // A failure to open the server socket (permission revoked, Bluetooth
+    // switched off) reaches the lobby as a stream error.
+    _method.invokeMethod<void>('startServer').catchError((Object e) {
+      if (!accepted.isClosed) accepted.addError(e);
+    });
+    return accepted.stream;
   }
 
   @override
@@ -183,6 +203,10 @@ class MethodChannelBluetooth implements BluetoothPlatform {
 
   @override
   Future<void> openAppSettings() => _method.invokeMethod('openAppSettings');
+
+  @override
+  Future<void> openLocationSettings() =>
+      _method.invokeMethod('openLocationSettings');
 }
 
 class _ChannelConnection implements LineConnection {

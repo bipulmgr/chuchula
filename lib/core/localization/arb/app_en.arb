@@ -438,6 +438,15 @@
   "btChooseRole": "Play with friends in the same room. One phone hosts; up to three others join.",
   "btReconnecting": "Connection to the host dropped. Reconnecting…",
   "btFailed": "Could not stay connected to the host.",
+  "btHostFailed": "Could not start hosting: {reason}. Check that Bluetooth is on and try again.",
+  "@btHostFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "btLocationOff": "On this Android version, phones can only be found while Location is turned on.",
   "tutGoalTitle": "The goal",
   "tutGoal": "Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.",
   "@tutGoal": {
