@@ -44,6 +44,7 @@ s('adLoading', 'Loading ad...', 'विज्ञापन लोड हुँद
 s('adsAndroidOnly', 'Ads for cash points are available in the Android and iPhone apps.', 'क्यास अंकका लागि विज्ञापन एन्ड्रोइड र आइफोन एपमा उपलब्ध छ।')
 s('adPrivacy', 'Ad privacy choices', 'विज्ञापन गोपनीयता छनोट')
 s('adPrivacySub', 'Change how ads may use your data', 'विज्ञापनले तपाईंको डेटा कसरी प्रयोग गर्छ, बदल्नुहोस्')
+s('privacyPolicy', 'Privacy policy', 'गोपनीयता नीति')
 s('needCash', 'You need {min} cash points to start a match. Watch an ad to get {reward} more.', 'खेल सुरु गर्न {min} क्यास अंक चाहिन्छ। {reward} थप पाउन विज्ञापन हेर्नुहोस्।', min='int', reward='int')
 # Points table
 s('pointsTable', 'Points table', 'अंक तालिका')

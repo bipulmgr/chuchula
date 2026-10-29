@@ -9,6 +9,7 @@ import '../../persistence/settings_repository.dart';
 import '../../game/models/card.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
+import 'privacy_policy_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -278,7 +279,26 @@ class SettingsScreen extends ConsumerWidget {
             header(l.about),
             GoldPanel(
               theme: theme,
-              child: Text(l.aboutBody, style: const TextStyle(height: 1.4)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l.aboutBody, style: const TextStyle(height: 1.4)),
+                  ListTile(
+                    key: const Key('privacyPolicyTile'),
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.policy, color: theme.accent),
+                    title: Text(
+                      l.privacyPolicy,
+                      style: TextStyle(color: theme.onSurface),
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PrivacyPolicyScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

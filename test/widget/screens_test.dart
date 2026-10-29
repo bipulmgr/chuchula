@@ -170,6 +170,26 @@ void main() {
   });
 
   group('settings', () {
+    testWidgets('the privacy policy opens from Settings', (tester) async {
+      await pumpApp(tester, home: const SettingsScreen());
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.byKey(const Key('privacyPolicyTile')),
+        find.byType(ListView),
+        const Offset(0, -300),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('privacyPolicyTile')));
+      await tester.pumpAndSettle();
+      // The asset loads with real I/O.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Chuchula privacy policy'), findsOneWidget);
+      expect(find.text('Offline play'), findsOneWidget);
+    });
+
     testWidgets('music and sound toggles persist and reach the audio service', (
       tester,
     ) async {

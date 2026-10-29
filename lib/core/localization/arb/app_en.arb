@@ -68,6 +68,7 @@
   "adsAndroidOnly": "Ads for cash points are available in the Android and iPhone apps.",
   "adPrivacy": "Ad privacy choices",
   "adPrivacySub": "Change how ads may use your data",
+  "privacyPolicy": "Privacy policy",
   "needCash": "You need {min} cash points to start a match. Watch an ad to get {reward} more.",
   "@needCash": {
     "placeholders": {
