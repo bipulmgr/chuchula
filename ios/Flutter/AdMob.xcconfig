@@ -1,0 +1,4 @@
+// AdMob app id for iOS (AdMob console > Apps > your iOS app > App settings).
+// This default is Google's public test app id, which serves test ads only.
+// Replace it before an App Store release. Note "~", not "/".
+ADMOB_APP_ID = ca-app-pub-3940256099942544~1458002511

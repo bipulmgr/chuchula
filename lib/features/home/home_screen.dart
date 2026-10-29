@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -221,15 +222,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         primary: false,
         onPressed: () => _push(const OnlineLobbyScreen()),
       ),
-      GoldButton(
-        key: const Key('bluetoothButton'),
-        theme: theme,
-        label: l.bluetoothPlay,
-        subtitle: l.bluetoothPlaySub,
-        icon: Icons.bluetooth,
-        primary: false,
-        onPressed: () => _push(const BluetoothLobbyScreen()),
-      ),
+      // iPhones cannot open Bluetooth Classic links to Android phones, so
+      // Bluetooth play is Android only.
+      if (defaultTargetPlatform != TargetPlatform.iOS)
+        GoldButton(
+          key: const Key('bluetoothButton'),
+          theme: theme,
+          label: l.bluetoothPlay,
+          subtitle: l.bluetoothPlaySub,
+          icon: Icons.bluetooth,
+          primary: false,
+          onPressed: () => _push(const BluetoothLobbyScreen()),
+        ),
     ];
 
     return Scaffold(

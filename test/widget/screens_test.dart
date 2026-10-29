@@ -7,6 +7,7 @@ import 'package:chuchula/features/settings/settings_screen.dart';
 import 'package:chuchula/features/tutorial/how_to_play_screen.dart';
 import 'package:chuchula/multiplayer/bluetooth/bluetooth_platform.dart';
 import 'package:chuchula/persistence/settings_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'test_app.dart';
 
 void main() {
+  testWidgets('iPhones get no Bluetooth button', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await pumpApp(tester);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('playOnlineButton')), findsOneWidget);
+      expect(find.byKey(const Key('bluetoothButton')), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('home shows the title and every mode', (tester) async {
     await pumpApp(tester);
     await tester.pumpAndSettle();
