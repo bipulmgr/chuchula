@@ -11,10 +11,15 @@ up. Offline and Bluetooth play never need Firebase.
 3. **Build → Firestore Database:** create a database in production mode.
 4. Cloud Functions need the **Blaze** (pay as you go) plan. Normal play
    uses a few function calls per move; set a budget alert.
-5. **Project settings → Your apps → Add app → Web** (the Flutter app
-   uses the web options; no `google-services.json` is needed). Copy the
-   `apiKey`, `appId`, `messagingSenderId`, `projectId` and
-   `storageBucket` into `.env` (see `.env.example`).
+5. **Project settings → Your apps:** add an Android app (package
+   `com.bipulmgr.chuchula`), an iOS app (bundle id
+   `com.bipulmgr.chuchula`) and a Web app. No `google-services.json` or
+   `GoogleService-Info.plist` is needed. Copy `apiKey`,
+   `messagingSenderId`, `projectId` and `storageBucket` into `.env`, and
+   each app's `appId` into `FIREBASE_ANDROID_APP_ID`,
+   `FIREBASE_IOS_APP_ID` and `FIREBASE_WEB_APP_ID` (see `.env.example`).
+   `FIREBASE_APP_ID` alone also works: it is used for any platform
+   without its own id.
 
 ## 2. Deploy the server
 
@@ -23,13 +28,14 @@ npm install -g firebase-tools
 firebase login
 cp .firebaserc.example .firebaserc   # put your project id in it
 cd functions && npm ci && cd ..
-firebase deploy --only functions,firestore
+firebase deploy --only functions,firestore,hosting
 ```
 
 This deploys the callables (`createRoom`, `joinRoom`, `leaveRoom`,
-`startMatch`, `submitMove`, `heartbeat`), the `cleanupRooms` schedule and
-`firestore.rules`. The default region is `us-central1`. To change it, set
-`FUNCTIONS_REGION` for the functions and `FIREBASE_FUNCTIONS_REGION` in
+`startMatch`, `submitMove`, `heartbeat`), the `cleanupRooms` schedule,
+`firestore.rules` and its index, and the privacy policy page in
+`hosting/`. The default region is `us-central1`. To change it, set
+`FUNCTIONS_REGION` in `functions/.env` for the functions and `FIREBASE_FUNCTIONS_REGION` in
 `.env` to the same value.
 
 No service-account keys are needed or stored: deployed functions use

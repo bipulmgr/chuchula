@@ -3,6 +3,7 @@ import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/scoring/cash_points.dart';
 import 'package:chuchula/persistence/settings_repository.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,13 +14,16 @@ MatchResult _result(int winner, List<int> scores) => MatchResult(
   finalScores: scores,
 );
 
-class _Ads implements RewardedAds {
+class _Ctx extends Fake implements BuildContext {}
+
+class _Ads extends RewardedAds {
   _Ads(this.earn);
   final bool earn;
   @override
   bool get supported => true;
   @override
-  Future<bool> show() async => earn;
+  Future<AdOutcome> show(BuildContext context) async =>
+      earn ? AdOutcome.rewarded : AdOutcome.closedEarly;
 }
 
 Future<ProviderContainer> _container({
@@ -104,7 +108,10 @@ void main() {
     test('a watched ad adds 50; an unfinished one adds nothing', () async {
       final c = await _container(prefs: {'wallet.v1': '{"balance":20}'});
       expect(c.read(walletProvider.notifier).canPlay, isFalse);
-      expect(await c.read(walletProvider.notifier).watchAd(), isTrue);
+      expect(
+        await c.read(walletProvider.notifier).watchAd(_Ctx()),
+        AdOutcome.rewarded,
+      );
       expect(c.read(walletProvider).balance, 70);
       expect(c.read(walletProvider.notifier).canPlay, isTrue);
 
@@ -112,7 +119,10 @@ void main() {
         prefs: {'wallet.v1': '{"balance":20}'},
         earn: false,
       );
-      expect(await none.read(walletProvider.notifier).watchAd(), isFalse);
+      expect(
+        await none.read(walletProvider.notifier).watchAd(_Ctx()),
+        AdOutcome.closedEarly,
+      );
       expect(none.read(walletProvider).balance, 20);
     });
 
