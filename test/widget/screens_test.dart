@@ -15,6 +15,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'test_app.dart';
 
 void main() {
+  testWidgets('a build without Firebase has no Online button', (tester) async {
+    await pumpApp(tester, onlineEnabled: false);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('playOfflineButton')), findsOneWidget);
+    expect(find.byKey(const Key('playOnlineButton')), findsNothing);
+    expect(find.byKey(const Key('bluetoothButton')), findsOneWidget);
+  });
+
   testWidgets('iPhones get no Bluetooth button', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {

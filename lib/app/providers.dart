@@ -6,6 +6,7 @@ import '../audio/audio_service.dart';
 import '../core/theme/table_themes.dart';
 import '../game/scoring/cash_points.dart';
 import '../multiplayer/bluetooth/bluetooth_platform.dart';
+import '../multiplayer/online/firebase_config.dart';
 import '../persistence/settings_repository.dart';
 
 /// Overridden in `main()` with the opened store.
@@ -55,6 +56,12 @@ class StatsNotifier extends Notifier<PlayerStats> {
     ref.read(localStoreProvider).saveStats(state);
   }
 }
+
+/// Whether this build has Firebase settings, so the Online play mode is
+/// shown. Overridden in tests.
+final onlinePlayEnabledProvider = Provider<bool>(
+  (ref) => FirebaseConfig.isConfigured,
+);
 
 /// Overridden in tests with a fake.
 final bluetoothPlatformProvider = Provider<BluetoothPlatform>(
