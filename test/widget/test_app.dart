@@ -131,6 +131,7 @@ Future<TestEnv> pumpApp(
   Widget? home,
   FakeBluetooth? bluetooth,
   RewardedAds ads = const NoRewardedAds(),
+  bool onlineEnabled = true,
   bool reducedMotion = true,
 }) async {
   // A phone-sized portrait screen.
@@ -153,6 +154,7 @@ Future<TestEnv> pumpApp(
         localStoreProvider.overrideWithValue(store),
         audioServiceProvider.overrideWithValue(env.audio),
         bluetoothPlatformProvider.overrideWithValue(env.bluetooth),
+        onlinePlayEnabledProvider.overrideWithValue(onlineEnabled),
         rewardedAdsProvider.overrideWithValue(ads),
       ],
       child: Consumer(

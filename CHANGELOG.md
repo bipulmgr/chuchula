@@ -4,6 +4,10 @@
 
 First version.
 
+- Builds without Firebase settings hide Online play, so the app can be
+  released with no Firebase bill (docs/STORE_RELEASE.md, "The free way to
+  release").
+
 - Store release prep: iOS app, a real app icon and store graphics, an
   in-app privacy policy (also published with Firebase Hosting), the Play
   app bundle in CI, and docs/STORE_RELEASE.md.

@@ -1,8 +1,8 @@
 # Firebase setup (online play)
 
-Online play needs your own Firebase project. Without it the app still
-builds and runs; the Online button explains that online play is not set
-up. Offline and Bluetooth play never need Firebase.
+Online play needs your own Firebase project on the paid Blaze plan
+(Cloud Functions do not run on the free Spark plan). Without it the app
+still builds and runs, and the Online play button is hidden. Offline and Bluetooth play never need Firebase.
 
 ## 1. Create the project
 

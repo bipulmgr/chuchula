@@ -14,7 +14,9 @@ bought, sold, withdrawn or exchanged for money or prizes.
 
 ## Online play
 
-Online play uses Google Firebase (Authentication, Cloud Firestore and Cloud
+This section applies only to versions of the app that include Online play
+(the home screen then shows a "Play online" button). Online play uses Google
+Firebase (Authentication, Cloud Firestore and Cloud
 Functions), run by Google.
 
 - When you first open online play, Firebase creates an anonymous account: a

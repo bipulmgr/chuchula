@@ -13,7 +13,7 @@ change their menus often, so follow the names below loosely.
 | Google Play developer account | $25 once | Android |
 | Apple Developer Program | $99 a year | iPhone |
 | A Mac with Xcode, or a cloud Mac service (for example Codemagic) | - | Signing and uploading the iPhone build |
-| Firebase project on the Blaze plan | Pay as you go, small for a card game; set a budget alert | Online play |
+| Firebase project on the Blaze plan | Pay as you go; set a budget alert | Online play only. **Optional**: see "The free way to release" below |
 | Google AdMob account | Free | Real ads and the +50 reward |
 | 2 Android phones (ideally 4) and 1 iPhone | - | Real-device tests |
 | 12 people with Android phones | - | Google's closed test for new personal accounts (section 5.5) |
@@ -30,6 +30,48 @@ Already done in the code:
   entry in Settings.
 - CI builds a signed Play bundle (`.aab`) and APKs, and checks that the
   iOS project builds.
+
+## The free way to release (no Firebase bill)
+
+Firebase is needed **only for Online play**. Offline play against bots,
+Bluetooth play, cash points, the rewarded ad (AdMob, which pays you) and
+everything else run without it. The Online play button only appears in
+builds that have Firebase settings (`.env`). Without them it is hidden,
+the app never contacts Firebase, and nothing can be billed.
+
+Firebase's free **Spark** plan cannot run Cloud Functions, and the
+online game's server logic (dealing, checking moves, bots) runs there.
+Online play therefore needs the paid **Blaze** plan. Its cost for a small
+game is usually cents a month, mostly for storing the deployed functions.
+But it needs a card on file and is never guaranteed to be zero.
+
+Cheapest path, using the Play Console account you already have:
+
+1. Build **without** `.env`, or with the `FIREBASE_*` lines left empty:
+   `flutter build appbundle --release`. The AdMob ids still go in as in
+   section 3; they don't need Firebase. In CI, leave the `APP_ENV` secret
+   out, or put only the `ADMOB_*` lines in it.
+2. Stop the existing bill. In the Google Cloud console
+   (<https://console.cloud.google.com/billing>), open **Reports** to see
+   which service charged you. Then, in the Firebase console, either
+   **delete the project** (Project settings > General > Delete project)
+   or downgrade it to **Spark** (Usage and billing > Details & settings >
+   Modify plan). Downgrading stops the functions, and Spark can never
+   charge you.
+3. Publish the privacy policy without a paid plan, in one of these ways:
+   - Firebase **Hosting** on a **Spark** project is free and needs no
+     card: `firebase deploy --only hosting` (skip
+     `functions,firestore`).
+   - Or paste `assets/legal/privacy_policy.md` into a free **Google
+     Sites** page and use that address.
+4. Skip section 2. In section 5.3, leave out the two Firebase rows (Name
+   and User IDs).
+5. Online play can come back later in an update: set up Firebase as in
+   section 2 and build with `.env` again. No code change is needed.
+
+Without Firebase, players lose only Online play with strangers or
+friends far away. Friends in the same room can still play over
+Bluetooth.
 
 ## 1. Decide how the game presents cash points (YOU)
 
@@ -51,9 +93,9 @@ That is allowed, with these effects:
   "coins" or "chips" before release. Reviewers react to the word *cash*.
   The rename is one line per language in `scripts/l10n_source.py`.
 
-## 2. Firebase for online play (YOU)
+## 2. Firebase for online play (YOU, optional)
 
-Details and the data model are in `docs/FIREBASE_SETUP.md`. In short:
+Skip this whole section for the free release above. Details and the data model are in `docs/FIREBASE_SETUP.md`. In short:
 
 1. Create a project at <https://console.firebase.google.com>, then
    upgrade it to **Blaze** and add a **budget alert** (for example $5).
@@ -236,8 +278,8 @@ default.
 
 ### 5.3 Data safety form
 
-The app itself collects only what online play needs. AdMob collects
-more. Google keeps the AdMob part up to date at
+The app itself collects only what online play needs (and nothing at all
+in a build without Firebase). AdMob collects more. Google keeps the AdMob part up to date at
 <https://developers.google.com/admob/android/privacy/play-data-disclosure>.
 Check that page as you fill this in.
 

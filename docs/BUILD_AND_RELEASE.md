@@ -20,8 +20,8 @@ flutter build apk --debug      # build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 Add `--dart-define-from-file=.env` to enable online play (see
-`docs/FIREBASE_SETUP.md`). Without it, online play shows a "not set up"
-message and everything else works.
+`docs/FIREBASE_SETUP.md`). Without it, the Online play button is hidden
+and everything else works.
 
 ## Release build
 

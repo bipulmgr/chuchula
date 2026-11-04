@@ -213,15 +213,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         primary: saved == null,
         onPressed: _newOffline,
       ),
-      GoldButton(
-        key: const Key('playOnlineButton'),
-        theme: theme,
-        label: l.playOnline,
-        subtitle: l.playOnlineSub,
-        icon: Icons.public,
-        primary: false,
-        onPressed: () => _push(const OnlineLobbyScreen()),
-      ),
+      // Online play needs a Firebase project (a paid plan for Cloud
+      // Functions). Builds without one leave the mode out entirely.
+      if (ref.watch(onlinePlayEnabledProvider))
+        GoldButton(
+          key: const Key('playOnlineButton'),
+          theme: theme,
+          label: l.playOnline,
+          subtitle: l.playOnlineSub,
+          icon: Icons.public,
+          primary: false,
+          onPressed: () => _push(const OnlineLobbyScreen()),
+        ),
       // iPhones cannot open Bluetooth Classic links to Android phones, so
       // Bluetooth play is Android only.
       if (defaultTargetPlatform != TargetPlatform.iOS)
