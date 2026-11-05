@@ -96,21 +96,35 @@ jobs:
           flutter build apk --debug
           # Free the debug build's daemons before the release build.
           (cd android && ./gradlew --stop)
-      - name: Build release APK
+      - name: Build release APK and app bundle
         # Signed with the release keystore when the ANDROID_KEYSTORE_* secrets
         # exist; otherwise android/app/build.gradle.kts falls back to the
-        # debug key and the APK is for testing only.
+        # debug key and the builds are for testing only. APP_ENV is the whole
+        # .env file (Firebase and AdMob unit ids) and ADMOB_APP_ID_ANDROID the
+        # AdMob app id; without them online play is off and test ads show.
+        # See docs/STORE_RELEASE.md.
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APP_ENV: ${{ secrets.APP_ENV }}
+          ADMOB_APP_ID_ANDROID: ${{ secrets.ADMOB_APP_ID_ANDROID }}
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
           fi
-          flutter build apk --release
+          ARGS=(--release)
+          if [ -n "$APP_ENV" ]; then
+            printf '%s\n' "$APP_ENV" > "$RUNNER_TEMP/app.env"
+            ARGS+=(--dart-define-from-file="$RUNNER_TEMP/app.env")
+          fi
+          if [ -n "$ADMOB_APP_ID_ANDROID" ]; then
+            export ORG_GRADLE_PROJECT_admobAppId="$ADMOB_APP_ID_ANDROID"
+          fi
+          flutter build apk "${ARGS[@]}"
+          flutter build appbundle "${ARGS[@]}"
       - name: Verify APKs
         run: |
           set -e
@@ -118,6 +132,8 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/chuchula-release.apk
           cp build/app/outputs/flutter-apk/app-debug.apk dist/chuchula-debug.apk
+          cp build/app/outputs/bundle/release/app-release.aab dist/chuchula-release.aab
+          ls -l dist/chuchula-release.aab
           for f in dist/*.apk; do
             echo "== $f"; ls -l "$f"; sha256sum "$f"
             unzip -tq "$f"
@@ -136,5 +152,30 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: chuchula-apks
-          path: dist/*.apk
+          path: |
+            dist/*.apk
+            dist/*.aab
           if-no-files-found: error
+
+  ios:
+    name: Build iOS (no signing)
+    # macOS minutes cost more, so this runs on pull requests, main and by hand
+    # rather than on every branch push.
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build
+        run: flutter build ios --release --no-codesign
+      - name: Check the app bundle
+        run: |
+          APP=build/ios/iphoneos/Runner.app
+          ls -l "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' "$APP/Info.plist"

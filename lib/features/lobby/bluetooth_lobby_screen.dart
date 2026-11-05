@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -35,6 +36,7 @@ class BluetoothLobbyScreen extends ConsumerStatefulWidget {
 class _BluetoothLobbyScreenState extends ConsumerState<BluetoothLobbyScreen> {
   _Stage _stage = _Stage.checking;
   String? _error;
+  bool _locationOff = false;
 
   // Hosting
   HostLobby? _lobby;
@@ -82,6 +84,7 @@ class _BluetoothLobbyScreenState extends ConsumerState<BluetoothLobbyScreen> {
       final s = await _bt.state();
       if (!mounted) return;
       setState(() {
+        _locationOff = s.locationOff;
         _stage = !s.supported
             ? _Stage.unsupported
             : !s.permissionsGranted
@@ -118,14 +121,35 @@ class _BluetoothLobbyScreenState extends ConsumerState<BluetoothLobbyScreen> {
   Future<void> _host() async {
     final lobby = HostLobby(hostName: _name);
     _lobby = lobby;
+    setState(() {
+      _error = null;
+      _stage = _Stage.hosting;
+    });
+    _acceptSub = _bt.host().listen(
+      lobby.accept,
+      onError: (Object e) {
+        _acceptSub?.cancel();
+        _acceptSub = null;
+        _lobby = null;
+        if (mounted) {
+          setState(() {
+            _error = context.l10n.btHostFailed(_describe(e));
+            _stage = _Stage.choose;
+          });
+        }
+        // After the rebuild, so the hosting panel no longer listens to it.
+        WidgetsBinding.instance.addPostFrameCallback((_) => lobby.close());
+      },
+    );
+    // Phones that were never paired can only find the host while it is
+    // visible, so ask right away (one system dialog).
     try {
-      _acceptSub = _bt.host().listen(lobby.accept);
-    } catch (e) {
-      setState(() => _error = e.toString());
-      return;
-    }
-    setState(() => _stage = _Stage.hosting);
+      await _bt.makeDiscoverable();
+    } catch (_) {}
   }
+
+  static String _describe(Object e) =>
+      e is PlatformException ? (e.message ?? e.code) : e.toString();
 
   Future<void> _startHostedGame() async {
     final lobby = _lobby!;
@@ -152,19 +176,29 @@ class _BluetoothLobbyScreenState extends ConsumerState<BluetoothLobbyScreen> {
   }
 
   Future<void> _join() async {
+    // Retrying after a failed connection starts over from the device list.
+    final old = _client;
+    _client = null;
     setState(() {
       _stage = _Stage.joining;
       _devices.clear();
+      _error = null;
     });
+    await old?.dispose();
     try {
+      final s = await _bt.state();
+      _locationOff = s.locationOff;
       final paired = await _bt.pairedDevices();
-      setState(() => _devices.addAll(paired));
+      if (!mounted) return;
+      setState(() => _devices.addAll(paired.where((d) => d.canHostGame)));
       _discoverSub ??= _bt.discovered.listen((d) {
-        if (!_devices.contains(d) && mounted) setState(() => _devices.add(d));
+        if (d.canHostGame && !_devices.contains(d) && mounted) {
+          setState(() => _devices.add(d));
+        }
       });
       await _bt.startDiscovery();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = _describe(e));
     }
   }
 
@@ -453,6 +487,23 @@ class _BluetoothLobbyScreenState extends ConsumerState<BluetoothLobbyScreen> {
               padding: const EdgeInsets.all(12),
               child: Text(l.btNoDevices, textAlign: TextAlign.center),
             ),
+          if (_locationOff) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                l.btLocationOff,
+                key: const Key('btLocationOff'),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            TextButton(
+              onPressed: _bt.openLocationSettings,
+              child: Text(
+                l.openSettings,
+                style: TextStyle(color: theme.accentSoft),
+              ),
+            ),
+          ],
           for (final d in _devices)
             ListTile(
               leading: Icon(Icons.smartphone, color: theme.accent),

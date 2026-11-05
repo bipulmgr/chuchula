@@ -35,6 +35,7 @@ flutter:
     - assets/audio/
     - assets/audio/soft/
     - assets/audio/arcade/
+    - assets/legal/
   fonts:
     - family: Mukta
       fonts:

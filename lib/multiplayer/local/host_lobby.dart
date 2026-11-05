@@ -192,6 +192,7 @@ class HostLobby {
   }
 
   Future<void> close() async {
+    if (_closed) return;
     _closed = true;
     for (final l in _links.values) {
       l.sendRaw(Wire.encode('bye'));

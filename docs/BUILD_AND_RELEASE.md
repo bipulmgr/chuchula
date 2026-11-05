@@ -1,5 +1,8 @@
 # Build and release
 
+For publishing on Google Play and the App Store, see
+`docs/STORE_RELEASE.md`.
+
 ## Requirements
 
 - Flutter 3.47.8 (Dart 3.13), Android SDK with platform 36, JDK 17.
@@ -17,8 +20,8 @@ flutter build apk --debug      # build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 Add `--dart-define-from-file=.env` to enable online play (see
-`docs/FIREBASE_SETUP.md`). Without it, online play shows a "not set up"
-message and everything else works.
+`docs/FIREBASE_SETUP.md`). Without it, the Online play button is hidden
+and everything else works.
 
 ## Release build
 
@@ -54,31 +57,29 @@ JSON. `.gitignore` excludes them.
 
 ## Rewarded ads (cash points)
 
-Cash points can be topped up by watching a Google AdMob rewarded ad. Out
-of the box the app uses Google's public **test** ids, which only show
-test ads and earn nothing. For real ads, create an AdMob app and a
-rewarded ad unit, then build with both ids:
+Cash points can be topped up by watching a Google AdMob rewarded ad, on
+Android and iOS. Out of the box the app uses Google's public **test**
+ids: they show a "Test Ad" and do grant the +50, but never earn money.
+Debug builds on web and desktop show a stand-in test ad instead.
+
+For real ads, see `docs/STORE_RELEASE.md` section 3. In short:
 
 ```sh
-flutter build apk --release \
-  -PadmobAppId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY \
-  --dart-define=ADMOB_REWARDED_ID=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+flutter build appbundle --release --dart-define-from-file=.env \
+  -PadmobAppId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
 ```
 
-- The app id goes into the manifest through `admobAppId` in
-  `android/app/build.gradle.kts` (a Gradle property, so it can also live
-  in `~/.gradle/gradle.properties`).
-- The ad unit id is read in `lib/ads/rewarded_ads.dart`
-  (`ADMOB_REWARDED_ID`).
-- Before publishing, declare ads and the advertising id in the Play
-  Console (see docs/ANDROID_PERMISSIONS.md).
-
-Ads are Android only; on other platforms the +50 button explains that.
+with `ADMOB_REWARDED_ID` (and `ADMOB_REWARDED_ID_IOS`) in `.env`, and the
+iOS app id in `ios/Flutter/AdMob.xcconfig`. The ads code is
+`lib/ads/rewarded_ads.dart`; it runs Google's consent form (UMP) before
+the first ad is requested.
 
 ## Releases from CI
 
-Every push builds debug and release APKs in GitHub Actions and uploads
-them as the **chuchula-apks** artifact on the workflow run. The verify step
+Every push builds debug and release APKs and the Play Store app bundle
+(`chuchula-release.aab`) in GitHub Actions and uploads them as the
+**chuchula-apks** artifact on the workflow run. Pull requests and `main`
+also build the iOS app without signing. The verify step
 prints each APK's size, SHA-256, package info, permissions and signing
 certificate.
 
@@ -90,6 +91,8 @@ To sign CI releases with your key, add these repository secrets:
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `ANDROID_KEY_ALIAS` | Key alias |
 | `ANDROID_KEY_PASSWORD` | Key password |
+| `APP_ENV` | The whole `.env` file (Firebase and AdMob unit ids) |
+| `ADMOB_APP_ID_ANDROID` | AdMob Android app id |
 
 ## Versioning
 

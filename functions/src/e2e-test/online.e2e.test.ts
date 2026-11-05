@@ -92,4 +92,45 @@ describe('online play through Cloud Functions', () => {
       (e: any) => e.details?.reason === 'not-playing',
     );
   });
+
+  it('four players fill the room; a leaver is replaced by a bot; a rejoin keeps the seat', { timeout: 240_000 }, async () => {
+    const ps = [await player('p0'), await player('p1'), await player('p2'), await player('p3')];
+    const { roomId, code } = await ps[0].call('createRoom', { name: 'P0' });
+    for (let i = 1; i < 4; i++) await ps[i].call('joinRoom', { code, name: `P${i}` });
+    const extra = await player('p4');
+    await assert.rejects(extra.call('joinRoom', { code, name: 'Late' }), (e: any) => e.details?.reason === 'room-full');
+    await ps[0].call('startMatch', { roomId });
+
+    const roomDoc = async () => (await getDoc(doc(ps[0].db, `rooms/${roomId}`))).data() as any;
+    assert.equal((await roomDoc()).seats.filter((s: any) => s.isBot).length, 0);
+
+    // A player restarting the app joins with the same code and keeps the seat.
+    const before = (await ps[2].view(roomId))!;
+    assert.equal((await ps[2].call('joinRoom', { code, name: 'P2' })).roomId, roomId);
+    assert.equal((await ps[2].view(roomId))!.mySeat, before.mySeat);
+    // Nobody new can take a seat once the match has started.
+    await assert.rejects(extra.call('joinRoom', { code, name: 'Late' }), (e: any) => e.details?.reason === 'already-started');
+
+    // Player 3 leaves for good: a bot plays the seat from now on.
+    await ps[3].call('leaveRoom', { roomId });
+    assert.equal((await roomDoc()).seats.filter((s: any) => s.isBot).length, 1);
+
+    const live = ps.slice(0, 3);
+    for (let guard = 0; guard < 600; guard++) {
+      const views = await Promise.all(live.map((p) => p.view(roomId)));
+      if (views[0]!.phase === 'matchOver') break;
+      let acted = false;
+      for (let i = 0; i < live.length; i++) {
+        const pv = views[i]!;
+        const move = pv.phase === 'roundOver' ? { type: 'next', seat: pv.mySeat } : botMove(pv);
+        if (!move) continue;
+        await live[i].call('submitMove', { roomId, move });
+        acted = true;
+        break;
+      }
+      assert.ok(acted, `nobody could act in ${views[0]!.phase}`);
+    }
+    assert.equal((await ps[0].view(roomId))!.phase, 'matchOver');
+    assert.equal((await roomDoc()).status, 'finished');
+  });
 });

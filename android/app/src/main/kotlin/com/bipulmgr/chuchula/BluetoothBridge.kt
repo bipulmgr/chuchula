@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
@@ -13,6 +14,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -113,6 +115,23 @@ class BluetoothBridge(
         activity.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * On Android 11 and lower, classic discovery finds nothing while the
+     * phone's Location switch is off, even with the permission granted.
+     */
+    private fun locationOff(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return false
+        val lm = activity.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            !lm.isLocationEnabled
+        } else {
+            @Suppress("DEPRECATION")
+            !lm.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
+                !lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        }
+    }
+
     private fun canConnect(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             activity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) ==
@@ -150,6 +169,7 @@ class BluetoothBridge(
                         "supported" to (adapter != null),
                         "enabled" to (adapter?.isEnabled == true),
                         "permissions" to hasPermissions(),
+                        "locationOff" to locationOff(),
                     ),
                 )
                 "requestPermissions" -> requestPermissions(result)
@@ -159,6 +179,10 @@ class BluetoothBridge(
                 "startDiscovery" -> { startDiscovery(); result.success(null) }
                 "stopDiscovery" -> { stopDiscovery(); result.success(null) }
                 "startServer" -> { startServer(); result.success(null) }
+                "openLocationSettings" -> {
+                    activity.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    result.success(null)
+                }
                 "stopServer" -> { stopServer(); result.success(null) }
                 "connect" -> connect(call.argument<String>("address")!!, result)
                 "send" -> {
@@ -239,7 +263,23 @@ class BluetoothBridge(
         "name" to (if (canConnect()) d.name else null),
         "address" to d.address,
         "paired" to paired,
+        // Lets the lobby hide headphones, watches, cars and the like.
+        "kind" to deviceKind(d),
     )
+
+    @SuppressLint("MissingPermission")
+    private fun deviceKind(d: BluetoothDevice): String =
+        try {
+            when (d.bluetoothClass?.majorDeviceClass) {
+                BluetoothClass.Device.Major.PHONE -> "phone"
+                BluetoothClass.Device.Major.COMPUTER -> "computer"
+                null, BluetoothClass.Device.Major.UNCATEGORIZED,
+                BluetoothClass.Device.Major.MISC -> "unknown"
+                else -> "other"
+            }
+        } catch (_: SecurityException) {
+            "unknown"
+        }
 
     private val receiver = object : BroadcastReceiver() {
         @SuppressLint("MissingPermission")
@@ -344,8 +384,7 @@ class BluetoothBridge(
             try {
                 if (hasPermissions()) a.cancelDiscovery()
                 val device = a.getRemoteDevice(address)
-                val socket = device.createRfcommSocketToServiceRecord(SERVICE_UUID)
-                socket.connect()
+                val socket = openSocket(device)
                 val c = Connection("c${nextId.getAndIncrement()}", socket)
                 connections[c.id] = c
                 c.start()
@@ -354,6 +393,36 @@ class BluetoothBridge(
                 main.post { result.error("connect-failed", e.message, null) }
             }
         }
+    }
+
+    /**
+     * Connects to the host's game service. The first try often fails while
+     * the phones pair for the first time or the service record is not yet
+     * cached, so it is retried a few times.
+     */
+    @SuppressLint("MissingPermission")
+    private fun openSocket(device: BluetoothDevice): BluetoothSocket {
+        var last: IOException? = null
+        repeat(3) { attempt ->
+            val socket = device.createRfcommSocketToServiceRecord(SERVICE_UUID)
+            try {
+                socket.connect()
+                return socket
+            } catch (e: IOException) {
+                last = e
+                try {
+                    socket.close()
+                } catch (_: IOException) {
+                }
+                if (attempt == 0 && device.bondState != BluetoothDevice.BOND_BONDED) {
+                    // Let the pairing dialog finish before trying again.
+                    Thread.sleep(3000)
+                } else {
+                    Thread.sleep(800L * (attempt + 1))
+                }
+            }
+        }
+        throw last ?: IOException("connect failed")
     }
 
     @SuppressLint("MissingPermission")

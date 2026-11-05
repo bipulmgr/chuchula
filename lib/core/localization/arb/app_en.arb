@@ -62,8 +62,13 @@
       }
     }
   },
-  "adUnavailable": "No reward this time. The ad was not available or was closed early.",
-  "adsAndroidOnly": "Ads for cash points are available in the Android app.",
+  "adUnavailable": "No ad is available right now. Check your internet and try again in a minute.",
+  "adClosedEarly": "The ad was closed early, so no points this time. Watch to the end to get the reward.",
+  "adLoading": "Loading ad...",
+  "adsAndroidOnly": "Ads for cash points are available in the Android and iPhone apps.",
+  "adPrivacy": "Ad privacy choices",
+  "adPrivacySub": "Change how ads may use your data",
+  "privacyPolicy": "Privacy policy",
   "needCash": "You need {min} cash points to start a match. Watch an ad to get {reward} more.",
   "@needCash": {
     "placeholders": {
@@ -392,6 +397,16 @@
   "connecting": "Connecting…",
   "roomNotFound": "No open room has that code.",
   "roomFull": "That room is full.",
+  "roomStarted": "That match has already started. Only its players can rejoin.",
+  "rejoinRoom": "Rejoin room {code}",
+  "@rejoinRoom": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "rejoinRoomSub": "Your last match may still be going",
   "hostLabel": "Host",
   "copyCode": "Copy code",
   "codeCopied": "Code copied",
@@ -434,6 +449,15 @@
   "btChooseRole": "Play with friends in the same room. One phone hosts; up to three others join.",
   "btReconnecting": "Connection to the host dropped. Reconnecting…",
   "btFailed": "Could not stay connected to the host.",
+  "btHostFailed": "Could not start hosting: {reason}. Check that Bluetooth is on and try again.",
+  "@btHostFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "btLocationOff": "On this Android version, phones can only be found while Location is turned on.",
   "tutGoalTitle": "The goal",
   "tutGoal": "Four players each get 13 cards. Split them into four groups of 3, 3, 3 and 4 cards. Win groups and bonuses to be first to {target} points.",
   "@tutGoal": {

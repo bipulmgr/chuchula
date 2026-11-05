@@ -4,6 +4,24 @@
 
 First version.
 
+- Builds without Firebase settings hide Online play, so the app can be
+  released with no Firebase bill (docs/STORE_RELEASE.md, "The free way to
+  release").
+
+- Store release prep: iOS app, a real app icon and store graphics, an
+  in-app privacy policy (also published with Firebase Hosting), the Play
+  app bundle in CI, and docs/STORE_RELEASE.md.
+- Rewarded ad: loads in advance, shows a spinner while loading, explains
+  "closed early" and "no ad available" separately, asks for consent where
+  the law needs it (Settings > Ad privacy choices), and works on iOS. Debug
+  builds on web and desktop show a stand-in test ad.
+- Online: Rejoin room after the app was closed mid-match; clearer
+  "already started" message; per-platform Firebase app ids.
+- Bluetooth: Try again after a failed join works; hosting errors are shown;
+  hosting asks to make the phone visible; headphones and other gadgets are
+  hidden from the list; a hint when Android 11 Location is off; first-time
+  pairing connections are retried. Hidden on iPhone.
+
 - Points table: every round's points per player and the totals, from the
   table's top bar and the round and match summaries.
 - Cash points (virtual, no money value) for offline matches: start with
