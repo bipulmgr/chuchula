@@ -157,6 +157,49 @@ jobs:
             dist/*.aab
           if-no-files-found: error
 
+  android-launch:
+    name: Release APK starts on an emulator
+    # Catches crashes that only happen in minified (R8) release builds,
+    # such as a library class R8 stripped. Launches the exact APK the
+    # android job built and fails on any crash in the app's process.
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: chuchula-apks
+          path: dist
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install, launch and watch for crashes
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r dist/chuchula-release.apk
+            adb logcat -c
+            adb shell monkey -p com.bipulmgr.chuchula -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb logcat -d > logcat.txt || true
+            grep -E "FATAL EXCEPTION|AndroidRuntime|E/flutter|Fatal signal" logcat.txt || true
+            if grep -q "Process: com.bipulmgr.chuchula" logcat.txt; then echo "::error::The release APK crashed on launch (see logcat above)"; exit 1; fi
+            if ! adb shell pidof com.bipulmgr.chuchula; then echo "::error::The app is not running 30 s after launch"; exit 1; fi
+            echo "Release APK is still running 30 s after launch."
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: launch-logcat
+          path: logcat.txt
+          if-no-files-found: ignore
+
   ios:
     name: Build iOS (no signing)
     # macOS minutes cost more, so this runs on pull requests, main and by hand
