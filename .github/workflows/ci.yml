@@ -62,6 +62,7 @@ jobs:
   android:
     name: Build APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Free runner disk space
         # Release builds for three ABIs need more room than the default
@@ -149,12 +150,41 @@ jobs:
           if grep -vxE "$allowed" perms.txt; then
             echo "::error::Unexpected Android permission(s) above"; exit 1
           fi
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Release APK starts on an emulator
+        # Catches crashes that only happen in the minified (R8) release
+        # build, such as a library class R8 stripped. Launches the exact
+        # APK built above and fails if the app's process crashes or is gone.
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r dist/chuchula-release.apk
+            adb logcat -c
+            adb shell monkey -p com.bipulmgr.chuchula -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb logcat -d > logcat.txt || true
+            grep -E "FATAL EXCEPTION|AndroidRuntime|E/flutter|Fatal signal" logcat.txt || true
+            if grep -q "Process: com.bipulmgr.chuchula" logcat.txt; then echo "::error::The release APK crashed on launch (see logcat above)"; exit 1; fi
+            if ! adb shell pidof com.bipulmgr.chuchula; then echo "::error::The app is not running 30 s after launch"; exit 1; fi
+            echo "Release APK is still running 30 s after launch."
       - uses: actions/upload-artifact@v5
+        # Only the release builds, kept for a week: the repository's
+        # artifact storage is small.
         with:
           name: chuchula-apks
           path: |
-            dist/*.apk
-            dist/*.aab
+            dist/chuchula-release.apk
+            dist/chuchula-release.aab
+          retention-days: 7
           if-no-files-found: error
 
   ios:
