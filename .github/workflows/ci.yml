@@ -62,6 +62,7 @@ jobs:
   android:
     name: Build APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Free runner disk space
         # Release builds for three ABIs need more room than the default
@@ -149,33 +150,15 @@ jobs:
           if grep -vxE "$allowed" perms.txt; then
             echo "::error::Unexpected Android permission(s) above"; exit 1
           fi
-      - uses: actions/upload-artifact@v5
-        with:
-          name: chuchula-apks
-          path: |
-            dist/*.apk
-            dist/*.aab
-          if-no-files-found: error
-
-  android-launch:
-    name: Release APK starts on an emulator
-    # Catches crashes that only happen in minified (R8) release builds,
-    # such as a library class R8 stripped. Launches the exact APK the
-    # android job built and fails on any crash in the app's process.
-    needs: android
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          name: chuchula-apks
-          path: dist
-      - name: Enable KVM
+      - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install, launch and watch for crashes
+      - name: Release APK starts on an emulator
+        # Catches crashes that only happen in the minified (R8) release
+        # build, such as a library class R8 stripped. Launches the exact
+        # APK built above and fails if the app's process crashes or is gone.
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -194,11 +177,15 @@ jobs:
             if ! adb shell pidof com.bipulmgr.chuchula; then echo "::error::The app is not running 30 s after launch"; exit 1; fi
             echo "Release APK is still running 30 s after launch."
       - uses: actions/upload-artifact@v5
-        if: always()
+        # Only the release builds, kept for a week: the repository's
+        # artifact storage is small.
         with:
-          name: launch-logcat
-          path: logcat.txt
-          if-no-files-found: ignore
+          name: chuchula-apks
+          path: |
+            dist/chuchula-release.apk
+            dist/chuchula-release.aab
+          retention-days: 7
+          if-no-files-found: error
 
   ios:
     name: Build iOS (no signing)
