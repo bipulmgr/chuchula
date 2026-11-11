@@ -130,6 +130,33 @@ void main() {
       expect(find.textContaining('iPhone apps'), findsOneWidget);
     });
 
+    testWidgets('New Match offers the boards the balance covers, and '
+        'suggestions start off', (tester) async {
+      await pumpApp(tester, prefs: {'wallet.v1': '{"balance":120}'});
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('playOfflineButton')));
+      await tester.pumpAndSettle();
+      for (final b in [100, 200, 500, 1000, 2000, 10000]) {
+        expect(find.byKey(Key('board-$b')), findsOneWidget);
+      }
+      String pays() =>
+          tester.widget<Text>(find.byKey(const Key('boardPays'))).data!;
+      expect(pays(), contains('Winner takes 100'));
+      // 500 needs 250 cash points: not available with 120.
+      await tester.ensureVisible(find.byKey(const Key('board-500')));
+      await tester.tap(find.byKey(const Key('board-500')));
+      await tester.pumpAndSettle();
+      expect(pays(), contains('Winner takes 100'));
+      await tester.tap(find.byKey(const Key('board-200')));
+      await tester.pumpAndSettle();
+      expect(pays(), contains('Winner takes 200'));
+      expect(pays(), contains('need 100'));
+      final toggle = tester.widget<SwitchListTile>(
+        find.byKey(const Key('suggestToggle')),
+      );
+      expect(toggle.value, isFalse);
+    });
+
     testWidgets('below 50 a new match asks for an ad first', (tester) async {
       final ads = FakeAds();
       await pumpApp(tester, ads: ads, prefs: {'wallet.v1': '{"balance":30}'});
@@ -238,15 +265,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(env.store.loadSettings().soundSet, SoundSet.arcade);
 
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('suggestToggle')),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('suggestToggle')));
-      await tester.pumpAndSettle();
-      expect(env.store.loadSettings().showSuggest, isFalse);
+      // Suggestions are chosen per match now, not in settings.
+      expect(find.byKey(const Key('suggestToggle')), findsNothing);
     });
 
     testWidgets('choosing a theme recolors the app', (tester) async {

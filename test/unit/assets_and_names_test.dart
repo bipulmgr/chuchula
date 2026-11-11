@@ -35,15 +35,9 @@ void main() {
   });
 
   test('new settings survive a JSON round trip', () {
-    const s = AppSettings(
-      musicTrack: MusicTrack.calm,
-      soundSet: SoundSet.soft,
-      showSuggest: false,
-    );
+    const s = AppSettings(musicTrack: MusicTrack.calm, soundSet: SoundSet.soft);
     final back = AppSettings.fromJson(s.toJson());
     expect(back.musicTrack, MusicTrack.calm);
     expect(back.soundSet, SoundSet.soft);
-    expect(back.showSuggest, isFalse);
-    expect(AppSettings.fromJson(const {}).showSuggest, isTrue);
   });
 }

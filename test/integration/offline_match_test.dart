@@ -7,6 +7,8 @@ import 'package:chuchula/game/engine/game_engine.dart';
 import 'package:chuchula/game/engine/random_source.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/models/player_view.dart';
+import 'package:chuchula/game/rules/bonuses.dart';
+import 'package:chuchula/game/rules/rule_config.dart';
 import 'package:chuchula/game/state/authority_session.dart';
 import 'package:chuchula/game/state/game_session.dart';
 import 'package:chuchula/persistence/settings_repository.dart';
@@ -21,7 +23,13 @@ Future<PlayerView> playToEnd(GameSession session, {int maxSteps = 5000}) async {
     await Future<void>.delayed(Duration.zero);
     final v = session.view.value!;
     if (v.phase == GamePhase.matchOver) return v;
-    if (v.phase == GamePhase.arranging && v.myArrangement == null) {
+    if (v.mustAnswerShow) {
+      // Answer another player's show: show a special if the hand has one.
+      final best = ChuchulaGameEngine.bestShow(
+        BonusDetector.detect(v.myHand, RuleConfig.standard),
+      );
+      await (best == null ? session.passShow() : session.showHand(best));
+    } else if (v.phase == GamePhase.arranging && v.myArrangement == null) {
       await session.submitArrangement(const MediumBot().arrange(v));
     } else if (v.isMyTurn) {
       await session.playGroup();

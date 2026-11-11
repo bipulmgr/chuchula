@@ -11,12 +11,31 @@ class CashPoints {
   /// Added for each rewarded ad watched to the end.
   static const adReward = 50;
 
-  /// What 2nd, 3rd and last place pay the winner.
+  /// What 2nd, 3rd and last place pay the winner on the 100 board.
   static const payments = [20, 30, 50];
 
-  /// The largest payment, so a player who can start a match can always
-  /// pay for it.
+  /// Boards: what the winner collects in all. Payments scale with the
+  /// board (the 200 board pays 40, 60 and 100).
+  static const boards = [100, 200, 500, 1000, 2000, 10000];
+
+  static const defaultBoard = 100;
+
+  /// What 2nd, 3rd and last place pay on [board].
+  static List<int> paymentsFor(int board) => [
+    for (final p in payments) p * board ~/ defaultBoard,
+  ];
+
+  /// Cash points needed to sit at [board]: the largest loss there (last
+  /// place), so a player who can start a match can always pay for it.
+  /// Half the board: 50 for the 100 board, 100 for 200, and so on.
+  static int entryFor(int board) => paymentsFor(board).last;
+
+  /// Entry for the smallest board.
   static const minimumToPlay = 50;
+
+  /// Short board name: 100, 200, 500, 1K, 2K, 10K.
+  static String boardLabel(int board) =>
+      board >= 1000 && board % 1000 == 0 ? '${board ~/ 1000}K' : '$board';
 
   /// Finishing places by seat: the winner is 1st, the others follow by
   /// final score. Tied players share a place (the best one they span).
@@ -33,11 +52,13 @@ class CashPoints {
     return places;
   }
 
-  /// Change to each seat's balance at the end of [result]. The losers pay
-  /// by place: 2nd pays 20, 3rd 30 and last 50, and the winner collects
-  /// it all. Tied players split the payments of the places they span
-  /// evenly, rounded down, so the winner gets exactly what is paid.
-  static List<int> settle(MatchResult result) {
+  /// Change to each seat's balance at the end of [result] on [board].
+  /// The losers pay by place: on the 100 board 2nd pays 20, 3rd 30 and
+  /// last 50, and the winner collects it all. Tied players split the
+  /// payments of the places they span evenly, rounded down, so the winner
+  /// gets exactly what is paid.
+  static List<int> settle(MatchResult result, {int board = defaultBoard}) {
+    final payments = paymentsFor(board);
     final scores = result.finalScores;
     final p = places(result);
     final deltas = List.filled(scores.length, 0);

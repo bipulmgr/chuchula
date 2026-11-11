@@ -87,9 +87,12 @@ function bestSpecial(handCodes: string[]) {
 /** The bot's next move for [view], or null if it has nothing to do. */
 export function botMove(view: PlayerView): GameMove | null {
   const seat = view.mySeat;
-  // Always show a special hand: it ends the round in the bot's favour.
-  const special = view.phase === 'arranging' ? bestSpecial(view.myHand) : null;
+  // Always show a special hand, and answer another player's show at once:
+  // show a special if it has one, otherwise pass.
+  const answering = view.phase === 'showing' && view.shows[seat] === null;
+  const special = view.phase === 'arranging' || answering ? bestSpecial(view.myHand) : null;
   if (special) return { type: 'show', seat, bonus: special };
+  if (answering) return { type: 'passShow', seat };
   if (view.phase === 'arranging' && !view.ready[seat]) {
     return { type: 'arrange', seat, arrangement: arrangeHand(view.myHand) };
   }

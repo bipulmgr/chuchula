@@ -110,35 +110,59 @@ export function playOrder(groups: Card[][]): Card[][] {
     a.length !== b.length ? a.length - b.length : strength.get(b)! - strength.get(a)!);
 }
 
-/** True when the 4-card group is weaker than every 3-card group. */
+/**
+ * Strength of the best three cards of a 3- or 4-card group, valued as a 3-card
+ * hand. A player's own 4-card group is held against their 3-card groups this way.
+ */
+export function bestThreeStrength(cards: Card[]): number {
+  if (cards.length === 3) return evaluate(cards).strength;
+  let best = -1;
+  for (let skip = 0; skip < cards.length; skip++) {
+    const s = evaluate(cards.filter((_, i) => i !== skip)).strength;
+    if (s > best) best = s;
+  }
+  return best;
+}
+
+/** True when the 4-card group, by its best three cards, is weaker than every 3-card group. */
 export function fourCardIsWeakest(groups: Card[][]): boolean {
   const quads = groups.filter((g) => g.length === 4);
   if (quads.length !== 1) return true;
-  const q = evaluate(quads[0]).strength;
+  const q = bestThreeStrength(quads[0]);
   return groups.filter((g) => g.length === 3).every((g) => evaluate(g).strength > q);
 }
 
 /**
- * An arrangement of a 13-card hand whose 4-card group is weaker than all three
- * 3-card groups, in play order, or null if there is none. Tries the weakest
- * 4-card groups first.
+ * An arrangement of a 13-card hand whose 4-card group (by its best three cards)
+ * is weaker than all three 3-card groups, in play order, or null if there is
+ * none. Tries the weakest 4-card groups first.
  */
 export function fourCardWeakestArrangement(hand: Card[]): Card[][] | null {
   if (hand.length !== 13) return null;
   const s3 = new Map<number, number>();
+  for (let a = 0; a < 13; a++) {
+    for (let b = a + 1; b < 13; b++) {
+      for (let c = b + 1; c < 13; c++) {
+        s3.set((1 << a) | (1 << b) | (1 << c), evaluate([hand[a], hand[b], hand[c]]).strength);
+      }
+    }
+  }
   const quads: [number, number][] = [];
   for (let a = 0; a < 13; a++) {
     for (let b = a + 1; b < 13; b++) {
       for (let c = b + 1; c < 13; c++) {
-        const m3 = (1 << a) | (1 << b) | (1 << c);
-        s3.set(m3, evaluate([hand[a], hand[b], hand[c]]).strength);
         for (let d = c + 1; d < 13; d++) {
-          quads.push([m3 | (1 << d), evaluate([hand[a], hand[b], hand[c], hand[d]]).strength]);
+          const [ma, mb, mc, md] = [1 << a, 1 << b, 1 << c, 1 << d];
+          const best = Math.max(
+            s3.get(mb | mc | md)!, s3.get(ma | mc | md)!, s3.get(ma | mb | md)!, s3.get(ma | mb | mc)!,
+          );
+          quads.push([ma | mb | mc | md, best]);
         }
       }
     }
   }
-  quads.sort((x, y) => x[1] - y[1]);
+  // Ties (quads sharing their best three) break on the mask, as in Dart.
+  quads.sort((x, y) => x[1] - y[1] || x[0] - y[0]);
   const cardsOf = (m: number) => hand.filter((_, i) => m & (1 << i));
   for (const [q, qs] of quads) {
     const rest = [...Array(13).keys()].filter((i) => !(q & (1 << i)));

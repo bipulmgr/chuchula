@@ -7,8 +7,11 @@ export const HAND_SIZE = 13;
 export const GROUP_COUNT = 4;
 export const GROUP_SIZES = [3, 3, 3, 4];
 
-export type GamePhase = 'arranging' | 'playing' | 'roundOver' | 'matchOver';
-export type MatchEndReason = 'targetReached' | 'instantWin' | 'maxRounds';
+export type GamePhase = 'arranging' | 'showing' | 'playing' | 'roundOver' | 'matchOver';
+export type MatchEndReason = 'targetReached' | 'instantWin' | 'maxRounds' | 'doubleRun';
+
+/** GameState.shows entry for a seat that chose not to show. */
+export const SHOW_PASS = 'pass';
 
 export interface SeatInfo {
   id: string;
@@ -29,8 +32,14 @@ export interface RoundResult {
   sweepSeat: number | null;
   instantWinSeat: number | null;
   instantWinHand: string[] | null;
-  /** Seat that ended the round by showing a special hand. */
+  /** Seat that ended the round by showing a special hand (the best shown). */
   shownSeat: number | null;
+  /** The special each seat showed this round, or null. */
+  shownKinds: (BonusType | null)[];
+  /** The dealt hand of each seat that showed. */
+  shownHands: (string[] | null)[];
+  /** Seat whose last group was a double run, which won the match. */
+  doubleRunSeat: number | null;
 }
 
 export interface MatchResult {
@@ -57,13 +66,19 @@ export interface GameState {
   history: RoundResult[];
   version: number;
   result: MatchResult | null;
+  /** While phase is 'showing': each seat's answer (a special or 'pass'), null while deciding. */
+  shows: (string | null)[];
+  /** Seat that opened the show window. */
+  showOpener: number | null;
 }
 
 export type GameMove =
   | { type: 'arrange'; seat: number; arrangement: ArrangementJson }
   | { type: 'play'; seat: number; group: number }
   | { type: 'next'; seat: number }
-  | { type: 'show'; seat: number; bonus?: BonusType };
+  | { type: 'show'; seat: number; bonus?: BonusType }
+  | { type: 'passShow'; seat: number }
+  | { type: 'closeShow'; seat: number };
 
 export type RuleError =
   | 'wrongPhase'
@@ -78,6 +93,8 @@ export type RuleError =
   | 'fourCardTooStrong'
   | 'wrongGroup'
   | 'nothingToShow'
+  | 'alreadyAnswered'
+  | 'showStillOpen'
   | 'matchOver';
 
 export interface PlayerView {
@@ -99,6 +116,9 @@ export interface PlayerView {
   history: RoundResult[];
   result: MatchResult | null;
   version: number;
+  shows: (string | null)[];
+  showOpener: number | null;
+  showWindowSeconds: number;
 }
 
 /**
@@ -125,6 +145,9 @@ export function playerView(s: GameState, seat: number): PlayerView {
     history: s.history,
     result: s.result,
     version: s.version,
+    shows: s.shows,
+    showOpener: s.showOpener,
+    showWindowSeconds: s.rules.showWindowSeconds,
   };
 }
 
@@ -156,6 +179,10 @@ export function parseMove(json: unknown): GameMove {
       if (!BONUS_TYPES.includes(m.bonus as BonusType)) throw new Error('bad bonus');
       return { type: 'show', seat, bonus: m.bonus as BonusType };
     }
+    case 'passShow':
+      return { type: 'passShow', seat };
+    case 'closeShow':
+      return { type: 'closeShow', seat };
     default:
       throw new Error('unknown move type');
   }

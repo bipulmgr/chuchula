@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../bots/bot_strategy.dart';
+import '../../core/localization/l10n.dart';
 import '../../game/engine/game_engine.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
@@ -13,14 +14,27 @@ import '../table/table_screen.dart';
 
 /// Saved offline match: the full authoritative state plus bot settings.
 class SavedMatch {
-  const SavedMatch(this.state, this.difficulty);
+  const SavedMatch(
+    this.state,
+    this.difficulty, {
+    this.board = CashPoints.defaultBoard,
+    this.showSuggest = false,
+  });
 
   final GameState state;
   final BotDifficulty difficulty;
 
+  /// The cash board this match is played on (see [CashPoints.boards]).
+  final int board;
+
+  /// Whether the table offers the Suggest button in this match.
+  final bool showSuggest;
+
   Map<String, dynamic> toJson() => {
     'state': state.toJson(),
     'difficulty': difficulty.name,
+    'board': board,
+    'showSuggest': showSuggest,
   };
 
   /// Returns null for missing, corrupt, finished or incompatible saves.
@@ -35,9 +49,14 @@ class SavedMatch {
           state.hands.length != kSeatCount) {
         return null;
       }
+      final board = json['board'] as int? ?? CashPoints.defaultBoard;
       return SavedMatch(
         state,
         BotDifficulty.values.byName(json['difficulty'] as String),
+        board: CashPoints.boards.contains(board)
+            ? board
+            : CashPoints.defaultBoard,
+        showSuggest: json['showSuggest'] as bool? ?? false,
       );
     } catch (_) {
       return null;
@@ -69,6 +88,8 @@ class OfflineGame {
     required LocalStore store,
     required GameState state,
     required BotDifficulty difficulty,
+    int board = CashPoints.defaultBoard,
+    bool showSuggest = false,
     ChuchulaGameEngine? engine,
     BotTiming timing = const BotTiming(),
     BotRunner runner = isolateBotRunner,
@@ -85,7 +106,14 @@ class OfflineGame {
       botRunner: runner,
       onStateChanged: (s) => s.phase == GamePhase.matchOver
           ? store.clearSavedMatch()
-          : store.saveMatch(SavedMatch(s, difficulty).toJson()),
+          : store.saveMatch(
+              SavedMatch(
+                s,
+                difficulty,
+                board: board,
+                showSuggest: showSuggest,
+              ).toJson(),
+            ),
     );
   }
 
@@ -96,6 +124,8 @@ class OfflineGame {
     WidgetRef ref, {
     GameState? resume,
     BotDifficulty? difficulty,
+    int board = CashPoints.defaultBoard,
+    bool showSuggest = false,
     required String playerName,
     required List<String> botNames,
   }) async {
@@ -105,8 +135,10 @@ class OfflineGame {
     var state =
         resume ??
         newMatch(engine: engine, playerName: playerName, botNames: botNames);
+    SavedMatch saved(GameState s) =>
+        SavedMatch(s, level, board: board, showSuggest: showSuggest);
     if (resume == null) {
-      await store.saveMatch(SavedMatch(state, level).toJson());
+      await store.saveMatch(saved(state).toJson());
     }
     if (!context.mounted) return;
     final navigator = Navigator.of(context);
@@ -118,6 +150,8 @@ class OfflineGame {
         store: store,
         state: state,
         difficulty: level,
+        board: board,
+        showSuggest: showSuggest,
         engine: engine,
       );
       await navigator.push(
@@ -125,8 +159,9 @@ class OfflineGame {
           transitionDuration: const Duration(milliseconds: 450),
           pageBuilder: (_, _, _) => TableScreen(
             session: session,
-            onMatchFinished: (v) => _recordStats(ref, v),
-            cashStakes: true,
+            onMatchFinished: (v) => _recordStats(ref, v, board),
+            stakeBoard: board,
+            showSuggest: showSuggest,
             onPlayAgain: () {
               again = true;
               navigator.pop();
@@ -137,23 +172,40 @@ class OfflineGame {
         ),
       );
       await session.dispose();
+      // Another match on this board needs its entry again.
+      if (again && !ref.read(walletProvider.notifier).canSit(board)) {
+        again = false;
+        if (context.mounted) {
+          final l = context.l10n;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                l.boardTooHigh(
+                  CashPoints.boardLabel(board),
+                  CashPoints.entryFor(board),
+                ),
+              ),
+            ),
+          );
+        }
+      }
       if (again) {
         state = newMatch(
           engine: engine,
           playerName: playerName,
           botNames: botNames,
         );
-        await store.saveMatch(SavedMatch(state, level).toJson());
+        await store.saveMatch(saved(state).toJson());
       }
     }
   }
 
-  static void _recordStats(WidgetRef ref, PlayerView v) {
+  static void _recordStats(WidgetRef ref, PlayerView v, int board) {
     final result = v.result;
     if (result != null) {
       ref
           .read(walletProvider.notifier)
-          .settle(v.matchId, CashPoints.settle(result)[v.mySeat]);
+          .settle(v.matchId, CashPoints.settle(result, board: board)[v.mySeat]);
     }
     final groups = v.history
         .expand((r) => r.groupWinners)

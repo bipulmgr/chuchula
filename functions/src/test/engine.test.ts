@@ -88,12 +88,79 @@ describe('engine', () => {
     const hand = '9S 9H 9D 9C 2S 2H 2D 3S 3H 3D 4S 4H 4D'.split(' ');
     const s: GameState = { ...started, phase: 'arranging', hands: [hand, ...started.hands.slice(1)] };
     assert.equal(engine.validateMove(s, { type: 'show', seat: 0, bonus: 'sixPairs' })?.error, 'nothingToShow');
-    const four = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
+    const close = (x: GameState) => engine.applyMove(x, { type: 'closeShow', seat: 1 });
+    const four = close(engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' }));
     assert.equal(four.scores[0] - s.scores[0], 4);
-    const trails = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'threeTrails' });
+    const trails = close(engine.applyMove(s, { type: 'show', seat: 0, bonus: 'threeTrails' }));
     assert.equal(trails.scores[0] - s.scores[0], 9);
     assert.throws(() => parseMove({ type: 'show', seat: 0, bonus: 'royalFlush' }));
     assert.deepEqual(parseMove({ type: 'show', seat: 0, bonus: 'sixPairs' }), { type: 'show', seat: 0, bonus: 'sixPairs' });
+  });
+
+  it('gives the others a window to show, and the best special wins', () => {
+    const engine = new ChuchulaEngine();
+    const started = engine.startGame({ matchId: 'm', seats });
+    const dealt = [
+      '9S 9H 9D 9C 2S 3H 4D 5S 6H 7D 8S 10H JD'.split(' '), // four of a kind
+      'AS AH KS KH QS QH JS JH 10S 10D 2H 2C 4C'.split(' '), // six pairs
+      'KD KC QD QC 2D 3S 4H 5D 6S 7H 8D 10C JC'.split(' '),
+    ];
+    const used = new Set(dealt.flat());
+    const hands = [...dealt, fullDeck().map(cardCode).filter((c) => !used.has(c))];
+    assert.equal(hands[3].length, 13);
+    const s: GameState = { ...started, phase: 'arranging', hands };
+    let x = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
+    assert.equal(x.phase, 'showing');
+    assert.equal(x.showOpener, 0);
+    assert.equal(engine.validateMove(x, { type: 'passShow', seat: 0 })?.error, 'alreadyAnswered');
+    assert.equal(engine.validateMove(x, { type: 'arrange', seat: 1, arrangement: [] })?.error, 'wrongPhase');
+    x = engine.applyMove(x, { type: 'show', seat: 1, bonus: 'sixPairs' });
+    x = engine.applyMove(x, { type: 'passShow', seat: 2 });
+    assert.equal(x.phase, 'showing');
+    x = engine.applyMove(x, { type: 'passShow', seat: 3 });
+    assert.equal(x.phase, 'roundOver');
+    const rr = x.history[x.history.length - 1];
+    assert.equal(rr.shownSeat, 1);
+    assert.deepEqual(rr.shownKinds, ['fourOfAKind', 'sixPairs', null, null]);
+    assert.deepEqual(x.scores.map((v, i) => v - s.scores[i]), [0, 6, 0, 0]);
+    assert.deepEqual(x.shows, [null, null, null, null]);
+  });
+
+  it('holds a 4-card group against the own 3-card groups by its best three', () => {
+    // 3rd group: color A-J-9; 4th group: 4-card color A-J-8-7.
+    const groups = ['KS KH KD', 'QS QH QD', 'AH JH 9H', 'AC JC 8C 7C'].map(parseCards);
+    assert.ok(fourCardIsWeakest(groups));
+    assert.ok(!fourCardIsWeakest(['KS KH KD', 'QS QH QD', 'AH JH 7H', 'AC JC 8C 7C'].map(parseCards)));
+  });
+
+  it('a double run in the last group wins the match', () => {
+    const engine = new ChuchulaEngine();
+    const started = engine.startGame({ matchId: 'm', seats });
+    const arrangement = (codes: string[]) => codes.map((g) => g.split(' '));
+    const arrangements = [
+      arrangement(['AS AH AD', 'KS KH KD', 'QS QH QD', '5C 6C 7C 9D']),
+      arrangement(['2S 3H 5D', '2H 4S 6D', '2D 3S 7H', '8S 9H JD 4C']),
+      arrangement(['3D 4H 8D', '4D 5S 9S', '6S 7S 10D', '10S JS 2C 3C']),
+      arrangement(['5H 6H 10H', '7D 8H JH', '8C 9C 10C', 'QC KC AC JC']),
+    ];
+    const s: GameState = {
+      ...started,
+      phase: 'playing',
+      hands: arrangements.map((a) => a.flat()),
+      arrangements,
+      groupIndex: 3,
+      turnSeat: 3,
+      roundPlays: [0, 1, 2, 3].map((g) => arrangements.map((a) => a[g])),
+      groupWinners: [0, 0, 0],
+    };
+    s.roundPlays[3][3] = null;
+    const done = engine.applyMove(s, { type: 'play', seat: 3, group: 3 });
+    // Seat 3's A-K-Q-J of clubs and seat 0's 5-6-7 of clubs are both double
+    // runs; the stronger one wins the match.
+    assert.equal(done.phase, 'matchOver');
+    assert.equal(done.result?.reason, 'doubleRun');
+    assert.equal(done.result?.winnerSeat, 3);
+    assert.equal(done.history[done.history.length - 1].doubleRunSeat, 3);
   });
 
   it('ranks 3- and 4-card groups on one ladder', () => {

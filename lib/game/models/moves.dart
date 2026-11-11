@@ -23,6 +23,8 @@ sealed class GameMove {
         seat,
         BonusType.values.where((b) => b.name == json['bonus']).firstOrNull,
       ),
+      'passShow' => PassShow(seat),
+      'closeShow' => CloseShow(seat),
       final t => throw FormatException('Unknown move type $t'),
     };
   }
@@ -59,8 +61,9 @@ class PlayGroup extends GameMove {
 }
 
 /// Shows the seat's special hand (four of a kind, six pairs, three trails
-/// or all thirteen ranks) during arranging. This ends the round, or the
-/// match for all thirteen ranks.
+/// or all thirteen ranks). During arranging this opens a short window in
+/// which the other players may show theirs (or ends the match at once for
+/// all thirteen ranks); during that window it is this seat's answer.
 class ShowHand extends GameMove {
   const ShowHand(super.seat, [this.bonus]);
 
@@ -74,6 +77,24 @@ class ShowHand extends GameMove {
     'seat': seat,
     if (bonus != null) 'bonus': bonus!.name,
   };
+}
+
+/// Declines to show a special hand while another player's show is open.
+class PassShow extends GameMove {
+  const PassShow(super.seat);
+
+  @override
+  Map<String, dynamic> toJson() => {'type': 'passShow', 'seat': seat};
+}
+
+/// Closes the show window once its time is up: seats that have not
+/// answered count as passing. Sent by the authority (or, online, by any
+/// client once the server agrees the time is up).
+class CloseShow extends GameMove {
+  const CloseShow(super.seat);
+
+  @override
+  Map<String, dynamic> toJson() => {'type': 'closeShow', 'seat': seat};
 }
 
 /// Deals the next round after the round summary.
@@ -99,6 +120,8 @@ enum RuleError {
   fourCardTooStrong,
   wrongGroup,
   nothingToShow,
+  alreadyAnswered,
+  showStillOpen,
   matchOver,
 }
 

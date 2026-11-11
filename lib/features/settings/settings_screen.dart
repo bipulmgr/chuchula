@@ -261,12 +261,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   toggle(
-                    'suggestToggle',
-                    l.showSuggestSetting,
-                    s.showSuggest,
-                    (v) => n.update((x) => x.copyWith(showSuggest: v)),
-                  ),
-                  toggle(
                     'motionToggle',
                     l.reducedMotion,
                     s.reducedMotion,

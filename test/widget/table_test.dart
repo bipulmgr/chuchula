@@ -1,4 +1,3 @@
-import 'package:chuchula/app/providers.dart';
 import 'package:chuchula/bots/bot_strategy.dart';
 import 'package:chuchula/core/theme/table_themes.dart';
 import 'package:chuchula/features/results/match_over.dart';
@@ -63,7 +62,10 @@ void main() {
     tester,
   ) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     final strip = find.byType(HandStrip);
     expect(
@@ -78,7 +80,10 @@ void main() {
 
   testWidgets('tapping two cards swaps them', (tester) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     final before = _order(tester);
     await tester.tap(_cardAt(tester, 0));
@@ -94,7 +99,10 @@ void main() {
 
   testWidgets('dragging a card onto another swaps them', (tester) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     final before = _order(tester);
     final from = tester.getCenter(_cardAt(tester, 1));
@@ -118,7 +126,10 @@ void main() {
     tester,
   ) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     List<List<PlayingCard>> groups() =>
         tester.widget<HandStrip>(find.byType(HandStrip)).groups;
@@ -167,7 +178,10 @@ void main() {
       timing: const BotTiming.instant(),
       botRunner: inlineBotRunner,
     );
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     // Nothing hints at the special until the player picks it.
     expect(find.textContaining('Four of a kind'), findsNothing);
@@ -186,7 +200,10 @@ void main() {
     tester,
   ) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     await tester.tap(find.byTooltip('Suggest'));
     await _settle(tester);
@@ -205,7 +222,10 @@ void main() {
     tester,
   ) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     // Sorted by rank, the 4-card group is J-Q-K-A: a run, too strong.
     await tester.tap(find.byTooltip('Sort by rank'));
@@ -214,20 +234,88 @@ void main() {
     expect(groups.last.map((c) => c.code), ['JS', 'QS', 'KC', 'AC']);
     await tester.tap(find.byKey(const Key('readyButton')));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.textContaining('Rearrange it, or tap Suggest'), findsOneWidget);
+    expect(find.textContaining('must be your weakest group'), findsOneWidget);
     expect(session.view.value!.ready[0], isFalse);
     await _settle(tester);
     await session.dispose();
   });
 
-  testWidgets('Suggest can be turned off in settings', (tester) async {
-    final session = _session();
-    final env = await pumpApp(tester, home: TableScreen(session: session));
+  testWidgets('a bot shows a special: I get a window to answer, and only '
+      'the special cards are highlighted', (tester) async {
+    // Seat 1 holds four 10s and shows them at once.
+    final deal = [
+      _hand,
+      '10S 10H 10D 10C AH KH QH JH 9H 3H 2H 3S 4S',
+      'AD KD QD JD 9D 8D 6D 5D 2S 5S 8S KS 7S',
+    ];
+    final engine = fixedEngine([deckFor(deal), deckFor(deal)]);
+    final session = AuthorityGameSession(
+      engine: engine,
+      initialState: start(engine),
+      localSeat: 0,
+      bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+      timing: const BotTiming.instant(),
+      botRunner: inlineBotRunner,
+    );
+    await pumpApp(tester, home: TableScreen(session: session));
     await _settle(tester);
-    expect(find.byTooltip('Suggest'), findsOneWidget);
-    env.container
-        .read(settingsProvider.notifier)
-        .update((s) => s.copyWith(showSuggest: false));
+    final v = session.view.value!;
+    expect(v.phase, GamePhase.showing);
+    expect(v.showOpener, 1);
+    expect(v.mustAnswerShow, isTrue);
+    expect(find.byKey(const Key('showWindowPanel')), findsOneWidget);
+    expect(find.byKey(const Key('showCountdown')), findsOneWidget);
+    expect(find.byKey(const Key('passShowButton')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('passShowButton')));
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.roundOver);
+    expect(session.view.value!.lastRound!.shownSeat, 1);
+    // The summary shows the hand with only the four 10s glowing.
+    final shown = find.byKey(const Key('shown-1'));
+    expect(shown, findsOneWidget);
+    final faces = tester.widgetList<CardFace>(
+      find.descendant(of: shown, matching: find.byType(CardFace)),
+    );
+    expect(faces.length, 13);
+    expect({
+      for (final f in faces)
+        if (f.highlight != null) f.card,
+    }, parseCards('10S 10H 10D 10C').toSet());
+    await session.dispose();
+  });
+
+  testWidgets('the show window closes by itself when time is up', (
+    tester,
+  ) async {
+    final deal = [
+      _hand,
+      '10S 10H 10D 10C AH KH QH JH 9H 3H 2H 3S 4S',
+      'AD KD QD JD 9D 8D 6D 5D 2S 5S 8S KS 7S',
+    ];
+    final engine = fixedEngine([deckFor(deal), deckFor(deal)]);
+    final session = AuthorityGameSession(
+      engine: engine,
+      initialState: start(engine),
+      localSeat: 0,
+      bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+      timing: const BotTiming.instant(),
+      botRunner: inlineBotRunner,
+    );
+    await pumpApp(tester, home: TableScreen(session: session));
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.showing);
+    await tester.pump(const Duration(seconds: 21));
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.roundOver);
+    expect(session.view.value!.scores[1], 4);
+    await session.dispose();
+  });
+
+  testWidgets('Suggest is offered only when the match turned it on', (
+    tester,
+  ) async {
+    final session = _session();
+    await pumpApp(tester, home: TableScreen(session: session));
     await _settle(tester);
     expect(find.byTooltip('Suggest'), findsNothing);
     await session.dispose();
@@ -235,7 +323,10 @@ void main() {
 
   testWidgets('picking a special the hand lacks shows nothing', (tester) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     await tester.tap(find.byKey(const Key('showIconButton')));
     await _settle(tester);
@@ -254,7 +345,10 @@ void main() {
     tester,
   ) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     await tester.tap(find.byTooltip('Suggest'));
     await _settle(tester);
@@ -307,7 +401,10 @@ void main() {
 
   testWidgets('the points table opens from the top bar', (tester) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     await tester.tap(find.byKey(const Key('pointsTableButton')));
     await _settle(tester);
@@ -351,7 +448,10 @@ void main() {
 
   testWidgets('a rejected move is shown to the player', (tester) async {
     final session = _session();
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     // Not my turn yet: the engine rejects playing before arranging.
     await session.playGroup();

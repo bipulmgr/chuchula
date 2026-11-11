@@ -51,9 +51,18 @@ abstract class GameSession {
 
   Future<void> playGroup();
 
-  /// Shows this seat's special hand, ending the round.
-  /// Shows the special [bonus] (all specials when null).
+  /// Shows this seat's special [bonus] (the best one when null). During
+  /// arranging this opens a short window for the others to show theirs;
+  /// while another player's show is open it is this seat's answer.
   Future<void> showHand([BonusType? bonus]);
+
+  /// Declines to show a special while another player's show is open.
+  Future<void> passShow();
+
+  /// Called by the table when its show countdown runs out. The authority
+  /// keeps its own clock, so most sessions ignore this; online play asks
+  /// the server to close the window.
+  Future<void> showWindowExpired() async {}
 
   Future<void> startNextRound();
 

@@ -11,9 +11,14 @@ const int kGroupCount = 4;
 /// the 4-card group last.
 const List<int> kGroupSizes = [3, 3, 3, 4];
 
-enum GamePhase { arranging, playing, roundOver, matchOver }
+/// `showing`: a player showed a special hand during arranging and the
+/// others have a short window to show theirs (see [GameState.shows]).
+enum GamePhase { arranging, showing, playing, roundOver, matchOver }
 
-enum MatchEndReason { targetReached, instantWin, maxRounds }
+/// [GameState.shows] entry for a player who chose not to show.
+const String kShowPass = 'pass';
+
+enum MatchEndReason { targetReached, instantWin, maxRounds, doubleRun }
 
 List<String> _codes(List<PlayingCard> cards) =>
     cards.map((c) => c.code).toList();
@@ -88,6 +93,9 @@ class RoundResult {
     this.instantWinSeat,
     this.instantWinHand,
     this.shownSeat,
+    this.shownKinds = const [null, null, null, null],
+    this.shownHands = const [null, null, null, null],
+    this.doubleRunSeat,
   });
 
   final int round;
@@ -110,8 +118,18 @@ class RoundResult {
   /// The hand revealed by [instantWinSeat] or [shownSeat].
   final List<PlayingCard>? instantWinHand;
 
-  /// Seat that ended the round by showing a special hand.
+  /// Seat that ended the round by showing a special hand (the best one
+  /// shown, when several players showed).
   final int? shownSeat;
+
+  /// The special each seat showed this round (null if it did not show).
+  final List<BonusType?> shownKinds;
+
+  /// The dealt hand of each seat that showed a special this round.
+  final List<List<PlayingCard>?> shownHands;
+
+  /// Seat whose last group was a double run, which won the match.
+  final int? doubleRunSeat;
 
   Map<String, dynamic> toJson() => {
     'round': round,
@@ -125,6 +143,9 @@ class RoundResult {
     'instantWinSeat': instantWinSeat,
     'instantWinHand': instantWinHand == null ? null : _codes(instantWinHand!),
     'shownSeat': shownSeat,
+    'shownKinds': [for (final k in shownKinds) k?.name],
+    'shownHands': [for (final h in shownHands) h == null ? null : _codes(h)],
+    'doubleRunSeat': doubleRunSeat,
   };
 
   factory RoundResult.fromJson(Map<String, dynamic> json) => RoundResult(
@@ -148,6 +169,19 @@ class RoundResult {
         ? null
         : _cards(json['instantWinHand']),
     shownSeat: json['shownSeat'] as int?,
+    shownKinds: json['shownKinds'] == null
+        ? const [null, null, null, null]
+        : [
+            for (final k in json['shownKinds'] as List)
+              k == null ? null : BonusType.values.byName(k as String),
+          ],
+    shownHands: json['shownHands'] == null
+        ? const [null, null, null, null]
+        : [
+            for (final h in json['shownHands'] as List)
+              h == null ? null : _cards(h),
+          ],
+    doubleRunSeat: json['doubleRunSeat'] as int?,
   );
 }
 
@@ -199,6 +233,8 @@ class GameState {
     required this.history,
     required this.version,
     this.result,
+    this.shows = const [null, null, null, null],
+    this.showOpener,
   });
 
   final String matchId;
@@ -237,6 +273,14 @@ class GameState {
 
   final MatchResult? result;
 
+  /// While [phase] is `showing`: what each seat answered, the
+  /// [BonusType] name it showed or [kShowPass]; null while it is still
+  /// deciding. All null outside that phase.
+  final List<String?> shows;
+
+  /// Seat that showed first and opened the `showing` window.
+  final int? showOpener;
+
   RoundResult? get lastRound => history.isEmpty ? null : history.last;
 
   bool isReady(int seat) => arrangements[seat] != null;
@@ -259,6 +303,8 @@ class GameState {
     List<int>? groupWinners,
     List<RoundResult>? history,
     MatchResult? Function()? result,
+    List<String?>? shows,
+    int? Function()? showOpener,
   }) => GameState(
     matchId: matchId,
     rules: rules,
@@ -276,6 +322,8 @@ class GameState {
     history: history ?? this.history,
     version: version + 1,
     result: result != null ? result() : this.result,
+    shows: shows ?? this.shows,
+    showOpener: showOpener != null ? showOpener() : this.showOpener,
   );
 
   Map<String, dynamic> toJson() => {
@@ -299,6 +347,8 @@ class GameState {
     'history': [for (final r in history) r.toJson()],
     'version': version,
     'result': result?.toJson(),
+    'shows': shows,
+    'showOpener': showOpener,
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -340,6 +390,10 @@ class GameState {
           : MatchResult.fromJson(
               (json['result'] as Map).cast<String, dynamic>(),
             ),
+      shows: json['shows'] == null
+          ? const [null, null, null, null]
+          : (json['shows'] as List).cast<String?>(),
+      showOpener: json['showOpener'] as int?,
     );
   }
 }

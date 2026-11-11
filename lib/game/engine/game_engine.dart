@@ -28,6 +28,7 @@ class GameSetup {
 ///
 /// Phase flow per round:
 /// `arranging` → (all four ready) → `playing` group 1..4 → `roundOver`
+/// (or `arranging` → a special hand shown → `showing` → `roundOver`)
 /// → (`StartNextRound`) → `arranging` … until `matchOver`.
 class ChuchulaGameEngine {
   ChuchulaGameEngine({RandomSource? random})
@@ -147,38 +148,84 @@ class ChuchulaGameEngine {
     );
   }
 
-  /// Ends the round: [seat] showed the special hands in its dealt cards
-  /// (only those of kind [only], when given).
-  GameState _showHand(GameState s, int seat, BonusType? only) {
-    final bonuses = [
-      for (final b in BonusDetector.detect(s.hands[seat], s.rules))
-        if (only == null || b.type == only) b,
-    ];
-    if (bonuses.any((b) => b.type == BonusType.allRanks)) {
-      return _instantWin(s, seat);
+  /// [seat] shows the special [kind]. During arranging this opens the
+  /// show window for the other players; in the window it is [seat]'s
+  /// answer. All thirteen ranks wins the match at once: nothing beats it.
+  GameState _show(GameState s, int seat, BonusType kind) {
+    if (kind == BonusType.allRanks) return _instantWin(s, seat);
+    final shows = List<String?>.of(s.shows);
+    shows[seat] = kind.name;
+    if (s.phase == GamePhase.arranging) {
+      final opened = s.copyWith(
+        phase: GamePhase.showing,
+        turnSeat: () => null,
+        shows: shows,
+        showOpener: () => seat,
+      );
+      // Without a window the round ends at the first show.
+      if (s.rules.showWindowSeconds <= 0) return _resolveShows(opened);
+      return opened;
     }
+    return _afterAnswer(s.copyWith(shows: shows));
+  }
+
+  GameState _afterAnswer(GameState s) =>
+      s.shows.every((x) => x != null) ? _resolveShows(s) : s;
+
+  /// Ends the show window: the best special shown wins the round and only
+  /// its owner scores. Ties (same kind and ranks) go to whoever showed
+  /// first, counting round the table from the opener.
+  GameState _resolveShows(GameState s) {
+    final opener = s.showOpener ?? 0;
+    final kinds = [
+      for (final x in s.shows)
+        x == null || x == kShowPass ? null : BonusType.values.byName(x),
+    ];
+    int? winner;
+    List<int>? best;
+    for (var k = 0; k < kSeatCount; k++) {
+      final seat = (opener + k) % kSeatCount;
+      final kind = kinds[seat];
+      if (kind == null) continue;
+      final rank = BonusDetector.showRank(s.hands[seat], kind);
+      if (best == null || BonusDetector.compareShowRanks(rank, best) > 0) {
+        best = rank;
+        winner = seat;
+      }
+    }
+    final w = winner!;
+    final bonuses = [
+      for (final b in BonusDetector.detect(s.hands[w], s.rules))
+        if (b.type == kinds[w]) b,
+    ];
     final total = bonuses.fold<int>(0, (t, b) => t + b.points);
     final points = [
       for (var i = 0; i < kSeatCount; i++)
-        i == seat ? RoundScorer.applyTarget(s.scores[i], total, s.rules) : 0,
+        i == w ? RoundScorer.applyTarget(s.scores[i], total, s.rules) : 0,
     ];
     final rr = RoundResult(
       round: s.round,
       groupWinners: const [],
       arrangements: List.filled(kSeatCount, null),
       bonuses: [
-        for (var i = 0; i < kSeatCount; i++)
-          i == seat ? bonuses : const <Bonus>[],
+        for (var i = 0; i < kSeatCount; i++) i == w ? bonuses : const <Bonus>[],
       ],
       points: points,
-      instantWinHand: s.hands[seat],
-      shownSeat: seat,
+      instantWinHand: s.hands[w],
+      shownSeat: w,
+      shownKinds: kinds,
+      shownHands: [
+        for (var i = 0; i < kSeatCount; i++)
+          kinds[i] == null ? null : s.hands[i],
+      ],
     );
     var next = s.copyWith(
       scores: [for (var i = 0; i < kSeatCount; i++) s.scores[i] + points[i]],
       phase: GamePhase.roundOver,
       turnSeat: () => null,
       history: [...s.history, rr],
+      shows: const [null, null, null, null],
+      showOpener: () => null,
     );
     final match = checkMatchResult(next);
     if (match != null) {
@@ -187,10 +234,13 @@ class ChuchulaGameEngine {
     return next;
   }
 
-  /// Special hands [seat] could show now (empty if none, or if bonuses
-  /// are scored automatically).
+  /// Special hands [seat] could show now: during arranging, or while
+  /// another player's show is open and [seat] has not answered. Empty if
+  /// none, or if bonuses are scored automatically.
   static List<Bonus> showable(GameState s, int seat) =>
-      s.rules.declareBonuses && s.phase == GamePhase.arranging
+      s.rules.declareBonuses &&
+          (s.phase == GamePhase.arranging ||
+              (s.phase == GamePhase.showing && s.shows[seat] == null))
       ? BonusDetector.detect(s.hands[seat], s.rules)
       : const [];
 
@@ -288,14 +338,31 @@ class ChuchulaGameEngine {
         }
         return const ValidationResult.ok();
       case ShowHand(:final seat, :final bonus):
-        if (state.phase != GamePhase.arranging) {
+        if (state.phase != GamePhase.arranging &&
+            state.phase != GamePhase.showing) {
           return const ValidationResult.fail(RuleError.wrongPhase);
+        }
+        if (state.phase == GamePhase.showing && state.shows[seat] != null) {
+          return const ValidationResult.fail(RuleError.alreadyAnswered);
         }
         if (!showable(
           state,
           seat,
         ).any((b) => bonus == null || b.type == bonus)) {
           return const ValidationResult.fail(RuleError.nothingToShow);
+        }
+        return const ValidationResult.ok();
+      case PassShow(:final seat):
+        if (state.phase != GamePhase.showing) {
+          return const ValidationResult.fail(RuleError.wrongPhase);
+        }
+        if (state.shows[seat] != null) {
+          return const ValidationResult.fail(RuleError.alreadyAnswered);
+        }
+        return const ValidationResult.ok();
+      case CloseShow():
+        if (state.phase != GamePhase.showing) {
+          return const ValidationResult.fail(RuleError.wrongPhase);
         }
         return const ValidationResult.ok();
     }
@@ -363,7 +430,15 @@ class ChuchulaGameEngine {
         );
 
       case ShowHand(:final seat, :final bonus):
-        return _showHand(state, seat, bonus);
+        return _show(state, seat, bonus ?? bestShow(showable(state, seat))!);
+
+      case PassShow(:final seat):
+        final shows = List<String?>.of(state.shows);
+        shows[seat] = kShowPass;
+        return _afterAnswer(state.copyWith(shows: shows));
+
+      case CloseShow():
+        return _resolveShows(state);
 
       case StartNextRound():
         return _dealRound(
@@ -422,8 +497,40 @@ class ChuchulaGameEngine {
     );
   }
 
+  /// Seat whose last group is a double run (the strongest, if several),
+  /// which wins the match; null if none.
+  static int? lastGroupDoubleRun(GameState state) {
+    if (!state.rules.lastGroupDoubleRunWins) return null;
+    if (state.roundPlays.length != kGroupCount) return null;
+    final plays = state.roundPlays.last;
+    if (plays.any((p) => p == null)) return null;
+    int? seat;
+    HandValue? best;
+    for (var i = 0; i < kSeatCount; i++) {
+      final v = HandEvaluator.evaluate(plays[i]!);
+      if (v.category != HandCategory.pureSequence) continue;
+      if (best == null || v > best) {
+        best = v;
+        seat = i;
+      }
+    }
+    return seat;
+  }
+
   GameState _finishRound(GameState state) {
-    final rr = resolveRound(state);
+    var rr = resolveRound(state);
+    final doubleRun = lastGroupDoubleRun(state);
+    if (doubleRun != null) {
+      rr = RoundResult(
+        round: rr.round,
+        groupWinners: rr.groupWinners,
+        arrangements: rr.arrangements,
+        bonuses: rr.bonuses,
+        points: rr.points,
+        sweepSeat: rr.sweepSeat,
+        doubleRunSeat: doubleRun,
+      );
+    }
     final scores = [
       for (var i = 0; i < kSeatCount; i++) state.scores[i] + rr.points[i],
     ];
@@ -432,6 +539,17 @@ class ChuchulaGameEngine {
       phase: GamePhase.roundOver,
       history: [...state.history, rr],
     );
+    if (doubleRun != null) {
+      // A double run in the last group wins the whole match.
+      return next.copyWith(
+        phase: GamePhase.matchOver,
+        result: () => MatchResult(
+          winnerSeat: doubleRun,
+          reason: MatchEndReason.doubleRun,
+          finalScores: scores,
+        ),
+      );
+    }
     final match = checkMatchResult(next);
     if (match != null) {
       next = next.copyWith(phase: GamePhase.matchOver, result: () => match);

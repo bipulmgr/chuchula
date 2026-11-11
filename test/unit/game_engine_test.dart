@@ -369,6 +369,151 @@ void main() {
     });
   });
 
+  group('show window', () {
+    // Seat 0: four nines. Seat 1: six pairs. Seat 2: four kings.
+    List<int> deck() => deckFor([
+      '9S 9H 9D 9C 2S 3H 5D 7C JS QH 4D AC 4S',
+      '2D 2H 3S 3D 5S 5H 6S 6H 7S 7H 8S 8H 10D',
+      'KS KH KD KC 2C 3C 5C 6C 8C 10C JC QC AH',
+    ]);
+
+    test('others may answer; the best special wins the round', () {
+      final e = fixedEngine([deck()]);
+      var s = e.applyMove(start(e), const ShowHand(0));
+      expect(s.phase, GamePhase.showing);
+      // Only answers are allowed now.
+      expect(
+        e
+            .validateMove(
+              s,
+              SubmitArrangement(1, Arrangement.fromOrderedCards(s.hands[1])),
+            )
+            .error,
+        RuleError.wrongPhase,
+      );
+      expect(
+        e.validateMove(s, const PassShow(0)).error,
+        RuleError.alreadyAnswered,
+      );
+      expect(
+        e.validateMove(s, const ShowHand(0)).error,
+        RuleError.alreadyAnswered,
+      );
+      expect(
+        e.validateMove(s, const ShowHand(3)).error,
+        RuleError.nothingToShow,
+      );
+      s = e.applyMove(s, const ShowHand(1, BonusType.sixPairs));
+      s = e.applyMove(s, const ShowHand(2, BonusType.fourOfAKind));
+      expect(s.phase, GamePhase.showing);
+      s = e.applyMove(s, const PassShow(3));
+      expect(s.phase, GamePhase.roundOver);
+      final rr = s.lastRound!;
+      // Six pairs outranks four of a kind.
+      expect(rr.shownSeat, 1);
+      expect(s.scores, [0, 6, 0, 0]);
+      expect(rr.shownKinds, [
+        BonusType.fourOfAKind,
+        BonusType.sixPairs,
+        BonusType.fourOfAKind,
+        null,
+      ]);
+      expect(rr.shownHands[3], isNull);
+      expect(rr.shownHands[2]!.toSet(), s.hands[2].toSet());
+    });
+
+    test('the same special compares by rank', () {
+      final e = fixedEngine([deck()]);
+      var s = e.applyMove(start(e), const ShowHand(0));
+      s = e.applyMove(s, const PassShow(1));
+      s = e.applyMove(s, const ShowHand(2, BonusType.fourOfAKind));
+      s = e.applyMove(s, const PassShow(3));
+      // Four kings beat four nines.
+      expect(s.lastRound!.shownSeat, 2);
+      expect(s.scores, [0, 0, 4, 0]);
+    });
+
+    test('when time is up, silent seats count as passing', () {
+      final e = fixedEngine([deck()]);
+      var s = e.applyMove(start(e), const ShowHand(2, BonusType.fourOfAKind));
+      expect(e.validateMove(s, const CloseShow(0)).isValid, isTrue);
+      s = e.applyMove(s, const CloseShow(0));
+      expect(s.phase, GamePhase.roundOver);
+      expect(s.lastRound!.shownSeat, 2);
+      expect(e.validateMove(s, const CloseShow(0)).error, RuleError.wrongPhase);
+    });
+
+    test('a window of 0 seconds ends the round at the first show', () {
+      final e = fixedEngine([deck()]);
+      final s = e.applyMove(
+        start(e, rules: const RuleConfig(showWindowSeconds: 0)),
+        const ShowHand(0),
+      );
+      expect(s.phase, GamePhase.roundOver);
+      expect(s.scores, [4, 0, 0, 0]);
+    });
+
+    test('state and moves survive JSON', () {
+      final e = fixedEngine([deck()]);
+      final s = e.applyMove(start(e), const ShowHand(0));
+      final back = GameState.fromJson(
+        jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.shows, s.shows);
+      expect(back.showOpener, 0);
+      final view = PlayerView.fromJson(
+        jsonDecode(jsonEncode(PlayerView.of(s, 1).toJson()))
+            as Map<String, dynamic>,
+      );
+      expect(view.mustAnswerShow, isTrue);
+      expect(GameMove.fromJson(const PassShow(3).toJson()), isA<PassShow>());
+      expect(GameMove.fromJson(const CloseShow(1).toJson()), isA<CloseShow>());
+    });
+
+    test('only the cards that make the special are highlighted', () {
+      final hand = parseCards('9S 9H 9D 9C 2S 2H 2D 3S 5H 7C JS QH AC');
+      expect(
+        BonusDetector.specialCards(hand, BonusType.fourOfAKind),
+        parseCards('9S 9H 9D 9C').toSet(),
+      );
+      // A trail counts one pair: two of its cards.
+      expect(BonusDetector.specialCards(hand, BonusType.sixPairs).length, 6);
+      final all = parseCards('AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS');
+      expect(BonusDetector.specialCards(all, BonusType.allRanks), all.toSet());
+    });
+  });
+
+  group('double run in the last group', () {
+    // Seat 0's last (4-card) group is the double run 5-6-7 of clubs.
+    const custom = {0: 'AS AH AD KS KH KD QS QH QD 5C 6C 7C 9D'};
+
+    test('wins the whole match', () {
+      final e = fixedEngine([
+        deckFor(['AS AH AD KS KH KD QS QH QD 5C 6C 7C 9D']),
+      ]);
+      var s = arrangeAll(e, start(e), custom: custom);
+      s = playRound(e, s);
+      expect(s.phase, GamePhase.matchOver);
+      expect(s.result!.reason, MatchEndReason.doubleRun);
+      expect(s.result!.winnerSeat, 0);
+      expect(s.lastRound!.doubleRunSeat, 0);
+    });
+
+    test('can be switched off', () {
+      final e = fixedEngine([
+        deckFor(['AS AH AD KS KH KD QS QH QD 5C 6C 7C 9D']),
+      ]);
+      final rules = const RuleConfig(
+        fourCardWeakest: false,
+        lastGroupDoubleRunWins: false,
+      );
+      var s = arrangeAll(e, start(e, rules: rules), custom: custom);
+      s = playRound(e, s);
+      expect(s.phase, GamePhase.roundOver);
+      expect(s.lastRound!.doubleRunSeat, isNull);
+    });
+  });
+
   group('showing special hands', () {
     test('four of a kind: shown during arranging, +4, round ends', () {
       final e = fixedEngine([
@@ -382,8 +527,17 @@ void main() {
         e.validateMove(s, const ShowHand(1)).error,
         RuleError.nothingToShow,
       );
-      final next = e.applyMove(s, const ShowHand(0));
+      final opened = e.applyMove(s, const ShowHand(0));
+      // The others get a window to show theirs; nobody else has one.
+      expect(opened.phase, GamePhase.showing);
+      expect(opened.showOpener, 0);
+      expect(opened.shows, ['fourOfAKind', null, null, null]);
+      var next = opened;
+      for (final seat in [1, 2, 3]) {
+        next = e.applyMove(next, PassShow(seat));
+      }
       expect(next.phase, GamePhase.roundOver);
+      expect(next.shows, [null, null, null, null]);
       expect(next.scores, [4, 0, 0, 0]);
       expect(next.lastRound!.shownSeat, 0);
       expect(next.lastRound!.instantWinHand!.toSet(), s.hands[0].toSet());
@@ -399,11 +553,25 @@ void main() {
       final pairs = fixedEngine([
         deckFor(['2S 2H 3S 3H 4S 4H 5S 5H 6S 6H 7S 7H 9D']),
       ]);
-      expect(pairs.applyMove(start(pairs), const ShowHand(0)).scores[0], 6);
+      GameState closed(ChuchulaGameEngine e, GameState s) =>
+          e.applyMove(s, const CloseShow(1));
+      expect(
+        closed(
+          pairs,
+          pairs.applyMove(start(pairs), const ShowHand(0)),
+        ).scores[0],
+        6,
+      );
       final trails = fixedEngine([
         deckFor(['2S 2H 2D 3S 3H 3D 4S 4H 4D 6S 7H 9C JD']),
       ]);
-      expect(trails.applyMove(start(trails), const ShowHand(0)).scores[0], 9);
+      expect(
+        closed(
+          trails,
+          trails.applyMove(start(trails), const ShowHand(0)),
+        ).scores[0],
+        9,
+      );
     });
 
     test('all thirteen ranks: showing wins the match', () {
@@ -446,12 +614,17 @@ void main() {
         e.validateMove(s, const ShowHand(0, BonusType.sixPairs)).error,
         RuleError.nothingToShow,
       );
-      final four = e.applyMove(s, const ShowHand(0, BonusType.fourOfAKind));
+      GameState closed(GameState x) => e.applyMove(x, const CloseShow(2));
+      final four = closed(
+        e.applyMove(s, const ShowHand(0, BonusType.fourOfAKind)),
+      );
       expect(four.scores[0], 4);
       expect(four.lastRound!.bonuses[0].map((b) => b.type), [
         BonusType.fourOfAKind,
       ]);
-      final trails = e.applyMove(s, const ShowHand(0, BonusType.threeTrails));
+      final trails = closed(
+        e.applyMove(s, const ShowHand(0, BonusType.threeTrails)),
+      );
       expect(trails.scores[0], 9);
       expect(
         ChuchulaGameEngine.bestShow(ChuchulaGameEngine.showable(s, 0)),

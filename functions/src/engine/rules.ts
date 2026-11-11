@@ -16,6 +16,8 @@ export interface RuleConfig {
   fourCardWeakest: boolean;
   declareBonuses: boolean;
   maxRounds: number;
+  showWindowSeconds: number;
+  lastGroupDoubleRunWins: boolean;
 }
 
 export const STANDARD_RULES: RuleConfig = Object.freeze({
@@ -33,6 +35,8 @@ export const STANDARD_RULES: RuleConfig = Object.freeze({
   fourCardWeakest: true,
   declareBonuses: true,
   maxRounds: 100,
+  showWindowSeconds: 20,
+  lastGroupDoubleRunWins: true,
 });
 
 export function rulesFromJson(json: Partial<RuleConfig> | undefined): RuleConfig {
@@ -89,4 +93,21 @@ export function bestShow(bonuses: Bonus[]): BonusType | null {
   let best: BonusType | null = null;
   for (const [t, v] of totals) if (best === null || v > totals.get(best)!) best = t;
   return best;
+}
+
+/**
+ * Ranks special hands against each other (BonusDetector.showRank in Dart): all
+ * thirteen ranks, then three trails, six pairs, four of a kind; the same kind
+ * compares by its ranks, highest first.
+ */
+export function showRank(hand: Card[], type: BonusType): number[] {
+  const kind = { fourOfAKind: 0, sixPairs: 1, threeTrails: 2, allRanks: 3 }[type];
+  const need = { fourOfAKind: 4, sixPairs: 2, threeTrails: 3, allRanks: 99 }[type];
+  const ranks = [...rankCounts(hand).entries()].filter(([, n]) => n >= need).map(([r]) => r).sort((a, b) => b - a);
+  return [kind, ...ranks];
+}
+
+export function compareShowRanks(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length && i < b.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return a.length - b.length;
 }

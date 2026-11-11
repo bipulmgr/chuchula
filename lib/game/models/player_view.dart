@@ -24,6 +24,9 @@ class PlayerView {
     required this.history,
     required this.result,
     required this.version,
+    this.shows = const [null, null, null, null],
+    this.showOpener,
+    this.showWindowSeconds = 20,
   });
 
   factory PlayerView.of(GameState s, int seat) => PlayerView(
@@ -45,6 +48,9 @@ class PlayerView {
     history: s.history,
     result: s.result,
     version: s.version,
+    shows: s.shows,
+    showOpener: s.showOpener,
+    showWindowSeconds: s.rules.showWindowSeconds,
   );
 
   final int mySeat;
@@ -70,6 +76,20 @@ class PlayerView {
   RoundResult? get lastRound => history.isEmpty ? null : history.last;
   final MatchResult? result;
   final int version;
+
+  /// While [phase] is `showing`: each seat's answer to the open show (a
+  /// special's name or `kShowPass`), null while it is deciding.
+  final List<String?> shows;
+
+  /// Seat that opened the show window.
+  final int? showOpener;
+
+  /// How long the others have to answer a show.
+  final int showWindowSeconds;
+
+  /// True while a show is open and this seat still has to answer it.
+  bool get mustAnswerShow =>
+      phase == GamePhase.showing && shows[mySeat] == null;
 
   bool get isMyTurn => phase == GamePhase.playing && turnSeat == mySeat;
 
@@ -105,6 +125,9 @@ class PlayerView {
     'history': [for (final r in history) r.toJson()],
     'result': result?.toJson(),
     'version': version,
+    'shows': shows,
+    'showOpener': showOpener,
+    'showWindowSeconds': showWindowSeconds,
   };
 
   factory PlayerView.fromJson(Map<String, dynamic> json) {
@@ -145,6 +168,11 @@ class PlayerView {
               (json['result'] as Map).cast<String, dynamic>(),
             ),
       version: json['version'] as int,
+      shows: json['shows'] == null
+          ? const [null, null, null, null]
+          : (json['shows'] as List).cast<String?>(),
+      showOpener: json['showOpener'] as int?,
+      showWindowSeconds: json['showWindowSeconds'] as int? ?? 20,
     );
   }
 }

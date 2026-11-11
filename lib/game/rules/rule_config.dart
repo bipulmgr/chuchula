@@ -17,6 +17,8 @@ class RuleConfig {
     this.fourCardWeakest = true,
     this.declareBonuses = true,
     this.maxRounds = 100,
+    this.showWindowSeconds = 20,
+    this.lastGroupDoubleRunWins = true,
   });
 
   /// Points needed to win the match.
@@ -67,6 +69,15 @@ class RuleConfig {
   /// Safety valve against endless matches (e.g. with [targetIsExact]).
   final int maxRounds;
 
+  /// After a player shows a special hand, the others have this long to
+  /// show theirs; the best special shown wins the round. 0 ends the round
+  /// at the first show.
+  final int showWindowSeconds;
+
+  /// A player whose last group is a double run (pure sequence) wins the
+  /// whole match, not just the round.
+  final bool lastGroupDoubleRunWins;
+
   static const standard = RuleConfig();
 
   Map<String, dynamic> toJson() => {
@@ -84,6 +95,8 @@ class RuleConfig {
     'fourCardWeakest': fourCardWeakest,
     'declareBonuses': declareBonuses,
     'maxRounds': maxRounds,
+    'showWindowSeconds': showWindowSeconds,
+    'lastGroupDoubleRunWins': lastGroupDoubleRunWins,
   };
 
   factory RuleConfig.fromJson(Map<String, dynamic> json) {
@@ -110,6 +123,10 @@ class RuleConfig {
       fourCardWeakest: json['fourCardWeakest'] as bool? ?? d.fourCardWeakest,
       declareBonuses: json['declareBonuses'] as bool? ?? d.declareBonuses,
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
+      showWindowSeconds:
+          json['showWindowSeconds'] as int? ?? d.showWindowSeconds,
+      lastGroupDoubleRunWins:
+          json['lastGroupDoubleRunWins'] as bool? ?? d.lastGroupDoubleRunWins,
     );
   }
 }

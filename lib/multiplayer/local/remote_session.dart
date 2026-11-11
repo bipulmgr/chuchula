@@ -177,6 +177,9 @@ class RemoteGameSession extends BaseGameSession {
       _send(ShowHand(localSeat, bonus));
 
   @override
+  Future<void> passShow() => _send(PassShow(localSeat));
+
+  @override
   Future<void> startNextRound() async {}
 
   @override
