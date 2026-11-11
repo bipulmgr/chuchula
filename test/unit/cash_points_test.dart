@@ -87,6 +87,26 @@ void main() {
     });
   });
 
+  group('boards', () {
+    test('payments and entry scale with the board', () {
+      expect(CashPoints.boards, [100, 200, 500, 1000, 2000, 10000]);
+      expect(CashPoints.paymentsFor(200), [40, 60, 100]);
+      expect(CashPoints.paymentsFor(10000), [2000, 3000, 5000]);
+      // Entry is half the board: the most a player can lose there.
+      for (final b in CashPoints.boards) {
+        expect(CashPoints.entryFor(b), b ~/ 2);
+      }
+      expect(CashPoints.boardLabel(500), '500');
+      expect(CashPoints.boardLabel(2000), '2K');
+      expect(CashPoints.boardLabel(10000), '10K');
+    });
+
+    test('the winner takes the board', () {
+      final r = _result(2, [12, 5, 21, 9]);
+      expect(CashPoints.settle(r, board: 1000), [-200, -500, 1000, -300]);
+    });
+  });
+
   group('wallet', () {
     test('starts at 100 and is saved', () async {
       final c = await _container();

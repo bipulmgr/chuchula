@@ -136,6 +136,9 @@ class AuthorityGameSession extends BaseGameSession {
   final Set<int> _arranging = {};
   final Map<int, Timer> _graceTimers = {};
   Timer? _playTimer;
+  Timer? _showTimer;
+  DateTime? _showDeadline;
+  final Set<int> _answering = {};
   bool _paused = false;
   final math.Random _jitter = math.Random();
 
@@ -157,6 +160,9 @@ class AuthorityGameSession extends BaseGameSession {
       _applyLocal(ShowHand(localSeat, bonus));
 
   @override
+  Future<void> passShow() async => _applyLocal(PassShow(localSeat));
+
+  @override
   Future<void> startNextRound() async => _applyLocal(StartNextRound(localSeat));
 
   void _applyLocal(GameMove move) {
@@ -169,8 +175,9 @@ class AuthorityGameSession extends BaseGameSession {
   }
 
   void _onRemoteMove(int seat, GameMove move) {
-    // A client may only act for its own seat and may not start rounds.
-    if (move.seat != seat || move is StartNextRound) {
+    // A client may only act for its own seat and may not start rounds or
+    // close a show window (the host keeps that clock).
+    if (move.seat != seat || move is StartNextRound || move is CloseShow) {
       _remotes[seat]?.sendError(RuleError.invalidSeat);
       return;
     }
@@ -242,7 +249,14 @@ class AuthorityGameSession extends BaseGameSession {
   void _schedule() {
     if (disposed || _paused) return;
     final s = _state;
-    if (s.phase == GamePhase.arranging) {
+    if (s.phase != GamePhase.showing) {
+      _showTimer?.cancel();
+      _showTimer = null;
+      _showDeadline = null;
+    }
+    if (s.phase == GamePhase.showing) {
+      _scheduleShowWindow(s);
+    } else if (s.phase == GamePhase.arranging) {
       for (final seat in _bots.keys) {
         if (!s.isReady(seat) && !_arranging.contains(seat)) {
           _arrangeBot(seat, s.round);
@@ -265,6 +279,51 @@ class AuthorityGameSession extends BaseGameSession {
           _commit(engine.applyMove(_state, PlayGroup(turn, s.groupIndex)));
         });
       }
+    }
+  }
+
+  /// Runs the show window: bots answer after a short think, and when time
+  /// is up the window closes (silent seats count as passing).
+  void _scheduleShowWindow(GameState s) {
+    final deadline = _showDeadline ??= DateTime.now().add(
+      Duration(seconds: s.rules.showWindowSeconds),
+    );
+    if (_showTimer == null) {
+      final round = s.round;
+      var left = deadline.difference(DateTime.now());
+      if (left.isNegative) left = Duration.zero;
+      _showTimer = Timer(left, () {
+        _showTimer = null;
+        if (disposed || _paused) return;
+        final now = _state;
+        if (now.phase == GamePhase.showing && now.round == round) {
+          _commit(engine.applyMove(now, CloseShow(localSeat)));
+        }
+      });
+    }
+    for (final seat in _bots.keys) {
+      if (s.shows[seat] != null || _answering.contains(seat)) continue;
+      _answering.add(seat);
+      final round = s.round;
+      Future<void>.delayed(timing.minThink, () {
+        _answering.remove(seat);
+        if (disposed || _paused) return;
+        final now = _state;
+        if (now.phase != GamePhase.showing ||
+            now.round != round ||
+            now.shows[seat] != null) {
+          return;
+        }
+        final best = ChuchulaGameEngine.bestShow(
+          ChuchulaGameEngine.showable(now, seat),
+        );
+        final GameMove move = best == null
+            ? PassShow(seat)
+            : ShowHand(seat, best);
+        if (engine.validateMove(now, move).isValid) {
+          _commit(engine.applyMove(now, move));
+        }
+      });
     }
   }
 
@@ -326,6 +385,9 @@ class AuthorityGameSession extends BaseGameSession {
     _paused = true;
     _playTimer?.cancel();
     _playTimer = null;
+    // The show deadline is kept; the window resumes where it was.
+    _showTimer?.cancel();
+    _showTimer = null;
   }
 
   @override
@@ -337,6 +399,7 @@ class AuthorityGameSession extends BaseGameSession {
   @override
   Future<void> dispose() async {
     _playTimer?.cancel();
+    _showTimer?.cancel();
     for (final t in _graceTimers.values) {
       t.cancel();
     }

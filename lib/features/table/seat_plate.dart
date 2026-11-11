@@ -22,6 +22,7 @@ class SeatPlate extends StatefulWidget {
     required this.phase,
     required this.reducedMotion,
     this.compact = false,
+    this.showAnswer,
   });
 
   final int seat;
@@ -36,6 +37,9 @@ class SeatPlate extends StatefulWidget {
   final GamePhase phase;
   final bool reducedMotion;
   final bool compact;
+
+  /// While a show is open: this seat's answer (showed, passed, deciding).
+  final String? showAnswer;
 
   @override
   State<SeatPlate> createState() => _SeatPlateState();
@@ -98,6 +102,9 @@ class _SeatPlateState extends State<SeatPlate>
         size: 12,
         color: Color(0xFFFFB0A0),
       );
+    } else if (widget.showAnswer != null) {
+      status = widget.showAnswer;
+      statusIcon = Icon(Icons.auto_awesome, size: 12, color: t.glow);
     } else if (widget.phase == GamePhase.arranging) {
       if (widget.isReady) {
         status = l.readyCheck;

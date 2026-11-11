@@ -7,6 +7,7 @@ import '../../core/theme/table_themes.dart';
 import '../../game/models/card.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player_view.dart';
+import '../../game/rules/bonuses.dart';
 import '../../game/rules/hand_evaluator.dart';
 import '../../widgets/animated_count.dart';
 import '../../widgets/card_widgets.dart';
@@ -57,6 +58,11 @@ class RoundSummaryPanel extends StatelessWidget {
                     color: theme.accent,
                   ),
                 ),
+                if (rr.doubleRunSeat != null)
+                  _Banner(
+                    text: l.doubleRunBy(view.seats[rr.doubleRunSeat!].name),
+                    theme: theme,
+                  ),
                 if (rr.sweepSeat != null)
                   _Banner(
                     text: '${view.seats[rr.sweepSeat!].name}: ${l.sweep}',
@@ -241,17 +247,30 @@ class _SeatRow extends StatelessWidget {
                 );
               },
             ),
-          ] else if (rr.shownSeat == seat && rr.instantWinHand != null) ...[
-            // The special hand this player showed.
+          ] else if (_shownHand(rr, seat) case (final hand, final kind)) ...[
+            // The special hand this player showed. Only the cards that
+            // make the special are highlighted; the best special shown
+            // wins the round.
             const SizedBox(height: 4),
             LayoutBuilder(
-              builder: (context, c) => _MiniGroup(
-                cards: rr.instantWinHand!,
-                width: math.min(34.0, c.maxWidth / 7.8),
-                won: true,
-                label: rr.bonuses[seat].map((b) => l.bonus(b.type)).join(' + '),
-                theme: theme,
-              ),
+              builder: (context, c) {
+                final won = rr.shownSeat == seat;
+                final special = BonusDetector.specialCards(hand, kind);
+                // The special's cards first, then the rest.
+                final cards = [
+                  ...hand.where(special.contains),
+                  ...hand.where((x) => !special.contains(x)),
+                ];
+                return _MiniGroup(
+                  key: Key('shown-$seat'),
+                  cards: cards,
+                  width: math.min(34.0, c.maxWidth / 7.8),
+                  won: won,
+                  highlighted: special,
+                  label: won ? l.bonus(kind) : l.showBeaten(l.bonus(kind)),
+                  theme: theme,
+                );
+              },
             ),
           ],
         ],
@@ -260,13 +279,29 @@ class _SeatRow extends StatelessWidget {
   }
 }
 
+/// The hand [seat] showed this round and the special it showed, if any.
+/// Older saves only kept the winner's hand.
+(List<PlayingCard>, BonusType)? _shownHand(RoundResult rr, int seat) {
+  final hand =
+      rr.shownHands[seat] ?? (rr.shownSeat == seat ? rr.instantWinHand : null);
+  final kind =
+      rr.shownKinds[seat] ??
+      (rr.shownSeat == seat && rr.bonuses[seat].isNotEmpty
+          ? rr.bonuses[seat].first.type
+          : null);
+  if (hand == null || kind == null) return null;
+  return (hand, kind);
+}
+
 class _MiniGroup extends StatelessWidget {
   const _MiniGroup({
+    super.key,
     required this.cards,
     required this.width,
     required this.won,
     required this.label,
     required this.theme,
+    this.highlighted,
   });
 
   final List<PlayingCard> cards;
@@ -274,6 +309,32 @@ class _MiniGroup extends StatelessWidget {
   final bool won;
   final String label;
   final TableTheme theme;
+
+  /// When set, only these cards glow (a shown special hand), and the rest
+  /// are dimmed.
+  final Set<PlayingCard>? highlighted;
+
+  Widget _card(PlayingCard card) {
+    final only = highlighted;
+    if (only == null) {
+      return CardFace(
+        card: card,
+        width: width,
+        elevation: 1,
+        highlight: won ? theme.glow : null,
+      );
+    }
+    final special = only.contains(card);
+    return Opacity(
+      opacity: special ? 1 : 0.45,
+      child: CardFace(
+        card: card,
+        width: width,
+        elevation: 1,
+        highlight: special ? theme.glow : null,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,15 +348,7 @@ class _MiniGroup extends StatelessWidget {
           child: Stack(
             children: [
               for (var i = 0; i < cards.length; i++)
-                Positioned(
-                  left: i * step,
-                  child: CardFace(
-                    card: cards[i],
-                    width: width,
-                    elevation: 1,
-                    highlight: won ? theme.glow : null,
-                  ),
-                ),
+                Positioned(left: i * step, child: _card(cards[i])),
             ],
           ),
         ),

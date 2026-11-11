@@ -20,6 +20,7 @@ class MatchOverPanel extends StatelessWidget {
     this.onPlayAgain,
     this.onPointsTable,
     this.cashBalance,
+    this.board = CashPoints.defaultBoard,
   });
 
   final PlayerView view;
@@ -33,6 +34,9 @@ class MatchOverPanel extends StatelessWidget {
   /// the match had no stakes.
   final int? cashBalance;
 
+  /// The cash board the match was played on.
+  final int board;
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -42,9 +46,16 @@ class MatchOverPanel extends StatelessWidget {
     final places = CashPoints.places(result);
     final order = List.generate(kSeatCount, (i) => i)
       ..sort((a, b) => places[a].compareTo(places[b]));
-    final cash = cashBalance == null ? null : CashPoints.settle(result);
+    final cash = cashBalance == null
+        ? null
+        : CashPoints.settle(result, board: board);
     final instant = result.reason == MatchEndReason.instantWin;
     final hand = view.lastRound?.instantWinHand;
+    final doubleRun = result.reason == MatchEndReason.doubleRun;
+    final doubleRunSeat = view.lastRound?.doubleRunSeat;
+    final doubleRunGroup = doubleRunSeat == null
+        ? null
+        : view.lastRound?.arrangements[doubleRunSeat]?.groups.last;
 
     return Stack(
       children: [
@@ -88,6 +99,30 @@ class MatchOverPanel extends StatelessWidget {
                           alignment: WrapAlignment.center,
                           children: [
                             for (final c in hand) CardFace(card: c, width: 28),
+                          ],
+                        ),
+                      ],
+                    ],
+                    if (doubleRun) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        l.doubleRunWin,
+                        key: const Key('doubleRunWin'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: theme.onSurface),
+                      ),
+                      if (doubleRunGroup != null) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 2,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            for (final c in doubleRunGroup)
+                              CardFace(
+                                card: c,
+                                width: 34,
+                                highlight: theme.glow,
+                              ),
                           ],
                         ),
                       ],

@@ -7,10 +7,12 @@ import {
   Card, cardCode, cardId, compareCards, fromId, parseCard,
 } from './card';
 import { bestIndex, evaluate, fourCardIsWeakest, fourCardWeakestArrangement, playOrder } from './evaluator';
-import { Bonus, BonusType, RuleConfig, STANDARD_RULES, detectBonuses, hasAllRanks } from './rules';
+import {
+  Bonus, BonusType, RuleConfig, STANDARD_RULES, bestShow, compareShowRanks, detectBonuses, hasAllRanks, showRank,
+} from './rules';
 import {
   GROUP_COUNT, GROUP_SIZES, GameMove, GameState, MatchResult, RoundResult,
-  RuleError, SEAT_COUNT, SeatInfo,
+  RuleError, SEAT_COUNT, SHOW_PASS, SeatInfo,
 } from './state';
 
 /** Supplies one 52-card deck order (card ids) per deal. */
@@ -99,6 +101,8 @@ export class ChuchulaEngine {
       history: [],
       version: 0,
       result: null,
+      shows: [null, null, null, null],
+      showOpener: null,
     };
     return this.dealRound(empty, dealer);
   }
@@ -150,6 +154,9 @@ export class ChuchulaEngine {
       instantWinSeat: seat,
       instantWinHand: s.hands[seat],
       shownSeat: null,
+      shownKinds: [null, null, null, null],
+      shownHands: [null, null, null, null],
+      doubleRunSeat: null,
     };
     return bump(s, {
       phase: 'matchOver',
@@ -159,28 +166,68 @@ export class ChuchulaEngine {
     });
   }
 
-  /** Ends the round: [seat] showed the special hands in its dealt cards (only kind [only], when given). */
-  private showHand(s: GameState, seat: number, only?: BonusType): GameState {
-    const bonuses = detectBonuses(cards(s.hands[seat]), s.rules).filter((b) => !only || b.type === only);
-    if (bonuses.some((b) => b.type === 'allRanks')) return this.instantWin(s, seat);
+  /**
+   * [seat] shows the special [kind]. During arranging this opens the show
+   * window for the other players; in the window it is [seat]'s answer. All
+   * thirteen ranks wins the match at once.
+   */
+  private show(s: GameState, seat: number, kind: BonusType): GameState {
+    if (kind === 'allRanks') return this.instantWin(s, seat);
+    const shows = [...s.shows];
+    shows[seat] = kind;
+    if (s.phase === 'arranging') {
+      const opened = bump(s, { phase: 'showing', turnSeat: null, shows, showOpener: seat });
+      if (s.rules.showWindowSeconds <= 0) return this.resolveShows(opened);
+      return opened;
+    }
+    return this.afterAnswer(bump(s, { shows }));
+  }
+
+  private afterAnswer(s: GameState): GameState {
+    return s.shows.every((x) => x !== null) ? this.resolveShows(s) : s;
+  }
+
+  /** Ends the show window: the best special shown wins the round (ties go to the earliest from the opener). */
+  private resolveShows(s: GameState): GameState {
+    const opener = s.showOpener ?? 0;
+    const kinds = s.shows.map((x) => (x === null || x === SHOW_PASS ? null : (x as BonusType)));
+    let winner = -1;
+    let best: number[] | null = null;
+    for (let k = 0; k < SEAT_COUNT; k++) {
+      const seat = (opener + k) % SEAT_COUNT;
+      const kind = kinds[seat];
+      if (kind === null) continue;
+      const rank = showRank(cards(s.hands[seat]), kind);
+      if (best === null || compareShowRanks(rank, best) > 0) {
+        best = rank;
+        winner = seat;
+      }
+    }
+    const w = winner;
+    const bonuses = detectBonuses(cards(s.hands[w]), s.rules).filter((b) => b.type === kinds[w]);
     const total = bonuses.reduce((t, b) => t + b.points, 0);
-    const points = [0, 1, 2, 3].map((i) => (i === seat ? applyTarget(s.scores[i], total, s.rules) : 0));
+    const points = [0, 1, 2, 3].map((i) => (i === w ? applyTarget(s.scores[i], total, s.rules) : 0));
     const rr: RoundResult = {
       round: s.round,
       groupWinners: [],
       arrangements: [null, null, null, null],
-      bonuses: [0, 1, 2, 3].map((i) => (i === seat ? bonuses : [])),
+      bonuses: [0, 1, 2, 3].map((i) => (i === w ? bonuses : [])),
       points,
       sweepSeat: null,
       instantWinSeat: null,
-      instantWinHand: s.hands[seat],
-      shownSeat: seat,
+      instantWinHand: s.hands[w],
+      shownSeat: w,
+      shownKinds: kinds,
+      shownHands: kinds.map((k, i) => (k === null ? null : s.hands[i])),
+      doubleRunSeat: null,
     };
     let next = bump(s, {
       scores: s.scores.map((x, i) => x + points[i]),
       phase: 'roundOver',
       turnSeat: null,
       history: [...s.history, rr],
+      shows: [null, null, null, null],
+      showOpener: null,
     });
     const match = checkMatchResult(next);
     if (match) next = bump(next, { phase: 'matchOver', result: match });
@@ -238,10 +285,18 @@ export class ChuchulaEngine {
         if (state.phase !== 'roundOver') return { error: 'wrongPhase' };
         return null;
       case 'show':
-        if (state.phase !== 'arranging') return { error: 'wrongPhase' };
+        if (state.phase !== 'arranging' && state.phase !== 'showing') return { error: 'wrongPhase' };
+        if (state.phase === 'showing' && state.shows[move.seat] !== null) return { error: 'alreadyAnswered' };
         if (!showable(state, move.seat).some((b) => !move.bonus || b.type === move.bonus)) {
           return { error: 'nothingToShow' };
         }
+        return null;
+      case 'passShow':
+        if (state.phase !== 'showing') return { error: 'wrongPhase' };
+        if (state.shows[move.seat] !== null) return { error: 'alreadyAnswered' };
+        return null;
+      case 'closeShow':
+        if (state.phase !== 'showing') return { error: 'wrongPhase' };
         return null;
     }
   }
@@ -287,20 +342,52 @@ export class ChuchulaEngine {
         return this.finishRound(bump(state, { roundPlays: plays, groupWinners: winners, turnSeat: null }));
       }
       case 'show':
-        return this.showHand(state, move.seat, move.bonus);
+        return this.show(state, move.seat, move.bonus ?? bestShow(showable(state, move.seat))!);
+      case 'passShow': {
+        const shows = [...state.shows];
+        shows[move.seat] = SHOW_PASS;
+        return this.afterAnswer(bump(state, { shows }));
+      }
+      case 'closeShow':
+        return this.resolveShows(state);
       case 'next':
         return this.dealRound(state, (state.dealerSeat + 1) % SEAT_COUNT);
     }
   }
 
   private finishRound(state: GameState): GameState {
-    const rr = resolveRound(state);
+    const doubleRun = lastGroupDoubleRun(state);
+    const rr = { ...resolveRound(state), doubleRunSeat: doubleRun };
     const scores = state.scores.map((s, i) => s + rr.points[i]);
     let next = bump(state, { scores, phase: 'roundOver', history: [...state.history, rr] });
+    if (doubleRun !== null) {
+      // A double run in the last group wins the whole match.
+      return bump(next, {
+        phase: 'matchOver',
+        result: { winnerSeat: doubleRun, reason: 'doubleRun', finalScores: scores },
+      });
+    }
     const match = checkMatchResult(next);
     if (match) next = bump(next, { phase: 'matchOver', result: match });
     return next;
   }
+}
+
+/** Seat whose last group is a double run (the strongest, if several), or null. */
+export function lastGroupDoubleRun(state: GameState): number | null {
+  if (!state.rules.lastGroupDoubleRunWins || state.roundPlays.length !== GROUP_COUNT) return null;
+  const plays = state.roundPlays[GROUP_COUNT - 1];
+  if (plays.some((p) => p === null)) return null;
+  let seat: number | null = null;
+  let best = -1;
+  plays.forEach((p, i) => {
+    const v = evaluate(cards(p!));
+    if (v.category === 'pureSequence' && v.strength > best) {
+      best = v.strength;
+      seat = i;
+    }
+  });
+  return seat;
 }
 
 export function resolveGroup(plays: (string[] | null)[]): number {
@@ -363,12 +450,19 @@ export function resolveRound(state: GameState): RoundResult {
     instantWinSeat: null,
     instantWinHand: null,
     shownSeat: null,
+    shownKinds: [null, null, null, null],
+    shownHands: [null, null, null, null],
+    doubleRunSeat: null,
   };
 }
 
-/** Special hands [seat] could show now (empty if none, or if bonuses are scored automatically). */
+/**
+ * Special hands [seat] could show now: during arranging, or while another
+ * player's show is open and [seat] has not answered.
+ */
 export function showable(s: GameState, seat: number): Bonus[] {
-  return s.rules.declareBonuses && s.phase === 'arranging' ? detectBonuses(cards(s.hands[seat]), s.rules) : [];
+  const open = s.phase === 'arranging' || (s.phase === 'showing' && s.shows[seat] === null);
+  return s.rules.declareBonuses && open ? detectBonuses(cards(s.hands[seat]), s.rules) : [];
 }
 
 export function checkMatchResult(state: GameState): MatchResult | null {

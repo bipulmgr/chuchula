@@ -283,6 +283,17 @@ class OnlineGameSession extends BaseGameSession {
       _send(ShowHand(localSeat, bonus));
 
   @override
+  Future<void> passShow() => _send(PassShow(localSeat));
+
+  /// The server checks the time itself and refuses an early close.
+  @override
+  Future<void> showWindowExpired() async {
+    if (viewNotifier.value?.phase == GamePhase.showing) {
+      await _send(CloseShow(localSeat));
+    }
+  }
+
+  @override
   Future<void> startNextRound() => _send(StartNextRound(localSeat));
 
   @override

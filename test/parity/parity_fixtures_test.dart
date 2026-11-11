@@ -205,6 +205,29 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
           apply(SubmitArrangement(seat, sorted));
         }
         if (!shown) tryInvalid(SubmitArrangement(0, s.arrangements[0]!));
+      case GamePhase.showing:
+        // Other seats answer the show one at a time: a special is shown,
+        // otherwise they pass. Every third round the window times out
+        // after the first answer instead.
+        tryInvalid(PassShow(s.showOpener!));
+        tryInvalid(ShowHand(s.showOpener!));
+        tryInvalid(const StartNextRound(0));
+        final answered = s.shows.where((x) => x != null).length;
+        if (s.round % 3 == 0 && answered >= 2) {
+          apply(const CloseShow(1));
+          break;
+        }
+        for (var k = 1; k < 4; k++) {
+          final seat = (s.showOpener! + k) % 4;
+          if (s.shows[seat] != null) continue;
+          final specials = ChuchulaGameEngine.showable(s, seat);
+          apply(
+            specials.isEmpty
+                ? PassShow(seat)
+                : ShowHand(seat, ChuchulaGameEngine.bestShow(specials)),
+          );
+          break;
+        }
       case GamePhase.playing:
         final turn = s.turnSeat!;
         tryInvalid(PlayGroup((turn + 1) % 4, s.groupIndex));

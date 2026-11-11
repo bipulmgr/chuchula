@@ -14,6 +14,7 @@ import '../../game/models/player_view.dart';
 import '../../game/rules/bonuses.dart';
 import '../../game/rules/hand_evaluator.dart';
 import '../../game/rules/rule_config.dart';
+import '../../game/scoring/cash_points.dart';
 import '../../game/state/game_session.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
@@ -34,7 +35,8 @@ class TableScreen extends ConsumerStatefulWidget {
     this.isOffline = true,
     this.onPlayAgain,
     this.onMatchFinished,
-    this.cashStakes = false,
+    this.stakeBoard,
+    this.showSuggest = false,
   });
 
   final GameSession session;
@@ -46,8 +48,13 @@ class TableScreen extends ConsumerStatefulWidget {
   /// Called once when the match ends (statistics, clearing the save).
   final void Function(PlayerView finalView)? onMatchFinished;
 
-  /// Whether this match is played for cash points (offline matches).
-  final bool cashStakes;
+  /// The cash board this match is played on (offline matches), or null
+  /// when it has no stakes.
+  final int? stakeBoard;
+
+  /// Whether the Suggest button is offered while arranging (chosen per
+  /// offline match on the New Match sheet).
+  final bool showSuggest;
 
   @override
   ConsumerState<TableScreen> createState() => _TableScreenState();
@@ -77,6 +84,11 @@ class _TableScreenState extends ConsumerState<TableScreen>
   int _lastDealTick = -1;
   bool _dealPending = false;
   StreamSubscription<SessionEvent>? _events;
+
+  /// When this table saw the current show window open, for its countdown.
+  DateTime? _showStartedAt;
+  Timer? _showTicker;
+  bool _showExpiredSent = false;
 
   GameSession get session => widget.session;
   AudioService get audio => ref.read(audioServiceProvider);
@@ -111,6 +123,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     _bannerTimer?.cancel();
     _summaryTimer?.cancel();
     _autoPlayTimer?.cancel();
+    _showTicker?.cancel();
     _deal.dispose();
     _entrance.dispose();
     super.dispose();
@@ -242,6 +255,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
       }
     }
 
+    _trackShowWindow(old, v);
     _scheduleAutoPlay(v);
 
     if (v.phase == GamePhase.matchOver && !_reportedFinish) {
@@ -249,6 +263,57 @@ class _TableScreenState extends ConsumerState<TableScreen>
       widget.onMatchFinished?.call(v);
     }
     setState(() {});
+  }
+
+  /// Seconds left to answer the open show, counted on this device.
+  int get _showSecondsLeft {
+    final v = _last;
+    final start = _showStartedAt;
+    if (v == null || start == null) return 0;
+    final left =
+        v.showWindowSeconds - DateTime.now().difference(start).inSeconds;
+    return left < 0 ? 0 : left;
+  }
+
+  /// Starts the countdown when a show opens, announces each special shown,
+  /// and tells the session when time is up.
+  void _trackShowWindow(PlayerView? old, PlayerView v) {
+    if (v.phase != GamePhase.showing) {
+      _showTicker?.cancel();
+      _showTicker = null;
+      _showStartedAt = null;
+      return;
+    }
+    final l = context.l10n;
+    final opened = old == null || old.phase != GamePhase.showing;
+    if (opened) {
+      _showStartedAt = DateTime.now();
+      _showExpiredSent = false;
+      audio.play(Sfx.achievement);
+      audio.haptic(HapticKind.heavy);
+      _showTicker?.cancel();
+      _showTicker = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (!mounted) return;
+        if (_showSecondsLeft <= 0 && !_showExpiredSent) {
+          _showExpiredSent = true;
+          session.showWindowExpired();
+        }
+        setState(() {});
+      });
+    }
+    // Announce every special shown since the last view.
+    for (var seat = 0; seat < kSeatCount; seat++) {
+      final now = v.shows[seat];
+      final before = opened ? null : old.shows[seat];
+      if (now == null || now == kShowPass || now == before) continue;
+      final hand = l.bonus(BonusType.values.byName(now));
+      _flash(
+        seat == v.mySeat
+            ? l.youShowed(hand)
+            : l.showOpenedBy(v.seats[seat].name, hand),
+        duration: const Duration(seconds: 3),
+      );
+    }
   }
 
   void _celebrate(PlayerView v) {
@@ -461,6 +526,11 @@ class _TableScreenState extends ConsumerState<TableScreen>
     );
   }
 
+  Future<void> _passShow() async {
+    audio.play(Sfx.button);
+    await session.passShow();
+  }
+
   Future<void> _next() async {
     audio.play(Sfx.button);
     setState(() => _showSummary = false);
@@ -592,6 +662,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
             _TopBar(
               view: v,
               theme: theme,
+              board: widget.stakeBoard,
               onBack: _confirmLeave,
               onPoints: () => showPointsTable(context, v, theme),
               onRules: () => Navigator.of(context).push(
@@ -643,6 +714,20 @@ class _TableScreenState extends ConsumerState<TableScreen>
                       cardBack: back,
                     ),
                   ),
+                  if (v.phase == GamePhase.showing)
+                    Positioned.fill(
+                      child: Align(
+                        alignment: const Alignment(0, -0.1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _ShowWindowPanel(
+                            view: v,
+                            theme: theme,
+                            secondsLeft: _showSecondsLeft,
+                          ),
+                        ),
+                      ),
+                    ),
                   // Messages sit in the middle of the table, clear of the
                   // players' names.
                   if (_banner != null)
@@ -720,9 +805,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
                 onHome: () => Navigator.of(context).pop(),
                 onPlayAgain: widget.onPlayAgain,
                 onPointsTable: () => showPointsTable(context, v, theme),
-                cashBalance: widget.cashStakes
+                cashBalance: widget.stakeBoard != null
                     ? ref.watch(walletProvider).balance
                     : null,
+                board: widget.stakeBoard ?? CashPoints.defaultBoard,
               ),
             ),
           ),
@@ -779,6 +865,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
         isThinking: thinking.contains(seat),
         isDealer: v.dealerSeat == seat,
         phase: v.phase,
+        showAnswer: _showAnswer(v, seat),
         reducedMotion: reduced,
         compact: pos != 2,
       ),
@@ -801,10 +888,23 @@ class _TableScreenState extends ConsumerState<TableScreen>
     );
   }
 
+  /// A seat's answer to the open show, for its name plate.
+  String? _showAnswer(PlayerView v, int seat) {
+    if (v.phase != GamePhase.showing) return null;
+    final l = context.l10n;
+    return switch (v.shows[seat]) {
+      null => l.showDeciding,
+      kShowPass => l.showPassed,
+      _ => l.showShowed,
+    };
+  }
+
   Widget _myBar(PlayerView v, TableTheme theme, bool reduced) {
     final l = context.l10n;
     String status;
-    if (v.phase == GamePhase.arranging) {
+    if (v.phase == GamePhase.showing) {
+      status = v.mustAnswerShow ? l.showAnswerPrompt : l.showWaitOthers;
+    } else if (v.phase == GamePhase.arranging) {
       status = v.myArrangement == null ? l.arrangeHint : l.waitingForOthers;
     } else if (v.phase == GamePhase.playing) {
       status = v.isMyTurn
@@ -828,6 +928,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
             isThinking: false,
             isDealer: v.dealerSeat == v.mySeat,
             phase: v.phase,
+            showAnswer: _showAnswer(v, v.mySeat),
             reducedMotion: reduced,
             compact: true,
           ),
@@ -855,7 +956,6 @@ class _TableScreenState extends ConsumerState<TableScreen>
   }
 
   Widget _actions(PlayerView v, TableTheme theme, AppLocalizations l) {
-    final settings = ref.watch(settingsProvider);
     // On narrow phones the tools tighten up so Ready keeps room for its
     // label.
     final narrow = MediaQuery.sizeOf(context).width < 380;
@@ -886,7 +986,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
             theme,
             iconWidth,
           ),
-          if (settings.showSuggest)
+          if (widget.showSuggest)
             _iconAction(
               Icons.lightbulb_outline,
               l.suggest,
@@ -904,6 +1004,25 @@ class _TableScreenState extends ConsumerState<TableScreen>
               icon: narrow ? null : Icons.check,
               dense: narrow,
               onPressed: _ready,
+            ),
+          ),
+        ],
+      );
+    } else if (v.mustAnswerShow) {
+      // Another player showed: show a special back, or pass.
+      bar = Row(
+        children: [
+          _showMenu(theme, l, iconWidth),
+          const SizedBox(width: 6),
+          Expanded(
+            child: GoldButton(
+              key: const Key('passShowButton'),
+              theme: theme,
+              label: '${l.passShow} · ${l.showSecondsLeft(_showSecondsLeft)}',
+              icon: narrow ? null : Icons.do_not_disturb_alt,
+              dense: narrow,
+              primary: false,
+              onPressed: _passShow,
             ),
           ),
         ],
@@ -955,6 +1074,7 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.view,
     required this.theme,
+    this.board,
     required this.onBack,
     required this.onPoints,
     required this.onRules,
@@ -962,6 +1082,7 @@ class _TopBar extends StatelessWidget {
 
   final PlayerView view;
   final TableTheme theme;
+  final int? board;
   final VoidCallback onBack;
   final VoidCallback onPoints;
   final VoidCallback onRules;
@@ -1000,7 +1121,10 @@ class _TopBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: chip,
               child: Text(
-                l.targetScore(view.targetScore),
+                board == null
+                    ? l.targetScore(view.targetScore)
+                    : '${l.targetScore(view.targetScore)} · '
+                          '${l.boardChip(CashPoints.boardLabel(board!))}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 12, color: theme.onSurface),
@@ -1019,6 +1143,117 @@ class _TopBar extends StatelessWidget {
             onPressed: onRules,
             icon: Icon(Icons.menu_book, color: theme.accentSoft),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The open show window in the middle of the table: who showed what,
+/// who is still deciding, and the time left.
+class _ShowWindowPanel extends StatelessWidget {
+  const _ShowWindowPanel({
+    required this.view,
+    required this.theme,
+    required this.secondsLeft,
+  });
+
+  final PlayerView view;
+  final TableTheme theme;
+  final int secondsLeft;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final opener = view.showOpener;
+    final openerShow = opener == null ? null : view.shows[opener];
+    final title =
+        opener == null || openerShow == null || openerShow == kShowPass
+        ? l.showSpecial
+        : opener == view.mySeat
+        ? l.youShowed(l.bonus(BonusType.values.byName(openerShow)))
+        : l.showOpenedBy(
+            view.seats[opener].name,
+            l.bonus(BonusType.values.byName(openerShow)),
+          );
+    return Container(
+      key: const Key('showWindowPanel'),
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.glow, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: theme.glow.withValues(alpha: 0.35), blurRadius: 18),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_awesome, color: theme.glow, size: 18),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: theme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l.showSecondsLeft(secondsLeft),
+            key: const Key('showCountdown'),
+            style: TextStyle(
+              fontFamily: 'YatraOne',
+              fontSize: 30,
+              color: secondsLeft <= 5 ? const Color(0xFFFF9A8A) : theme.accent,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (var seat = 0; seat < kSeatCount; seat++)
+            if (seat != opener)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        view.seats[seat].name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: theme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      switch (view.shows[seat]) {
+                        null => l.showDeciding,
+                        kShowPass => l.showPassed,
+                        final k => l.bonus(BonusType.values.byName(k)),
+                      },
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            view.shows[seat] == null ||
+                                view.shows[seat] == kShowPass
+                            ? theme.onSurface.withValues(alpha: 0.7)
+                            : theme.glow,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );

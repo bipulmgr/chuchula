@@ -205,40 +205,75 @@ class HandEvaluator {
     });
   }
 
-  /// True when the 4-card group is weaker than every 3-card group.
+  /// Strength of the best three cards in a 3- or 4-card group, valued as
+  /// a 3-card hand. A player's own 4-card group is held against their
+  /// 3-card groups this way (A-J-8-7 of one suit counts as the color
+  /// A-J-8), while against other players it plays as a full 4-card hand.
+  static int bestThreeStrength(List<PlayingCard> cards) {
+    if (cards.length == 3) return evaluate(cards).strength;
+    var best = -1;
+    for (var skip = 0; skip < cards.length; skip++) {
+      final s = evaluate([
+        for (var i = 0; i < cards.length; i++)
+          if (i != skip) cards[i],
+      ]).strength;
+      if (s > best) best = s;
+    }
+    return best;
+  }
+
+  /// True when the 4-card group, by its best three cards, is weaker than
+  /// every 3-card group.
   static bool fourCardIsWeakest(List<List<PlayingCard>> groups) {
     final quads = groups.where((g) => g.length == 4).toList();
     if (quads.length != 1) return true;
-    final q = evaluate(quads.single).strength;
+    final q = bestThreeStrength(quads.single);
     return groups
         .where((g) => g.length == 3)
         .every((g) => evaluate(g).strength > q);
   }
 
-  /// An arrangement of [hand] (13 cards) whose 4-card group is weaker than
-  /// all three 3-card groups, in play order, or null if the hand has none.
-  /// Tries the weakest 4-card groups first, so this is usually immediate.
+  /// An arrangement of [hand] (13 cards) whose 4-card group (by its best
+  /// three cards) is weaker than all three 3-card groups, in play order,
+  /// or null if the hand has none. Tries the weakest 4-card groups first,
+  /// so this is usually immediate.
   static List<List<PlayingCard>>? fourCardWeakestArrangement(
     List<PlayingCard> hand,
   ) {
     if (hand.length != 13) return null;
     final s3 = <int, int>{};
+    for (var a = 0; a < 13; a++) {
+      for (var b = a + 1; b < 13; b++) {
+        for (var c = b + 1; c < 13; c++) {
+          s3[(1 << a) | (1 << b) | (1 << c)] = evaluate([
+            hand[a],
+            hand[b],
+            hand[c],
+          ]).strength;
+        }
+      }
+    }
     final quads = <(int, int)>[];
     for (var a = 0; a < 13; a++) {
       for (var b = a + 1; b < 13; b++) {
         for (var c = b + 1; c < 13; c++) {
-          final m3 = (1 << a) | (1 << b) | (1 << c);
-          s3[m3] = evaluate([hand[a], hand[b], hand[c]]).strength;
           for (var d = c + 1; d < 13; d++) {
-            quads.add((
-              m3 | (1 << d),
-              evaluate([hand[a], hand[b], hand[c], hand[d]]).strength,
-            ));
+            final ma = 1 << a, mb = 1 << b, mc = 1 << c, md = 1 << d;
+            var best = s3[mb | mc | md]!;
+            for (final t in [ma | mc | md, ma | mb | md, ma | mb | mc]) {
+              if (s3[t]! > best) best = s3[t]!;
+            }
+            quads.add((ma | mb | mc | md, best));
           }
         }
       }
     }
-    quads.sort((x, y) => x.$2.compareTo(y.$2));
+    // Ties (quads sharing their best three) break on the mask, so both
+    // engines pick the same arrangement.
+    quads.sort((x, y) {
+      final c = x.$2.compareTo(y.$2);
+      return c != 0 ? c : x.$1.compareTo(y.$1);
+    });
     List<PlayingCard> cardsOf(int m) => [
       for (var i = 0; i < 13; i++)
         if (m & (1 << i) != 0) hand[i],

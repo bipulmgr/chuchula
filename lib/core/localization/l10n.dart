@@ -50,6 +50,7 @@ extension L10nNames on AppLocalizations {
     RuleError.cardNotOwned ||
     RuleError.missingCards => errInvalidArrangement,
     RuleError.fourCardTooStrong => errFourCardTooStrong,
+    RuleError.alreadyAnswered => errAlreadyAnswered,
     _ => errGeneric,
   };
 

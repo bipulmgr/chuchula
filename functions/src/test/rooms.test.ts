@@ -75,9 +75,30 @@ describe('rooms', () => {
     // ended the round); humans still need to arrange.
     if (state!.phase === 'arranging') {
       assert.deepEqual(state!.arrangements.map((a) => a !== null), [false, false, true, true]);
+    } else if (state!.phase === 'showing') {
+      // A bot showed a special hand; the humans have the window to answer.
+      assert.ok([2, 3].includes(state!.showOpener!));
+      assert.equal(room!.showOpenedAt, 5);
     } else {
       assert.ok([2, 3].includes(state!.history.at(-1)!.shownSeat!));
     }
+  });
+
+  it('a show window closes only once its time is up', () => {
+    const { room, state } = rooms.startMatch(lobby(), 'host', 5, engine, 'm');
+    // Seat 0 holds four nines; seat 1 must answer.
+    const used = new Set(['9S', '9H', '9D', '9C']);
+    const rest = state!.hands.flat().filter((c) => !used.has(c));
+    const hands = [['9S', '9H', '9D', '9C', ...rest.slice(0, 9)], ...[0, 1, 2].map((i) => rest.slice(9 + i * 13, 22 + i * 13))];
+    const arranging = { ...state!, phase: 'arranging' as const, hands, arrangements: [null, null, null, null], shows: [null, null, null, null], showOpener: null };
+    const opened = rooms.submitMove({ ...room!, showOpenedAt: null }, arranging, 'host', { type: 'show', seat: 0, bonus: 'fourOfAKind' }, 1000, engine);
+    assert.equal(opened.state!.phase, 'showing');
+    assert.equal(opened.room!.showOpenedAt, 1000);
+    const close = { type: 'closeShow', seat: 1 };
+    assert.throws(() => rooms.submitMove(opened.room!, opened.state!, 'maya', close, 5000, engine), reason('showStillOpen'));
+    const closed = rooms.submitMove(opened.room!, opened.state!, 'maya', close, 21_000, engine);
+    assert.equal(closed.state!.phase === 'roundOver' || closed.state!.phase === 'matchOver', true);
+    assert.equal(closed.room!.showOpenedAt, null);
   });
 
   it('a seat can only move for itself', () => {

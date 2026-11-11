@@ -19,7 +19,11 @@ interpretations**. Each one is a switch in
 3. **Order.** The three 3-card groups are played **strongest first**
    (groups 1 to 3), and the **4-card group is always played last** (group
    4). The 4-card group must be the player's **weakest** group: weaker
-   than each of the three 3-card groups. The app puts the groups in this
+   than each of the three 3-card groups. For this check the 4-card group
+   counts as its **best three cards** (a 4-card color A-J-8-7 counts as
+   the color A-J-8, so it may sit under a 3-card color A-J-9; the same for
+   a double pair or a 4-card run). Against other players it still plays
+   as a full 4-card hand. The app puts the groups in this
    order when Ready is pressed, and refuses Ready (as do the engine and
    server) while the 4-card group is stronger than a 3-card group. Only a
    hand that cannot be arranged that way at all (very rare) may play a
@@ -89,6 +93,12 @@ top; two pair sits between Color and Pair.)*
 | Show six pairs | 6, round ends |
 | Show three trails ("three trials") | 9, round ends |
 | Show one card of every rank, A to K ("all thirteen different") | Match win |
+| Last group (group 4) is a double run | Match win |
+
+**Double run in the last group.** When the groups of a round are all
+played and a player's last group is a double run (its best hand is a run
+in one suit), that player wins the whole match, not just the round. If
+several players have one, the strongest double run wins.
 
 To show, tap **Show** (the ✨ button) while arranging and pick the special
 from its menu. The app gives no hint about which special the hand holds.
@@ -97,17 +107,25 @@ ends and **only the picked kind scores** (two fours of a kind score 4 each);
 if not, nothing is shown and the player carries on arranging.
 
 **Showing a special hand.** While arranging (before the groups are
-played), a player holding one of these hands can tap **Show**. The round
-ends at once: the shower scores the points, nobody else scores, and the
-next round is dealt. Showing all thirteen ranks wins the whole match.
-Bots always show. A special hand that is not shown scores nothing.
+played), a player holding one of these hands can tap **Show**. The other
+players then get **20 seconds** to show a special of their own or pass.
+When everyone has answered, or the time is up, the best special shown
+wins the round: its owner scores its points and nobody else scores.
+Specials rank: all thirteen ranks, then three trails, six pairs, four of a
+kind. Two of the same kind compare by rank (four kings beat four nines;
+for trails and pairs the highest one decides first). If they are still
+equal, the one shown first wins. Showing all thirteen ranks wins the
+whole match at once. Bots always show, and answer at once. A special hand
+that is not shown scores nothing. In the round summary only the cards
+that make each special are highlighted.
 
 Details *(interim)*:
 
 - Special hands are judged on the **dealt** 13 cards.
 - A hand with more than one special scores only the kind the player
   picks (bots pick the most valuable).
-- The first player to show ends the round; nobody else can show after.
+- After the first show, the others have 20 seconds to answer
+  (`showWindowSeconds`).
 - For six pairs, a four of a kind counts as two pairs and a trail as one.
 - "Three trials" is read as three *trails* (three separate
   three-of-a-kinds).
@@ -127,10 +145,15 @@ have no money value: they cannot be bought, sold or cashed out.
 - Every player starts with **100**.
 - Watching a rewarded ad to the end adds **50** (Android app only). An ad
   that fails to load or is closed early adds nothing.
-- Starting a new match needs at least **50**, the largest payment, so
-  every payment can always be covered. Below that, the app offers an ad.
-- At the end of a match the losers pay the winner by finishing place:
-  **2nd pays 20, 3rd pays 30, last pays 50**, so the winner gains 100.
+- A new match is played on a **board**: 100, 200, 500, 1K, 2K or 10K.
+  The board is what the winner collects. Sitting at a board needs its
+  largest loss, half the board: 50 for 100, 100 for 200, 250 for 500,
+  500 for 1K, 1,000 for 2K and 5,000 for 10K. Below 50, the app offers an
+  ad. Boards the balance cannot cover are greyed out on the New Match
+  screen.
+- At the end of a match the losers pay the winner by finishing place. On
+  the 100 board **2nd pays 20, 3rd pays 30, last pays 50**, so the winner
+  gains 100; bigger boards scale this (the 1K board pays 200, 300, 500).
   Places after the winner follow final scores. Players tied on score
   split the payments of the places they span evenly, rounded down (two
   tied for 2nd and 3rd pay 25 each); the winner receives exactly what is
@@ -182,4 +205,6 @@ it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourt
 | `strongestFirst` | true | 3-card groups are played strongest first, then the 4-card group (the engine orders them) |
 | `fourCardWeakest` | true | The 4-card group must be weaker than every 3-card group, unless the hand allows no such arrangement |
 | `declareBonuses` | true | Special hands score only when shown, which ends the round. If false, they score automatically at round end and all-ranks wins at the deal |
+| `showWindowSeconds` | 20 | After a show, how long the others have to show theirs. 0 ends the round at the first show |
+| `lastGroupDoubleRunWins` | true | A double run in the last group wins the match |
 | `maxRounds` | 100 | Safety limit |

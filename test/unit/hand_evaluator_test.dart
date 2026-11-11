@@ -189,6 +189,49 @@ void main() {
     );
   });
 
+  test('the own 4-card group counts by its best three cards', () {
+    List<List<PlayingCard>> g(List<String> s) => [
+      for (final c in s) parseCards(c),
+    ];
+    // Bipul's hand: color A-J-9 in a 3-card group and the 4-card color
+    // A-J-8-7. Held as A-J-8 it is weaker than A-J-9, so this is legal.
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['KS KH KD', 'QS QH QD', 'AH JH 9H', 'AC JC 8C 7C']),
+      ),
+      isTrue,
+    );
+    expect(
+      HandEvaluator.bestThreeStrength(parseCards('AC JC 8C 7C')),
+      HandEvaluator.evaluate(parseCards('AC JC 8C')).strength,
+    );
+    // The same for a double pair (best three: a pair) and a run.
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['KS KH 2D', 'QS QH 3D', '9S 9H 5C', '8S 8H 7S 7H']),
+      ),
+      isTrue, // 8-8-7-7 counts as the pair 8-8-7, under the pair of 9s
+    );
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['KS KH 2D', 'QS QH 3D', '9S 9H 5C', '8S 8H 4S 4H']),
+      ),
+      isTrue,
+    );
+    expect(
+      HandEvaluator.fourCardIsWeakest(
+        g(['KS QH JD', 'QS JH 10D', '9S 8H 7C', '8D 7S 6H 5C']),
+      ),
+      isTrue, // run 8-7-6 under the run 9-8-7
+    );
+    // Against other players the full 4-card hand still plays.
+    expect(
+      HandEvaluator.evaluate(parseCards('AC JC 8C 7C')) >
+          HandEvaluator.evaluate(parseCards('AH JH 9H')),
+      isTrue,
+    );
+  });
+
   test('finds an arrangement with the 4-card group weakest', () {
     final hand = parseCards('5D 5H 6H 7H 2D 3D AH 2S 6S 8S 10C KH AC');
     final groups = HandEvaluator.fourCardWeakestArrangement(hand)!;

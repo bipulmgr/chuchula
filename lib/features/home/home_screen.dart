@@ -79,6 +79,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ref,
       resume: saved.state,
       difficulty: saved.difficulty,
+      board: saved.board,
+      showSuggest: saved.showSuggest,
       playerName: _playerName(l),
       botNames: l.botNames,
     );
@@ -146,17 +148,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return;
     }
     if (!mounted) return;
-    final start = await showModalBottomSheet<bool>(
+    final choice = await showModalBottomSheet<_MatchChoice>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SetupSheet(),
     );
-    if (start != true || !mounted) return;
+    if (choice == null || !mounted) return;
     final l = context.l10n;
     await OfflineGame.open(
       context,
       ref,
+      board: choice.board,
+      showSuggest: choice.showSuggest,
       playerName: _playerName(l),
       botNames: l.botNames,
     );
@@ -508,6 +512,13 @@ class _HeroCards extends StatelessWidget {
   }
 }
 
+/// What the New Match sheet chose.
+class _MatchChoice {
+  const _MatchChoice(this.board, this.showSuggest);
+  final int board;
+  final bool showSuggest;
+}
+
 class _SetupSheet extends ConsumerStatefulWidget {
   const _SetupSheet();
 
@@ -519,6 +530,12 @@ class _SetupSheetState extends ConsumerState<_SetupSheet> {
   late final TextEditingController _name = TextEditingController(
     text: ref.read(settingsProvider).playerName,
   );
+
+  /// The board; the smallest by default.
+  int _board = CashPoints.defaultBoard;
+
+  /// Suggest button at the table; off unless the player turns it on.
+  bool _suggest = false;
 
   @override
   void dispose() {
@@ -532,6 +549,7 @@ class _SetupSheetState extends ConsumerState<_SetupSheet> {
     final theme = ref.watch(tableThemeProvider);
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final balance = ref.watch(walletProvider).balance;
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -540,81 +558,211 @@ class _SetupSheetState extends ConsumerState<_SetupSheet> {
       ),
       child: GoldPanel(
         theme: theme,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.newMatch,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'YatraOne',
-                fontSize: 24,
-                color: theme.accent,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('nameField'),
-              controller: _name,
-              maxLength: 16,
-              style: TextStyle(color: theme.onSurface),
-              decoration: InputDecoration(
-                labelText: l.yourName,
-                hintText: l.defaultPlayerName,
-                labelStyle: TextStyle(color: theme.accentSoft),
-                counterStyle: TextStyle(
-                  color: theme.onSurface.withValues(alpha: 0.5),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.newMatch,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'YatraOne',
+                  fontSize: 24,
+                  color: theme.accent,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: theme.accent.withValues(alpha: 0.6),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('nameField'),
+                controller: _name,
+                maxLength: 16,
+                style: TextStyle(color: theme.onSurface),
+                decoration: InputDecoration(
+                  labelText: l.yourName,
+                  hintText: l.defaultPlayerName,
+                  labelStyle: TextStyle(color: theme.accentSoft),
+                  counterStyle: TextStyle(
+                    color: theme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.accent.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: theme.accent, width: 2),
                   ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: theme.accent, width: 2),
+                onChanged: (v) =>
+                    notifier.update((x) => x.copyWith(playerName: v)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l.difficulty,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              for (final d in BotDifficulty.values)
+                _DifficultyTile(
+                  key: Key('difficulty-${d.name}'),
+                  theme: theme,
+                  title: l.difficultyName(d),
+                  subtitle: l.difficultyDesc(d),
+                  selected: s.difficulty == d,
+                  onTap: () =>
+                      notifier.update((x) => x.copyWith(difficulty: d)),
+                ),
+              const SizedBox(height: 8),
+              Text(
+                l.board,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (final b in CashPoints.boards)
+                    _BoardChip(
+                      key: Key('board-$b'),
+                      theme: theme,
+                      label: CashPoints.boardLabel(b),
+                      entry: l.boardEntry(CashPoints.entryFor(b)),
+                      selected: _board == b,
+                      enabled: balance >= CashPoints.entryFor(b),
+                      onTap: () => setState(() => _board = b),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l.boardPays(
+                  CashPoints.boardLabel(_board),
+                  CashPoints.entryFor(_board),
+                ),
+                key: const Key('boardPays'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
-              onChanged: (v) =>
-                  notifier.update((x) => x.copyWith(playerName: v)),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l.difficulty,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            for (final d in BotDifficulty.values)
-              _DifficultyTile(
-                key: Key('difficulty-${d.name}'),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                key: const Key('suggestToggle'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                activeThumbColor: theme.accent,
+                title: Text(
+                  l.suggestToggle,
+                  style: TextStyle(color: theme.onSurface),
+                ),
+                subtitle: Text(
+                  l.suggestToggleSub,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                value: _suggest,
+                onChanged: (v) => setState(() => _suggest = v),
+              ),
+              Text(
+                l.targetScore(20),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.onSurface.withValues(alpha: 0.75),
+                ),
+              ),
+              const SizedBox(height: 12),
+              GoldButton(
+                key: const Key('startMatchButton'),
                 theme: theme,
-                title: l.difficultyName(d),
-                subtitle: l.difficultyDesc(d),
-                selected: s.difficulty == d,
-                onTap: () => notifier.update((x) => x.copyWith(difficulty: d)),
+                label: l.startMatch,
+                icon: Icons.style,
+                onPressed: balance >= CashPoints.entryFor(_board)
+                    ? () =>
+                          Navigator.pop(context, _MatchChoice(_board, _suggest))
+                    : null,
               ),
-            const SizedBox(height: 6),
-            Text(
-              l.targetScore(20),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.onSurface.withValues(alpha: 0.75),
-              ),
-            ),
-            const SizedBox(height: 12),
-            GoldButton(
-              key: const Key('startMatchButton'),
-              theme: theme,
-              label: l.startMatch,
-              icon: Icons.style,
-              onPressed: () => Navigator.pop(context, true),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// One board in the New Match sheet: its size and the cash points needed.
+class _BoardChip extends StatelessWidget {
+  const _BoardChip({
+    super.key,
+    required this.theme,
+    required this.label,
+    required this.entry,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final TableTheme theme;
+  final String label;
+  final String entry;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    enabled: enabled,
+    button: true,
+    child: GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.4,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 84,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? theme.accent.withValues(alpha: 0.25)
+                : Colors.black.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? theme.glow
+                  : theme.accent.withValues(alpha: 0.3),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: selected ? theme.glow : theme.onSurface,
+                ),
+              ),
+              Text(
+                entry,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: theme.onSurface.withValues(alpha: 0.75),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _DifficultyTile extends StatelessWidget {

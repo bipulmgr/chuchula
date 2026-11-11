@@ -43,7 +43,6 @@ class AppSettings {
     this.difficulty = BotDifficulty.medium,
     this.musicTrack = MusicTrack.himalaya,
     this.soundSet = SoundSet.classic,
-    this.showSuggest = true,
   });
 
   final bool musicOn;
@@ -62,9 +61,6 @@ class AppSettings {
   final MusicTrack musicTrack;
   final SoundSet soundSet;
 
-  /// Whether the table offers the Suggest button while arranging.
-  final bool showSuggest;
-
   AppSettings copyWith({
     bool? musicOn,
     bool? sfxOn,
@@ -79,7 +75,6 @@ class AppSettings {
     BotDifficulty? difficulty,
     MusicTrack? musicTrack,
     SoundSet? soundSet,
-    bool? showSuggest,
   }) => AppSettings(
     musicOn: musicOn ?? this.musicOn,
     sfxOn: sfxOn ?? this.sfxOn,
@@ -94,7 +89,6 @@ class AppSettings {
     difficulty: difficulty ?? this.difficulty,
     musicTrack: musicTrack ?? this.musicTrack,
     soundSet: soundSet ?? this.soundSet,
-    showSuggest: showSuggest ?? this.showSuggest,
   );
 
   Map<String, dynamic> toJson() => {
@@ -111,7 +105,6 @@ class AppSettings {
     'difficulty': difficulty.name,
     'musicTrack': musicTrack.name,
     'soundSet': soundSet.name,
-    'showSuggest': showSuggest,
   };
 
   /// Tolerant parsing: unknown or corrupt values fall back to defaults.
@@ -147,7 +140,6 @@ class AppSettings {
       difficulty: pickEnum('difficulty', BotDifficulty.values, d.difficulty),
       musicTrack: pickEnum('musicTrack', MusicTrack.values, d.musicTrack),
       soundSet: pickEnum('soundSet', SoundSet.values, d.soundSet),
-      showSuggest: pick('showSuggest', d.showSuggest),
     );
   }
 }

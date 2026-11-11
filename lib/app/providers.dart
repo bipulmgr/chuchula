@@ -83,6 +83,9 @@ class WalletNotifier extends Notifier<Wallet> {
 
   bool get canPlay => state.balance >= CashPoints.minimumToPlay;
 
+  /// Whether the balance covers the entry for [board].
+  bool canSit(int board) => state.balance >= CashPoints.entryFor(board);
+
   void _save(Wallet next) {
     state = next;
     ref.read(localStoreProvider).saveWallet(next);

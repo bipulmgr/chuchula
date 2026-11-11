@@ -25,6 +25,8 @@ export interface Room {
   seats: RoomSeat[];
   createdAt: number;
   updatedAt: number;
+  /** When the open show window started (server time), or null. */
+  showOpenedAt?: number | null;
 }
 
 /** Reasons sent to the client in HttpsError details. */
@@ -42,6 +44,9 @@ export class RoomError extends Error {
     super(message ?? reason);
   }
 }
+
+/** Client and server clocks differ; a close this early is still accepted. */
+export const SHOW_CLOCK_SLACK_MS = 1500;
 
 /** A player is replaced by a bot after this long without a heartbeat. */
 export const AWAY_AFTER_MS = 60_000;
@@ -133,7 +138,7 @@ export function leaveRoom(room: Room, state: GameState | null, uid: string, now:
   const humansLeft = seats.some((s) => s.uid !== null);
   if (!humansLeft && room.status === 'playing') next = { ...next, status: 'abandoned' };
   const newState = state && room.status === 'playing' ? runBots(next, state, engine) : state;
-  return { room: withStatus(next, newState), state: newState };
+  return { room: withStatus(next, newState, now), state: newState };
 }
 
 export function startMatch(room: Room, uid: string, now: number, engine: ChuchulaEngine, matchId: string): RoomUpdate {
@@ -157,7 +162,7 @@ export function startMatch(room: Room, uid: string, now: number, engine: Chuchul
   });
   const playing: Room = { ...room, seats, status: 'playing', updatedAt: now };
   const after = runBots(playing, state, engine);
-  return { room: withStatus(playing, after), state: after };
+  return { room: withStatus(playing, after, now), state: after };
 }
 
 /** Seats the server plays for: bots and players who are away. */
@@ -184,9 +189,14 @@ export function runBots(room: Room, state: GameState, engine: ChuchulaEngine): G
   return s;
 }
 
-function withStatus(room: Room, state: GameState | null): Room {
-  if (state?.phase === 'matchOver' && room.status === 'playing') return { ...room, status: 'finished' };
-  return room;
+function withStatus(room: Room, state: GameState | null, now: number): Room {
+  // Starts the show clock when a show window opens, and clears it after.
+  const showing = state?.phase === 'showing';
+  let r = room;
+  if (showing && r.showOpenedAt == null) r = { ...r, showOpenedAt: now };
+  if (!showing && r.showOpenedAt != null) r = { ...r, showOpenedAt: null };
+  if (state?.phase === 'matchOver' && r.status === 'playing') return { ...r, status: 'finished' };
+  return r;
 }
 
 export function submitMove(room: Room, state: GameState, uid: string, rawMove: unknown, now: number, engine: ChuchulaEngine): RoomUpdate {
@@ -204,6 +214,15 @@ export function submitMove(room: Room, state: GameState, uid: string, rawMove: u
   const touched = touchSeat(room, seat, now);
   // "Next round" is idempotent: several players may press it.
   if (move.type === 'next' && state.phase !== 'roundOver') return { room: touched, state };
+  // Closing a show window is idempotent too, and only allowed once its time
+  // is up by the server's clock (clients send it when their countdown ends).
+  if (move.type === 'closeShow') {
+    if (state.phase !== 'showing') return { room: touched, state };
+    const opened = room.showOpenedAt ?? now;
+    if (now - opened < state.rules.showWindowSeconds * 1000 - SHOW_CLOCK_SLACK_MS) {
+      throw new RoomError('showStillOpen');
+    }
+  }
   let next: GameState;
   try {
     next = engine.applyMove(state, move);
@@ -212,7 +231,7 @@ export function submitMove(room: Room, state: GameState, uid: string, rawMove: u
     throw e;
   }
   next = runBots(touched, next, engine);
-  return { room: withStatus(touched, next), state: next };
+  return { room: withStatus(touched, next, now), state: next };
 }
 
 /**
@@ -238,7 +257,7 @@ export function markAway(room: Room, state: GameState | null, now: number, engin
   if (!changed) return { room, state };
   const next = { ...room, seats, updatedAt: now };
   const after = runBots(next, state, engine);
-  return { room: withStatus(next, after), state: after };
+  return { room: withStatus(next, after, now), state: after };
 }
 
 /** One view per seated human, keyed by uid. */
