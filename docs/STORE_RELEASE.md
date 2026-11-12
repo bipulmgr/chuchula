@@ -63,6 +63,12 @@ Cheapest path, using the Play Console account you already have:
    - Firebase **Hosting** on a **Spark** project is free and needs no
      card: `firebase deploy --only hosting` (skip
      `functions,firestore`).
+   - Or GitHub Pages: the `gh-pages` branch holds `index.html` and
+     `privacy.html` (copied from `hosting/`). Pages is free only for a
+     public repository, so either publish that branch from a small public
+     repository or make this one public, then use
+     `https://<github-user>.github.io/<repo>/privacy.html`. Copy
+     `hosting/privacy.html` to that branch again after any policy edit.
    - Or paste `assets/legal/privacy_policy.md` into a free **Google
      Sites** page and use that address.
 4. Skip section 2. In section 5.3, leave out the two Firebase rows (Name
@@ -132,8 +138,8 @@ Skip this whole section for the free release above. Details and the data model a
    The privacy policy is now at
    `https://<project-id>.web.app/privacy`. Use that address in both
    stores.
-7. In `assets/legal/privacy_policy.md`, replace `SUPPORT_EMAIL` with the
-   support address you will show in the stores. Then run step 6's
+7. In `assets/legal/privacy_policy.md`, check the contact line (it points
+   to the developer email on the store page). After any edit, run step 6's
    `build_privacy_page.py` and deploy `hosting` again.
 
 **Check it works (YOU, two phones):** build with
