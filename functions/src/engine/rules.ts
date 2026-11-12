@@ -17,6 +17,8 @@ export interface RuleConfig {
   declareBonuses: boolean;
   maxRounds: number;
   showWindowSeconds: number;
+  /** No time limit on the show window: it waits for every answer. */
+  showWaitsForAll: boolean;
   lastGroupDoubleRunWins: boolean;
 }
 
@@ -36,6 +38,7 @@ export const STANDARD_RULES: RuleConfig = Object.freeze({
   declareBonuses: true,
   maxRounds: 100,
   showWindowSeconds: 20,
+  showWaitsForAll: true,
   lastGroupDoubleRunWins: true,
 });
 

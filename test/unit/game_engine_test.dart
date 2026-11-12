@@ -778,4 +778,56 @@ void main() {
       expect(jsonEncode(back.toJson()), json);
     });
   });
+
+  group('equal groups', () {
+    // Seats 0 and 2 play the same ranks (K-K-5); the others are weaker.
+    final plays = [
+      parseCards('KS KH 5D'),
+      parseCards('QS QH 9D'),
+      parseCards('KD KC 5S'),
+      parseCards('2S 3H 7D'),
+    ];
+
+    test('the player who plays last of the tied groups wins', () {
+      // Turn order 0,1,2,3: seat 2 plays after seat 0.
+      expect(ChuchulaGameEngine.resolveGroup(plays, leader: 0), 2);
+      // Turn order 1,2,3,0: seat 0 plays last.
+      expect(ChuchulaGameEngine.resolveGroup(plays, leader: 1), 0);
+      // Turn order 3,0,1,2: seat 2 plays last.
+      expect(ChuchulaGameEngine.resolveGroup(plays, leader: 3), 2);
+    });
+
+    test('a stronger rank wins whatever the turn order', () {
+      final p = [
+        parseCards('KS KH 6D'),
+        parseCards('QS QH 9D'),
+        parseCards('KD KC 5S'),
+        parseCards('2S 3H 7D'),
+      ];
+      for (var leader = 0; leader < 4; leader++) {
+        expect(ChuchulaGameEngine.resolveGroup(p, leader: leader), 0);
+      }
+    });
+
+    test('in play, a tie goes to the seat that played later', () {
+      final e = ChuchulaGameEngine();
+      var s = start(e).copyWith(
+        phase: GamePhase.playing,
+        groupIndex: 0,
+        turnSeat: () => 1,
+        roundPlays: [
+          [null, null, null, null],
+        ],
+        arrangements: [
+          for (final p in plays) Arrangement([p, p, p, p]),
+        ],
+      );
+      // Seat 1 leads, so seat 0 plays its K-K-5 after seat 2's.
+      for (final seat in [1, 2, 3, 0]) {
+        s = e.applyMove(s, PlayGroup(seat, 0));
+      }
+      expect(s.groupWinners, [0]);
+      expect(s.turnSeat, 0);
+    });
+  });
 }

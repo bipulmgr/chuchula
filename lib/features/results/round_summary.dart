@@ -12,6 +12,7 @@ import '../../game/rules/hand_evaluator.dart';
 import '../../widgets/animated_count.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
+import '../../widgets/special_hand_icon.dart';
 
 /// Round results: everyone's revealed groups, who won each, bonuses and
 /// points.
@@ -144,7 +145,7 @@ class _Banner extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF2B1A05)),
+        const SpecialHandIcon(size: 18, color: Color(0xFF2B1A05)),
         const SizedBox(width: 6),
         Flexible(
           child: Text(

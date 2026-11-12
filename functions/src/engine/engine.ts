@@ -6,7 +6,7 @@ import { randomInt } from 'node:crypto';
 import {
   Card, cardCode, cardId, compareCards, fromId, parseCard,
 } from './card';
-import { bestIndex, evaluate, fourCardIsWeakest, fourCardWeakestArrangement, playOrder } from './evaluator';
+import { evaluate, groupWinner, rankStrength, fourCardIsWeakest, fourCardWeakestArrangement, playOrder } from './evaluator';
 import {
   Bonus, BonusType, RuleConfig, STANDARD_RULES, bestShow, compareShowRanks, detectBonuses, hasAllRanks, showRank,
 } from './rules';
@@ -333,7 +333,7 @@ export class ChuchulaEngine {
         if (played < SEAT_COUNT) {
           return bump(state, { roundPlays: plays, turnSeat: (move.seat + 1) % SEAT_COUNT });
         }
-        const winner = resolveGroup(plays[g]);
+        const winner = resolveGroup(plays[g], (move.seat + 1) % SEAT_COUNT);
         const winners = [...state.groupWinners, winner];
         if (g + 1 < GROUP_COUNT) {
           plays.push([null, null, null, null]);
@@ -378,20 +378,24 @@ export function lastGroupDoubleRun(state: GameState): number | null {
   if (!state.rules.lastGroupDoubleRunWins || state.roundPlays.length !== GROUP_COUNT) return null;
   const plays = state.roundPlays[GROUP_COUNT - 1];
   if (plays.some((p) => p === null)) return null;
+  // Equal double runs go to whoever played last, as in group play.
+  const leader = state.groupWinners.length >= GROUP_COUNT - 1 ? state.groupWinners[GROUP_COUNT - 2] : 0;
   let seat: number | null = null;
   let best = -1;
-  plays.forEach((p, i) => {
-    const v = evaluate(cards(p!));
-    if (v.category === 'pureSequence' && v.strength > best) {
-      best = v.strength;
+  for (let k = 0; k < SEAT_COUNT; k++) {
+    const i = (leader + k) % SEAT_COUNT;
+    const v = evaluate(cards(plays[i]!));
+    if (v.category === 'pureSequence' && rankStrength(v) >= best) {
+      best = rankStrength(v);
       seat = i;
     }
-  });
+  }
   return seat;
 }
 
-export function resolveGroup(plays: (string[] | null)[]): number {
-  return bestIndex(plays.map((p) => evaluate(cards(p!))));
+/** Seat whose group wins, with play starting at [leader]; equal groups go to whoever played last. */
+export function resolveGroup(plays: (string[] | null)[], leader = 0): number {
+  return groupWinner(plays.map((p) => evaluate(cards(p!))), leader);
 }
 
 interface SeatScore {

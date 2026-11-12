@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/match_end_ads.dart';
 import '../ads/rewarded_ads.dart';
 import '../audio/audio_service.dart';
 import '../core/theme/table_themes.dart';
@@ -66,6 +67,11 @@ final onlinePlayEnabledProvider = Provider<bool>(
 /// Overridden in tests with a fake.
 final bluetoothPlatformProvider = Provider<BluetoothPlatform>(
   (ref) => MethodChannelBluetooth(),
+);
+
+/// Overridden in `main()` with [platformMatchEndAds].
+final matchEndAdsProvider = Provider<MatchEndAds>(
+  (ref) => const NoMatchEndAds(),
 );
 
 /// Overridden in `main()` with [platformRewardedAds].

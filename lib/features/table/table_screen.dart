@@ -18,6 +18,7 @@ import '../../game/scoring/cash_points.dart';
 import '../../game/state/game_session.dart';
 import '../../widgets/card_widgets.dart';
 import '../../widgets/ornaments.dart';
+import '../../widgets/special_hand_icon.dart';
 import '../results/match_over.dart';
 import '../results/points_table.dart';
 import '../results/round_summary.dart';
@@ -81,6 +82,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
   Timer? _summaryTimer;
   Timer? _autoPlayTimer;
   bool _reportedFinish = false;
+  bool _matchEndAdShown = false;
   int _lastDealTick = -1;
   bool _dealPending = false;
   StreamSubscription<SessionEvent>? _events;
@@ -261,6 +263,8 @@ class _TableScreenState extends ConsumerState<TableScreen>
     if (v.phase == GamePhase.matchOver && !_reportedFinish) {
       _reportedFinish = true;
       widget.onMatchFinished?.call(v);
+      // Have the end-of-match ad ready for when the player leaves.
+      ref.read(matchEndAdsProvider).preload();
     }
     setState(() {});
   }
@@ -292,6 +296,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
       audio.play(Sfx.achievement);
       audio.haptic(HapticKind.heavy);
       _showTicker?.cancel();
+      _showTicker = null;
+    }
+    // With no time limit the window stays open until everyone answers.
+    if (opened && v.showWindowSeconds > 0) {
       _showTicker = Timer.periodic(const Duration(milliseconds: 250), (_) {
         if (!mounted) return;
         if (_showSecondsLeft <= 0 && !_showExpiredSent) {
@@ -496,7 +504,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
         tooltip: l.showSpecial,
         padding: EdgeInsets.zero,
         color: theme.surface,
-        icon: Icon(Icons.auto_awesome, color: theme.accentSoft),
+        icon: SpecialHandIcon(size: 26, color: theme.accentSoft),
         onOpened: () => audio.play(Sfx.button),
         onSelected: _show,
         itemBuilder: (_) => [
@@ -537,12 +545,22 @@ class _TableScreenState extends ConsumerState<TableScreen>
     await session.startNextRound();
   }
 
+  /// Shows the end-of-match ad once, as the player leaves the result,
+  /// then runs [then]. Ads never show between rounds.
+  Future<void> _afterMatchAd(VoidCallback then) async {
+    // A second tap while the ad is up must not leave twice.
+    if (_matchEndAdShown) return;
+    _matchEndAdShown = true;
+    await ref.read(matchEndAdsProvider).show(context);
+    if (mounted) then();
+  }
+
   Future<void> _confirmLeave() async {
     final l = context.l10n;
     final theme = ref.read(tableThemeProvider);
     final v = _last;
     if (v != null && v.phase == GamePhase.matchOver) {
-      Navigator.of(context).pop();
+      await _afterMatchAd(() => Navigator.of(context).pop());
       return;
     }
     final leave = await showDialog<bool>(
@@ -802,8 +820,10 @@ class _TableScreenState extends ConsumerState<TableScreen>
                 view: v,
                 theme: theme,
                 reducedMotion: reduced,
-                onHome: () => Navigator.of(context).pop(),
-                onPlayAgain: widget.onPlayAgain,
+                onHome: () => _afterMatchAd(() => Navigator.of(context).pop()),
+                onPlayAgain: widget.onPlayAgain == null
+                    ? null
+                    : () => _afterMatchAd(widget.onPlayAgain!),
                 onPointsTable: () => showPointsTable(context, v, theme),
                 cashBalance: widget.stakeBoard != null
                     ? ref.watch(walletProvider).balance
@@ -1018,8 +1038,14 @@ class _TableScreenState extends ConsumerState<TableScreen>
             child: GoldButton(
               key: const Key('passShowButton'),
               theme: theme,
-              label: '${l.passShow} · ${l.showSecondsLeft(_showSecondsLeft)}',
-              icon: narrow ? null : Icons.do_not_disturb_alt,
+              label: v.showWindowSeconds > 0
+                  ? '${l.passShow} · ${l.showSecondsLeft(_showSecondsLeft)}'
+                  : l.ready,
+              icon: narrow
+                  ? null
+                  : v.showWindowSeconds > 0
+                  ? Icons.do_not_disturb_alt
+                  : Icons.check,
               dense: narrow,
               primary: false,
               onPressed: _passShow,
@@ -1194,7 +1220,7 @@ class _ShowWindowPanel extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_awesome, color: theme.glow, size: 18),
+              SpecialHandIcon(color: theme.glow, size: 20),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -1209,15 +1235,28 @@ class _ShowWindowPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            l.showSecondsLeft(secondsLeft),
-            key: const Key('showCountdown'),
-            style: TextStyle(
-              fontFamily: 'YatraOne',
-              fontSize: 30,
-              color: secondsLeft <= 5 ? const Color(0xFFFF9A8A) : theme.accent,
+          if (view.showWindowSeconds > 0)
+            Text(
+              l.showSecondsLeft(secondsLeft),
+              key: const Key('showCountdown'),
+              style: TextStyle(
+                fontFamily: 'YatraOne',
+                fontSize: 30,
+                color: secondsLeft <= 5
+                    ? const Color(0xFFFF9A8A)
+                    : theme.accent,
+              ),
+            )
+          else
+            Text(
+              l.showWaitAll,
+              key: const Key('showWaitAll'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.onSurface.withValues(alpha: 0.8),
+              ),
             ),
-          ),
           const SizedBox(height: 4),
           for (var seat = 0; seat < kSeatCount; seat++)
             if (seat != opener)

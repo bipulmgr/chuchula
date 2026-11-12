@@ -148,7 +148,7 @@ The same flow with four players, a leaver and a rejoin passes in the
 Firebase emulators (`cd functions && npm run test:e2e`). A real project
 has not been tried yet.
 
-## 3. AdMob for the +50 reward (YOU)
+## 3. AdMob for the +50 reward and the match-end ad (YOU)
 
 1. Sign up at <https://admob.google.com> with the same Google account.
 2. **Apps > Add app**, once for Android and once for iOS. Before the store
@@ -157,6 +157,9 @@ has not been tried yet.
 3. In each app, create an ad unit: **Rewarded**, reward amount 50, item
    "cash points" (or your new name). The app always adds exactly 50.
    The number in AdMob is only a label.
+   Then create a second ad unit: **Interstitial**. The app shows it once
+   when a whole match is over, as the player leaves the result (Home or
+   Play again), never between rounds.
 4. **Privacy & messaging:** create the **European regulations (GDPR)**
    message for both apps and publish it. The app already shows it to
    players in the EEA, the UK and Switzerland.
@@ -168,6 +171,8 @@ has not been tried yet.
    | iOS app id | `ca-app-pub-123...~789` | `ios/Flutter/AdMob.xcconfig` |
    | Android rewarded unit | `ca-app-pub-123.../111` | `ADMOB_REWARDED_ID` in `.env` |
    | iOS rewarded unit | `ca-app-pub-123.../222` | `ADMOB_REWARDED_ID_IOS` in `.env` |
+   | Android interstitial unit | `ca-app-pub-123.../333` | `ADMOB_INTERSTITIAL_ID` in `.env` |
+   | iOS interstitial unit | `ca-app-pub-123.../444` | `ADMOB_INTERSTITIAL_ID_IOS` in `.env` |
 
    Without them the app uses Google's test ids. Those show a "Test Ad"
    and **do** add the +50, so the flow can be checked now. They never

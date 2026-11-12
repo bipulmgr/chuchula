@@ -186,6 +186,25 @@ export function fourCardWeakestArrangement(hand: Card[]): Card[][] | null {
   return null;
 }
 
+/** Strength without the suit tie-break: equal for groups whose ranks match. */
+export function rankStrength(v: HandValue): number {
+  return Math.floor(v.strength / 4);
+}
+
+/**
+ * Seat that wins a group played in turn order from [leader]: the strongest
+ * by rank, and of groups equal by rank the one played last.
+ */
+export function groupWinner(values: HandValue[], leader: number): number {
+  const n = values.length;
+  let best = -1;
+  for (let k = 0; k < n; k++) {
+    const i = (leader + k) % n;
+    if (best < 0 || rankStrength(values[i]) >= rankStrength(values[best])) best = i;
+  }
+  return best;
+}
+
 /** Index of the strongest group, or -1 for an empty list. */
 export function bestIndex(values: HandValue[]): number {
   let best = -1;

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chuchula/ads/match_end_ads.dart';
 import 'package:chuchula/ads/rewarded_ads.dart';
 import 'package:chuchula/app/app.dart';
 import 'package:chuchula/app/providers.dart';
@@ -116,6 +117,18 @@ class FakeAds extends RewardedAds {
   }
 }
 
+/// Counts end-of-match ads instead of showing them.
+class CountingMatchEndAds extends MatchEndAds {
+  int preloads = 0;
+  int shown = 0;
+
+  @override
+  void preload() => preloads++;
+
+  @override
+  Future<void> show(BuildContext context) async => shown++;
+}
+
 class TestEnv {
   TestEnv(this.store, this.audio, this.bluetooth);
   final LocalStore store;
@@ -131,6 +144,7 @@ Future<TestEnv> pumpApp(
   Widget? home,
   FakeBluetooth? bluetooth,
   RewardedAds ads = const NoRewardedAds(),
+  MatchEndAds matchEndAds = const NoMatchEndAds(),
   bool onlineEnabled = true,
   bool reducedMotion = true,
 }) async {
@@ -156,6 +170,7 @@ Future<TestEnv> pumpApp(
         bluetoothPlatformProvider.overrideWithValue(env.bluetooth),
         onlinePlayEnabledProvider.overrideWithValue(onlineEnabled),
         rewardedAdsProvider.overrideWithValue(ads),
+        matchEndAdsProvider.overrideWithValue(matchEndAds),
       ],
       child: Consumer(
         builder: (context, ref, _) {

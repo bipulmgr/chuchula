@@ -8,6 +8,7 @@ import 'package:chuchula/game/models/card.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/models/player_view.dart';
 import 'package:chuchula/game/rules/hand_evaluator.dart';
+import 'package:chuchula/game/rules/rule_config.dart';
 import 'package:chuchula/game/state/authority_session.dart';
 import 'package:chuchula/widgets/card_widgets.dart';
 import 'package:flutter/material.dart';
@@ -264,8 +265,20 @@ void main() {
     expect(v.showOpener, 1);
     expect(v.mustAnswerShow, isTrue);
     expect(find.byKey(const Key('showWindowPanel')), findsOneWidget);
-    expect(find.byKey(const Key('showCountdown')), findsOneWidget);
+    // No countdown: the window waits until everyone is ready.
+    expect(find.byKey(const Key('showCountdown')), findsNothing);
+    expect(find.byKey(const Key('showWaitAll')), findsOneWidget);
     expect(find.byKey(const Key('passShowButton')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('passShowButton')),
+        matching: find.text('Ready'),
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 60));
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.showing);
     await tester.tap(find.byKey(const Key('passShowButton')));
     await _settle(tester);
     expect(session.view.value!.phase, GamePhase.roundOver);
@@ -284,7 +297,7 @@ void main() {
     await session.dispose();
   });
 
-  testWidgets('the show window closes by itself when time is up', (
+  testWidgets('with a time limit, the show window closes when time is up', (
     tester,
   ) async {
     final deal = [
@@ -295,7 +308,10 @@ void main() {
     final engine = fixedEngine([deckFor(deal), deckFor(deal)]);
     final session = AuthorityGameSession(
       engine: engine,
-      initialState: start(engine),
+      initialState: start(
+        engine,
+        rules: const RuleConfig(fourCardWeakest: false, showWaitsForAll: false),
+      ),
       localSeat: 0,
       bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
       timing: const BotTiming.instant(),
@@ -308,6 +324,46 @@ void main() {
     await _settle(tester);
     expect(session.view.value!.phase, GamePhase.roundOver);
     expect(session.view.value!.scores[1], 4);
+    await session.dispose();
+  });
+
+  testWidgets('an ad shows once the whole match is over, as I leave', (
+    tester,
+  ) async {
+    // Seat 0 holds one card of every rank: showing it wins the match.
+    final deal = [
+      '2C 3D 4H 5C 6C 7D 8H 9C 10C JC QC KC AC',
+      'AH KH QH JH 10H 9H 3H 2H 3S 4S 5S 6S 7S',
+      'AD KD QD JD 10D 9D 8D 6D 5D 2S 8S 10S QS',
+    ];
+    final engine = fixedEngine([deckFor(deal), deckFor(deal)]);
+    final session = AuthorityGameSession(
+      engine: engine,
+      initialState: start(engine),
+      localSeat: 0,
+      bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+      timing: const BotTiming.instant(),
+      botRunner: inlineBotRunner,
+    );
+    final ads = CountingMatchEndAds();
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session),
+      matchEndAds: ads,
+    );
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.arranging);
+    expect(ads.preloads, 0);
+    await tester.tap(find.byKey(const Key('showIconButton')));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('show-allRanks')));
+    await _settle(tester);
+    expect(session.view.value!.phase, GamePhase.matchOver);
+    expect(ads.preloads, 1);
+    expect(ads.shown, 0);
+    await tester.tap(find.text('Home'));
+    await _settle(tester);
+    expect(ads.shown, 1);
     await session.dispose();
   });
 

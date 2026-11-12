@@ -398,8 +398,9 @@
       }
     }
   },
-  "showAnswerPrompt": "Show your special hand, or pass. The best special wins.",
-  "showWaitOthers": "Waiting for the others to show or pass.",
+  "showAnswerPrompt": "Show your special hand if you have one, or tap Ready. The specials are revealed when everyone is ready.",
+  "showWaitOthers": "Waiting for everyone to show or tap Ready.",
+  "showWaitAll": "Specials are revealed when everyone is ready.",
   "showSecondsLeft": "{seconds}s",
   "@showSecondsLeft": {
     "placeholders": {
@@ -409,7 +410,7 @@
     }
   },
   "passShow": "Pass",
-  "showPassed": "Passed",
+  "showPassed": "Ready",
   "showDeciding": "Deciding",
   "showShowed": "Showed",
   "showBeaten": "{hand} (beaten)",
@@ -567,9 +568,9 @@
   "tutRank4Title": "The 4-card group",
   "tutRank4": "It is always played last and must be your weakest group; for that check it counts as its best three cards (a 4-card color A-J-8-7 sits fine under a color A-J-9). Against the others it counts as the best hand inside it; a fourth card that is not part of the hand adds nothing. So three spades in it make a Color. When all four cards make the hand (a 4-card color or run), it beats any 3-card hand of that kind: a 4-card color with 8 high beats a 3-card color with A. To beat it you need a stronger 4-card color, or a run, double run or trail.",
   "tutTieTitle": "Ties",
-  "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the suit of the highest card decides: spades, hearts, diamonds, clubs.",
+  "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the player who played last of them wins the group. Suits never decide.",
   "tutScoreTitle": "Scoring",
-  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (✨) and pick the special you hold: four of a kind +4, six pairs +6 or three trails +9. The others then have 20 seconds to show theirs; the best special wins the round. Showing one card of every rank (A to K) wins the match, and so does a double run in your last group.",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (the fan of cards with a crown) and pick the special you hold: four of a kind +4, six pairs +6 or three trails +9. The others can then show theirs or tap Ready. When everyone is ready the specials are revealed and the best one wins the round. Showing one card of every rank (A to K) wins the match, and so does a double run in your last group.",
   "tutEndTitle": "Winning",
   "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
   "@tutEnd": {
