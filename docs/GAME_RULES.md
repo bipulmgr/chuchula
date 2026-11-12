@@ -76,9 +76,10 @@ wrap around (K-A-2 is not a run).
 pair rank first, then the kickers from high to low. For sequences, compare
 the run's position.
 
-**Exact ties.** If two groups have identical ranks, the suit of the
-highest card decides: spades > hearts > diamonds > clubs. Every card is
-unique, so there is always a winner. *(Interim.)*
+**Exact ties.** If two or more groups have identical ranks, the player who
+played last of them (in that group's turn order) wins the group. Suits
+never decide. The same goes for equal double runs in the last group.
+*(Bipul, 2026-11-12.)*
 
 *(Interim: the order of kinds follows Teen Patti with four of a kind on
 top; two pair sits between Color and Pair.)*
@@ -98,9 +99,10 @@ top; two pair sits between Color and Pair.)*
 **Double run in the last group.** When the groups of a round are all
 played and a player's last group is a double run (its best hand is a run
 in one suit), that player wins the whole match, not just the round. If
-several players have one, the strongest double run wins.
+several players have one, the strongest double run wins (if equal, the
+one played last).
 
-To show, tap **Show** (the ✨ button) while arranging and pick the special
+To show, tap **Show** (the button with a fan of cards and a crown) while arranging and pick the special
 from its menu. The app gives no hint about which special the hand holds.
 The pick is checked against the dealt cards: if the hand has it, the round
 ends and **only the picked kind scores** (two fours of a kind score 4 each);
@@ -108,9 +110,10 @@ if not, nothing is shown and the player carries on arranging.
 
 **Showing a special hand.** While arranging (before the groups are
 played), a player holding one of these hands can tap **Show**. The other
-players then get **20 seconds** to show a special of their own or pass.
-When everyone has answered, or the time is up, the best special shown
-wins the round: its owner scores its points and nobody else scores.
+players can still show a special of their own, or tap **Ready**. There
+is no time limit: when everyone has answered, the specials are revealed
+automatically and the best special shown wins the round *(Bipul,
+2026-11-12)*: its owner scores its points and nobody else scores.
 Specials rank: all thirteen ranks, then three trails, six pairs, four of a
 kind. Two of the same kind compare by rank (four kings beat four nines;
 for trails and pairs the highest one decides first). If they are still
@@ -124,8 +127,8 @@ Details *(interim)*:
 - Special hands are judged on the **dealt** 13 cards.
 - A hand with more than one special scores only the kind the player
   picks (bots pick the most valuable).
-- After the first show, the others have 20 seconds to answer
-  (`showWindowSeconds`).
+- After the first show, the window waits for every other player to show
+  or tap Ready (`showWaitsForAll`).
 - For six pairs, a four of a kind counts as two pairs and a trail as one.
 - "Three trials" is read as three *trails* (three separate
   three-of-a-kinds).
@@ -178,7 +181,7 @@ These follow the interim answers above until confirmed:
 3. Does a sweep's 5 points replace the four group points or add to them?
 4. If two players could show, does the first to show win, or the bigger special?
 5. Is the target "20 or more"? What happens with a tie above 20?
-6. Are exact ties broken by suit, or is the point split?
+6. ~~Are exact ties broken by suit, or is the point split?~~ Answered 2026-11-12: the player who played last of the tied groups wins.
 7. Where does two pair rank (see above)?
 
 Confirmed by Bipul on 2026-10-26: groups are revealed automatically
@@ -205,6 +208,7 @@ it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourt
 | `strongestFirst` | true | 3-card groups are played strongest first, then the 4-card group (the engine orders them) |
 | `fourCardWeakest` | true | The 4-card group must be weaker than every 3-card group, unless the hand allows no such arrangement |
 | `declareBonuses` | true | Special hands score only when shown, which ends the round. If false, they score automatically at round end and all-ranks wins at the deal |
-| `showWindowSeconds` | 20 | After a show, how long the others have to show theirs. 0 ends the round at the first show |
+| `showWindowSeconds` | 20 | After a show, how long the others have to show theirs (only when `showWaitsForAll` is off). 0 ends the round at the first show |
+| `showWaitsForAll` | true | The show window has no time limit and waits until every other player has shown or tapped Ready |
 | `lastGroupDoubleRunWins` | true | A double run in the last group wins the match |
 | `maxRounds` | 100 | Safety limit |

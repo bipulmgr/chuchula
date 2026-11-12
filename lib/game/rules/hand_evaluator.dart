@@ -52,6 +52,11 @@ class HandValue implements Comparable<HandValue> {
   /// 4-card hand.
   final PlayingCard? spare;
 
+  /// [strength] without the suit tie-break: equal for groups whose ranks
+  /// match card for card. Group play uses this, so equal groups tie and the
+  /// player who plays last of them wins.
+  int get rankStrength => strength ~/ 4;
+
   @override
   int compareTo(HandValue other) => strength.compareTo(other.strength);
 
@@ -332,6 +337,21 @@ class HandEvaluator {
       if (rest.first == n && rest.last == 2) return 14;
     }
     return null;
+  }
+
+  /// Seat that wins a group played in turn order from [leader]: the
+  /// strongest by rank, and of groups equal by rank the one played last.
+  /// Suits never decide a played group.
+  static int groupWinner(List<HandValue> values, int leader) {
+    final n = values.length;
+    var best = -1;
+    for (var k = 0; k < n; k++) {
+      final i = (leader + k) % n;
+      if (best < 0 || values[i].rankStrength >= values[best].rankStrength) {
+        best = i;
+      }
+    }
+    return best;
   }
 
   /// Index of the strongest group, or -1 for an empty list.

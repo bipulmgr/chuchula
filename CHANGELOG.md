@@ -4,6 +4,16 @@
 
 First version.
 
+- Equal groups: when two or more players play groups of the same ranks,
+  the one who played last of them wins the group (suits no longer
+  decide). Same for equal double runs in the last group.
+- Special hands: the show window no longer closes after 20 seconds. After
+  a show, the others can show theirs or tap Ready; when everyone is
+  ready the specials are revealed automatically.
+- A new Show icon (a fan of cards with a crown) replaces the sparkle.
+- An interstitial ad shows once after a whole match, as the player leaves
+  the result (`ADMOB_INTERSTITIAL_ID`, `ADMOB_INTERSTITIAL_ID_IOS`).
+
 - Builds without Firebase settings hide Online play, so the app can be
   released with no Firebase bill (docs/STORE_RELEASE.md, "The free way to
   release").

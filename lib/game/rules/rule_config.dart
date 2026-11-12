@@ -18,6 +18,7 @@ class RuleConfig {
     this.declareBonuses = true,
     this.maxRounds = 100,
     this.showWindowSeconds = 20,
+    this.showWaitsForAll = true,
     this.lastGroupDoubleRunWins = true,
   });
 
@@ -74,6 +75,12 @@ class RuleConfig {
   /// at the first show.
   final int showWindowSeconds;
 
+  /// If true (the default) the show window has no time limit: it stays
+  /// open until every other player has shown a special or tapped Ready,
+  /// and then the specials are revealed. [showWindowSeconds] is then only
+  /// used to tell "no window" (0) from a window.
+  final bool showWaitsForAll;
+
   /// A player whose last group is a double run (pure sequence) wins the
   /// whole match, not just the round.
   final bool lastGroupDoubleRunWins;
@@ -96,6 +103,7 @@ class RuleConfig {
     'declareBonuses': declareBonuses,
     'maxRounds': maxRounds,
     'showWindowSeconds': showWindowSeconds,
+    'showWaitsForAll': showWaitsForAll,
     'lastGroupDoubleRunWins': lastGroupDoubleRunWins,
   };
 
@@ -125,6 +133,7 @@ class RuleConfig {
       maxRounds: json['maxRounds'] as int? ?? d.maxRounds,
       showWindowSeconds:
           json['showWindowSeconds'] as int? ?? d.showWindowSeconds,
+      showWaitsForAll: json['showWaitsForAll'] as bool? ?? d.showWaitsForAll,
       lastGroupDoubleRunWins:
           json['lastGroupDoubleRunWins'] as bool? ?? d.lastGroupDoubleRunWins,
     );

@@ -147,7 +147,7 @@ export function playerView(s: GameState, seat: number): PlayerView {
     version: s.version,
     shows: s.shows,
     showOpener: s.showOpener,
-    showWindowSeconds: s.rules.showWindowSeconds,
+    showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   };
 }
 

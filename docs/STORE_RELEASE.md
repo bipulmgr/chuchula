@@ -3,7 +3,8 @@
 A step-by-step guide. Steps marked **YOU** need your accounts, money,
 phones or a decision; everything else is already in the repository.
 
-Checked against the store rules as of 29 October 2026. Store consoles
+Checked against the store rules as of 29 October 2026 (Play production
+steps in section 5.6 rechecked 12 November 2026). Store consoles
 change their menus often, so follow the names below loosely.
 
 ## 0. What you need
@@ -147,7 +148,7 @@ The same flow with four players, a leaver and a rejoin passes in the
 Firebase emulators (`cd functions && npm run test:e2e`). A real project
 has not been tried yet.
 
-## 3. AdMob for the +50 reward (YOU)
+## 3. AdMob for the +50 reward and the match-end ad (YOU)
 
 1. Sign up at <https://admob.google.com> with the same Google account.
 2. **Apps > Add app**, once for Android and once for iOS. Before the store
@@ -156,6 +157,9 @@ has not been tried yet.
 3. In each app, create an ad unit: **Rewarded**, reward amount 50, item
    "cash points" (or your new name). The app always adds exactly 50.
    The number in AdMob is only a label.
+   Then create a second ad unit: **Interstitial**. The app shows it once
+   when a whole match is over, as the player leaves the result (Home or
+   Play again), never between rounds.
 4. **Privacy & messaging:** create the **European regulations (GDPR)**
    message for both apps and publish it. The app already shows it to
    players in the EEA, the UK and Switzerland.
@@ -167,6 +171,8 @@ has not been tried yet.
    | iOS app id | `ca-app-pub-123...~789` | `ios/Flutter/AdMob.xcconfig` |
    | Android rewarded unit | `ca-app-pub-123.../111` | `ADMOB_REWARDED_ID` in `.env` |
    | iOS rewarded unit | `ca-app-pub-123.../222` | `ADMOB_REWARDED_ID_IOS` in `.env` |
+   | Android interstitial unit | `ca-app-pub-123.../333` | `ADMOB_INTERSTITIAL_ID` in `.env` |
+   | iOS interstitial unit | `ca-app-pub-123.../444` | `ADMOB_INTERSTITIAL_ID_IOS` in `.env` |
 
    Without them the app uses Google's test ids. Those show a "Test Ad"
    and **do** add the +50, so the flow can be checked now. They never
@@ -323,7 +329,127 @@ Then:
    through the opt-in link and keep the app installed.
 3. After the 14 days, choose **Apply for production** on the Dashboard,
    answer the short questions, wait for approval (usually a few days),
-   then promote the release to **Production**.
+   then promote the release to **Production**. Section 5.6 walks through
+   this step by step.
+
+### 5.6 From internal testing to production (step by step)
+
+You are here once the app runs from the **Internal testing** track. Each
+step names where to click in Play Console; menus move around, so search
+for the name if it isn't where described.
+
+**Step 1. Check which kind of account you have.** Open **Settings >
+Developer account > About you**. If it is a **personal** account created
+after 13 November 2023, you must finish steps 2 to 4 before Google lets
+you publish to production. If it is an **organisation** account, skip to
+step 5.
+
+**Step 2. Make the build you will ship.** Production gets the exact
+bundle that testers used, so build it properly first:
+
+- Real AdMob ids in the build (section 3), not Google's test ids.
+- Signed with your upload key (section 4), and `version:` raised in
+  `pubspec.yaml`, for example `1.0.0+2`.
+- `.env` without `FIREBASE_*` lines if you follow "The free way to
+  release".
+- The match-end ad (shown after a whole match finishes, never in the
+  middle of a round) must close normally with its own X and must not
+  open by surprise when the player taps a button. Google's
+  [Better Ads / disruptive ads policy](https://support.google.com/googleplay/android-developer/answer/9857753)
+  rejects ads that appear unexpectedly or block the game. After a match
+  is the allowed kind of spot.
+
+**Step 3. Start a closed test with at least 12 testers.**
+
+1. **Test and release > Testing > Closed testing > Create track** (or
+   use the default "Alpha" track).
+2. **Testers** tab: create an email list with **at least 12 Gmail
+   addresses** (aim for 15 to 20, because some people forget to opt in
+   or uninstall). Save, then copy the **opt-in link**.
+3. **Countries/regions:** add Nepal, India and any others your testers
+   are in. A tester in a country not on the list cannot install.
+4. **Create new release:** upload the `.aab` from step 2 (or choose
+   **Add from library** to reuse the internal-testing bundle), write
+   release notes, then **Review release > Start rollout to Closed
+   testing**. Google reviews the first closed release; this takes from
+   a few hours to a few days.
+5. Send each tester the opt-in link. They tap **Become a tester**, then
+   **download it on Google Play**. They must use the same Gmail as on
+   the list.
+
+**Step 4. Keep 12 testers opted in for 14 days in a row.**
+
+- The 14 days count from the day the 12th tester opts in. If someone
+  leaves the test and you drop below 12, the count stops.
+- Ask testers to keep the app installed and to actually play a few
+  matches across the two weeks. In the production application Google
+  asks how testers used the app and what you changed from their
+  feedback, and thin answers are the most common reason for rejection.
+- Collect feedback (the testers' **Play Store > Private feedback**, or a
+  WhatsApp group) and ship at least one update to the closed track
+  during the 14 days. Raise `version:` each time. Write down what each
+  update fixed: you will paste it in step 6.
+- **Dashboard** shows a progress bar for "12 testers, 14 days".
+
+**Step 5. Finish everything on "Set up your app".** On the
+**Dashboard**, every task under **Set up your app** must be ticked
+(table in 5.2): privacy policy, app access, ads = **Yes**, content
+rating, target audience (13+ only), data safety (5.3), advertising ID,
+government app, financial features, health. And the **Main store
+listing** (5.4) with icon, feature graphic and at least 2 phone
+screenshots. An unticked item blocks the production release later.
+
+**Step 6. Apply for production.** When the 14 days are done, the
+Dashboard shows **Apply for production**. It asks three groups of
+questions; answer in plain words:
+
+- *About your closed test:* how you recruited testers (friends and
+  family), how easy it was, how they used the app (for example "played
+  offline matches against bots and Bluetooth games with 2 to 4 phones,
+  watched the rewarded ad").
+- *About your app:* who it is for (adults and teens who play the Nepali
+  card game Chuchula), what makes it useful, expected installs in the
+  first year (a modest honest number such as 1,000 to 10,000).
+- *Production readiness:* what you changed from tester feedback (list
+  the fixes from step 4), and how you decided it is ready.
+
+Google usually replies within 7 days, by email and on the Dashboard. If
+it says "more testing needed", keep the closed test running (the testers
+can stay) and apply again after fixing what it points at.
+
+**Step 7. Create the production release.**
+
+1. **Test and release > Production > Countries/regions:** add the
+   countries you want. Start with the ones you care about (Nepal,
+   India, and where Nepali speakers live, such as the UAE, Qatar, Saudi
+   Arabia, Malaysia, the UK, the US, Australia), or **Add all**.
+2. **Production > Create new release > Add from library**, and choose
+   the last bundle from the closed test. No new upload is needed if it
+   was the final build.
+3. Release name `1.0.0`, release notes in English (and Nepali if you
+   like), for example "First release of Chuchula: play against bots or
+   with friends over Bluetooth."
+4. **Next > Review release.** Fix any red error. Yellow warnings (for
+   example about deobfuscation files) can be ignored.
+5. Choose a **staged rollout**: start at **20%**. Then **Start
+   rollout to Production**. Google reviews it (a few hours to about 7
+   days for a first release).
+6. Optional: **Publishing overview > Managed publishing** on before
+   step 5 lets you pick the moment it goes live after approval.
+
+**Step 8. After it is live.**
+
+- Check **Quality > Android vitals** for crashes and ANRs for 2 to 3
+  days. If they look fine, open **Production > Releases** and raise the
+  rollout to 50%, then 100%. If something is wrong, **Halt rollout**,
+  fix, raise `version:`, and release the new bundle.
+- In **AdMob > Apps**, link the Android app to its now-live Play listing
+  ("Add store"). Ads start filling properly a few days after the
+  listing is reviewed.
+- Put `app-ads.txt` on the website listed in the store listing (section
+  3, step 6), or AdMob limits the ads it serves.
+- Future updates no longer need the 14-day test: upload to internal
+  testing, check it, then **Promote release > Production**.
 
 ## 6. Apple App Store (YOU)
 

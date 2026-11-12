@@ -282,9 +282,14 @@ class AuthorityGameSession extends BaseGameSession {
     }
   }
 
-  /// Runs the show window: bots answer after a short think, and when time
-  /// is up the window closes (silent seats count as passing).
+  /// Runs the show window: bots answer after a short think. With a time
+  /// limit the window closes when time is up (silent seats count as
+  /// passing); by default it waits until every seat has answered.
   void _scheduleShowWindow(GameState s) {
+    if (s.rules.showWaitsForAll) {
+      _scheduleBotShowAnswers(s);
+      return;
+    }
     final deadline = _showDeadline ??= DateTime.now().add(
       Duration(seconds: s.rules.showWindowSeconds),
     );
@@ -301,6 +306,10 @@ class AuthorityGameSession extends BaseGameSession {
         }
       });
     }
+    _scheduleBotShowAnswers(s);
+  }
+
+  void _scheduleBotShowAnswers(GameState s) {
     for (final seat in _bots.keys) {
       if (s.shows[seat] != null || _answering.contains(seat)) continue;
       _answering.add(seat);

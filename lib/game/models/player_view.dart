@@ -50,7 +50,7 @@ class PlayerView {
     version: s.version,
     shows: s.shows,
     showOpener: s.showOpener,
-    showWindowSeconds: s.rules.showWindowSeconds,
+    showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   );
 
   final int mySeat;
@@ -84,7 +84,8 @@ class PlayerView {
   /// Seat that opened the show window.
   final int? showOpener;
 
-  /// How long the others have to answer a show.
+  /// How long the others have to answer a show; 0 means no time limit
+  /// (the window waits for every answer).
   final int showWindowSeconds;
 
   /// True while a show is open and this seat still has to answer it.

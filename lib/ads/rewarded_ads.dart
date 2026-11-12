@@ -98,7 +98,6 @@ class AdMobRewardedAds extends RewardedAds {
   static const _maxAge = Duration(minutes: 50);
   static const _loadTimeout = Duration(seconds: 20);
 
-  Future<bool>? _ready;
   RewardedAd? _ad;
   DateTime? _loadedAt;
   Future<RewardedAd?>? _loading;
@@ -108,33 +107,7 @@ class AdMobRewardedAds extends RewardedAds {
 
   @override
   Future<void> prepare() async {
-    if (await (_ready ??= _consentAndInit())) _preload();
-  }
-
-  /// Runs the consent flow, then starts the SDK. Completes with whether
-  /// ads may be requested.
-  Future<bool> _consentAndInit() async {
-    final info = ConsentInformation.instance;
-    final updated = Completer<void>();
-    info.requestConsentInfoUpdate(
-      ConsentRequestParameters(),
-      updated.complete,
-      (e) {
-        debugPrint('Ad consent update failed: ${e.message}');
-        updated.complete();
-      },
-    );
-    await updated.future;
-    await ConsentForm.loadAndShowConsentFormIfRequired((e) {
-      if (e != null) debugPrint('Ad consent form: ${e.message}');
-    });
-    if (!await info.canRequestAds()) {
-      // Ask again next time instead of keeping the refusal for the session.
-      _ready = null;
-      return false;
-    }
-    await MobileAds.instance.initialize();
-    return true;
+    if (await AdMobSdk.ready()) _preload();
   }
 
   void _preload() {
@@ -170,7 +143,7 @@ class AdMobRewardedAds extends RewardedAds {
   @override
   Future<AdOutcome> show(BuildContext context) async {
     await prepare();
-    if (await _ready != true) return AdOutcome.unavailable;
+    if (!await AdMobSdk.ready()) return AdOutcome.unavailable;
     _preload();
     final ad = _ad ?? await _loading;
     _ad = null;
@@ -222,7 +195,46 @@ class AdMobRewardedAds extends RewardedAds {
     });
     await done.future;
     // Consent may have changed either way.
-    _ready = null;
+    AdMobSdk.reset();
+  }
+}
+
+/// Ad consent and SDK start, shared by every AdMob ad format in the app.
+class AdMobSdk {
+  const AdMobSdk._();
+
+  static Future<bool>? _ready;
+
+  /// Runs the consent flow once (Google's User Messaging Platform shows
+  /// the form where the law needs it), then starts the SDK. Completes with
+  /// whether ads may be requested.
+  static Future<bool> ready() => _ready ??= _consentAndInit();
+
+  /// Forgets the last consent answer, so the next [ready] checks again.
+  static void reset() => _ready = null;
+
+  static Future<bool> _consentAndInit() async {
+    final info = ConsentInformation.instance;
+    final updated = Completer<void>();
+    info.requestConsentInfoUpdate(
+      ConsentRequestParameters(),
+      updated.complete,
+      (e) {
+        debugPrint('Ad consent update failed: ${e.message}');
+        updated.complete();
+      },
+    );
+    await updated.future;
+    await ConsentForm.loadAndShowConsentFormIfRequired((e) {
+      if (e != null) debugPrint('Ad consent form: ${e.message}');
+    });
+    if (!await info.canRequestAds()) {
+      // Ask again next time instead of keeping the refusal for the session.
+      _ready = null;
+      return false;
+    }
+    await MobileAds.instance.initialize();
+    return true;
   }
 }
 

@@ -410,7 +410,9 @@ class ChuchulaGameEngine {
             turnSeat: () => (seat + 1) % kSeatCount,
           );
         }
-        final winner = resolveGroup(plays[g]);
+        // The seat completing the group plays last, so the leader is the
+        // seat after it.
+        final winner = resolveGroup(plays[g], leader: (seat + 1) % kSeatCount);
         final winners = [...state.groupWinners, winner];
         if (g + 1 < kGroupCount) {
           plays.add(List.filled(kSeatCount, null));
@@ -448,10 +450,11 @@ class ChuchulaGameEngine {
     }
   }
 
-  /// Index of the seat whose group is strongest.
-  static int resolveGroup(List<List<PlayingCard>?> plays) {
+  /// Seat whose group wins, with play starting at [leader]. Groups equal
+  /// by rank go to whoever of them played last.
+  static int resolveGroup(List<List<PlayingCard>?> plays, {int leader = 0}) {
     final values = [for (final p in plays) HandEvaluator.evaluate(p!)];
-    return HandEvaluator.bestIndex(values);
+    return HandEvaluator.groupWinner(values, leader);
   }
 
   /// Computes the round result for a state whose four groups are complete.
@@ -504,12 +507,17 @@ class ChuchulaGameEngine {
     if (state.roundPlays.length != kGroupCount) return null;
     final plays = state.roundPlays.last;
     if (plays.any((p) => p == null)) return null;
+    // Equal double runs go to whoever played last, as in group play.
+    final leader = state.groupWinners.length >= kGroupCount - 1
+        ? state.groupWinners[kGroupCount - 2]
+        : 0;
     int? seat;
     HandValue? best;
-    for (var i = 0; i < kSeatCount; i++) {
+    for (var k = 0; k < kSeatCount; k++) {
+      final i = (leader + k) % kSeatCount;
       final v = HandEvaluator.evaluate(plays[i]!);
       if (v.category != HandCategory.pureSequence) continue;
-      if (best == null || v > best) {
+      if (best == null || v.rankStrength >= best.rankStrength) {
         best = v;
         seat = i;
       }

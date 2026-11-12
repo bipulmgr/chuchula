@@ -5,6 +5,7 @@ import '../../core/theme/table_themes.dart';
 import '../../game/models/game_state.dart';
 import '../../game/state/game_session.dart';
 import '../../widgets/animated_count.dart';
+import '../../widgets/special_hand_icon.dart';
 
 /// A player's seat: avatar, name, score, status and a turn indicator.
 class SeatPlate extends StatefulWidget {
@@ -104,7 +105,7 @@ class _SeatPlateState extends State<SeatPlate>
       );
     } else if (widget.showAnswer != null) {
       status = widget.showAnswer;
-      statusIcon = Icon(Icons.auto_awesome, size: 12, color: t.glow);
+      statusIcon = SpecialHandIcon(size: 13, color: t.glow);
     } else if (widget.phase == GamePhase.arranging) {
       if (widget.isReady) {
         status = l.readyCheck;
