@@ -162,6 +162,8 @@ export class ChuchulaEngine {
       phase: 'matchOver',
       turnSeat: null,
       history: [...s.history, rr],
+      shows: [null, null, null, null],
+      showOpener: null,
       result: { winnerSeat: seat, reason: 'instantWin', finalScores: s.scores },
     });
   }
@@ -172,15 +174,33 @@ export class ChuchulaEngine {
    * thirteen ranks wins the match at once.
    */
   private show(s: GameState, seat: number, kind: BonusType): GameState {
-    if (kind === 'allRanks') return this.instantWin(s, seat);
     const shows = [...s.shows];
     shows[seat] = kind;
+    if (s.phase === 'arranging' && s.rules.showWaitsForAll && s.rules.showWindowSeconds > 0) {
+      // The others carry on arranging; nothing is revealed until all are done.
+      return this.afterArranging(bump(s, { shows, showOpener: s.showOpener ?? seat }));
+    }
+    if (kind === 'allRanks') return this.instantWin(s, seat);
     if (s.phase === 'arranging') {
       const opened = bump(s, { phase: 'showing', turnSeat: null, shows, showOpener: seat });
       if (s.rules.showWindowSeconds <= 0) return this.resolveShows(opened);
       return opened;
     }
     return this.afterAnswer(bump(s, { shows }));
+  }
+
+  /** Once every seat has tapped Ready or shown: reveal the shows, or start play. */
+  private afterArranging(s: GameState): GameState {
+    for (let i = 0; i < SEAT_COUNT; i++) if (!answered(s, i)) return s;
+    if (s.shows.every((x) => x === null || x === SHOW_PASS)) {
+      return bump(s, {
+        phase: 'playing',
+        groupIndex: 0,
+        turnSeat: (s.dealerSeat + 1) % SEAT_COUNT,
+        roundPlays: [[null, null, null, null]],
+      });
+    }
+    return this.resolveShows(s);
   }
 
   private afterAnswer(s: GameState): GameState {
@@ -204,6 +224,8 @@ export class ChuchulaEngine {
       }
     }
     const w = winner;
+    // All thirteen ranks wins the match outright.
+    if (kinds[w] === 'allRanks') return this.instantWin(s, w);
     const bonuses = detectBonuses(cards(s.hands[w]), s.rules).filter((b) => b.type === kinds[w]);
     const total = bonuses.reduce((t, b) => t + b.points, 0);
     const points = [0, 1, 2, 3].map((i) => (i === w ? applyTarget(s.scores[i], total, s.rules) : 0));
@@ -275,6 +297,7 @@ export class ChuchulaEngine {
       case 'arrange':
         if (state.phase !== 'arranging') return { error: 'wrongPhase' };
         if (state.arrangements[move.seat] !== null) return { error: 'alreadyReady' };
+        if (state.shows[move.seat] !== null) return { error: 'alreadyAnswered' };
         return this.validateArrangement(state, move.seat, move.arrangement);
       case 'play':
         if (state.phase !== 'playing') return { error: 'wrongPhase' };
@@ -286,7 +309,8 @@ export class ChuchulaEngine {
         return null;
       case 'show':
         if (state.phase !== 'arranging' && state.phase !== 'showing') return { error: 'wrongPhase' };
-        if (state.phase === 'showing' && state.shows[move.seat] !== null) return { error: 'alreadyAnswered' };
+        if (state.shows[move.seat] !== null) return { error: 'alreadyAnswered' };
+        if (state.phase === 'arranging' && state.arrangements[move.seat] !== null) return { error: 'alreadyReady' };
         if (!showable(state, move.seat).some((b) => !move.bonus || b.type === move.bonus)) {
           return { error: 'nothingToShow' };
         }
@@ -314,16 +338,7 @@ export class ChuchulaEngine {
         const groups = move.arrangement.map((g) => cards(g));
         arrangements[move.seat] = (state.rules.strongestFirst ? playOrder(groups) : groups)
           .map(codes);
-        let next = bump(state, { arrangements });
-        if (next.arrangements.every((a) => a !== null)) {
-          next = bump(next, {
-            phase: 'playing',
-            groupIndex: 0,
-            turnSeat: (next.dealerSeat + 1) % SEAT_COUNT,
-            roundPlays: [[null, null, null, null]],
-          });
-        }
-        return next;
+        return this.afterArranging(bump(state, { arrangements }));
       }
       case 'play': {
         const g = state.groupIndex;
@@ -464,8 +479,13 @@ export function resolveRound(state: GameState): RoundResult {
  * Special hands [seat] could show now: during arranging, or while another
  * player's show is open and [seat] has not answered.
  */
+/** Whether [seat] is done with arranging: it tapped Ready or showed. */
+export function answered(s: GameState, seat: number): boolean {
+  return s.arrangements[seat] !== null || (s.shows[seat] !== null && s.shows[seat] !== SHOW_PASS);
+}
+
 export function showable(s: GameState, seat: number): Bonus[] {
-  const open = s.phase === 'arranging' || (s.phase === 'showing' && s.shows[seat] === null);
+  const open = (s.phase === 'arranging' && !answered(s, seat)) || (s.phase === 'showing' && s.shows[seat] === null);
   return s.rules.declareBonuses && open ? detectBonuses(cards(s.hands[seat]), s.rules) : [];
 }
 

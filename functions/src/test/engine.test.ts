@@ -4,7 +4,7 @@ import { arrangeHand, botMove } from '../engine/bot';
 import { cardCode, fullDeck, parseCards } from '../engine/card';
 import { ChuchulaEngine, InvalidMoveError, dealHands, secureDecks } from '../engine/engine';
 import { evaluate, fourCardIsWeakest } from '../engine/evaluator';
-import { GameState, SeatInfo, parseMove, playerView } from '../engine/state';
+import { GameState, SHOW_HIDDEN, SeatInfo, parseMove, playerView } from '../engine/state';
 
 const seats: SeatInfo[] = [0, 1, 2, 3].map((i) => ({ id: `p${i}`, name: `P${i}`, isBot: false, avatar: i }));
 
@@ -86,7 +86,12 @@ describe('engine', () => {
     const engine = new ChuchulaEngine();
     const started = engine.startGame({ matchId: 'm', seats });
     const hand = '9S 9H 9D 9C 2S 2H 2D 3S 3H 3D 4S 4H 4D'.split(' ');
-    const s: GameState = { ...started, phase: 'arranging', hands: [hand, ...started.hands.slice(1)] };
+    const s: GameState = {
+      ...started,
+      phase: 'arranging',
+      hands: [hand, ...started.hands.slice(1)],
+      rules: { ...started.rules, showWaitsForAll: false },
+    };
     assert.equal(engine.validateMove(s, { type: 'show', seat: 0, bonus: 'sixPairs' })?.error, 'nothingToShow');
     const close = (x: GameState) => engine.applyMove(x, { type: 'closeShow', seat: 1 });
     const four = close(engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' }));
@@ -108,7 +113,7 @@ describe('engine', () => {
     const used = new Set(dealt.flat());
     const hands = [...dealt, fullDeck().map(cardCode).filter((c) => !used.has(c))];
     assert.equal(hands[3].length, 13);
-    const s: GameState = { ...started, phase: 'arranging', hands };
+    const s: GameState = { ...started, phase: 'arranging', hands, rules: { ...started.rules, showWaitsForAll: false } };
     let x = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
     assert.equal(x.phase, 'showing');
     assert.equal(x.showOpener, 0);
@@ -124,6 +129,28 @@ describe('engine', () => {
     assert.deepEqual(rr.shownKinds, ['fourOfAKind', 'sixPairs', null, null]);
     assert.deepEqual(x.scores.map((v, i) => v - s.scores[i]), [0, 6, 0, 0]);
     assert.deepEqual(x.shows, [null, null, null, null]);
+  });
+
+  it('a show lets the others keep arranging, and reveals once all are ready', () => {
+    const engine = new ChuchulaEngine();
+    const started = engine.startGame({ matchId: 'm', seats });
+    const four = '9S 9H 9D 9C 2S 3H 4D 5S 6H 7D 8S 10H JD'.split(' ');
+    const used = new Set(four);
+    const rest = fullDeck().map(cardCode).filter((c) => !used.has(c));
+    const hands = [four, rest.slice(0, 13), rest.slice(13, 26), rest.slice(26, 39)];
+    const s: GameState = { ...started, phase: 'arranging', hands, rules: { ...started.rules, fourCardWeakest: false } };
+    let x = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
+    assert.equal(x.phase, 'arranging');
+    assert.deepEqual(playerView(x, 1).shows, [SHOW_HIDDEN, null, null, null]);
+    assert.equal(engine.validateMove(x, { type: 'arrange', seat: 0, arrangement: arrangeHand(hands[0]) })?.error, 'alreadyAnswered');
+    for (const seat of [1, 2, 3]) {
+      if (x.phase !== 'arranging') break;
+      const move = botMove(playerView(x, seat));
+      assert.ok(move);
+      x = engine.applyMove(x, move!);
+    }
+    assert.equal(x.phase === 'roundOver' || x.phase === 'matchOver', true);
+    assert.equal(x.history[x.history.length - 1].shownKinds[0], 'fourOfAKind');
   });
 
   it('holds a 4-card group against the own 3-card groups by its best three', () => {

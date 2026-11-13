@@ -109,16 +109,18 @@ ends and **only the picked kind scores** (two fours of a kind score 4 each);
 if not, nothing is shown and the player carries on arranging.
 
 **Showing a special hand.** While arranging (before the groups are
-played), a player holding one of these hands can tap **Show**. The other
-players can still show a special of their own, or tap **Ready**. There
-is no time limit: when everyone has answered, the specials are revealed
-automatically and the best special shown wins the round *(Bipul,
-2026-11-12)*: its owner scores its points and nobody else scores.
+played), a player holding one of these hands can tap **Show**. The others
+are told that a special hand was shown, but not which one, and **carry on
+arranging with no time limit**. Each of them taps **Ready** as usual, or
+shows a special of their own. When every player has tapped Ready or
+shown, the specials are revealed automatically and the best one shown
+wins the round: its owner scores its points and nobody else scores; the
+groups are not played *(Bipul, 2026-11-13)*. Showing all thirteen ranks
+wins the whole match, also revealed only when everyone is ready.
 Specials rank: all thirteen ranks, then three trails, six pairs, four of a
 kind. Two of the same kind compare by rank (four kings beat four nines;
 for trails and pairs the highest one decides first). If they are still
-equal, the one shown first wins. Showing all thirteen ranks wins the
-whole match at once. Bots always show, and answer at once. A special hand
+equal, the one shown first wins. Bots always show. A special hand
 that is not shown scores nothing. In the round summary only the cards
 that make each special are highlighted.
 
@@ -127,8 +129,8 @@ Details *(interim)*:
 - Special hands are judged on the **dealt** 13 cards.
 - A hand with more than one special scores only the kind the player
   picks (bots pick the most valuable).
-- After the first show, the window waits for every other player to show
-  or tap Ready (`showWaitsForAll`).
+- After a show the others keep arranging; the round is decided when
+  every player has tapped Ready or shown (`showWaitsForAll`).
 - For six pairs, a four of a kind counts as two pairs and a trail as one.
 - "Three trials" is read as three *trails* (three separate
   three-of-a-kinds).
@@ -209,6 +211,6 @@ it; a full 4-card hand beats a 3-card hand of the same kind; otherwise the fourt
 | `fourCardWeakest` | true | The 4-card group must be weaker than every 3-card group, unless the hand allows no such arrangement |
 | `declareBonuses` | true | Special hands score only when shown, which ends the round. If false, they score automatically at round end and all-ranks wins at the deal |
 | `showWindowSeconds` | 20 | After a show, how long the others have to show theirs (only when `showWaitsForAll` is off). 0 ends the round at the first show |
-| `showWaitsForAll` | true | The show window has no time limit and waits until every other player has shown or tapped Ready |
+| `showWaitsForAll` | true | A show does not stop arranging: the others arrange with no time limit, and the specials are revealed once every player has tapped Ready or shown. If false, the older timed window (`showWindowSeconds`) is used |
 | `lastGroupDoubleRunWins` | true | A double run in the last group wins the match |
 | `maxRounds` | 100 | Safety limit |

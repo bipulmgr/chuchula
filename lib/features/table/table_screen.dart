@@ -257,6 +257,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
       }
     }
 
+    _trackArrangingShows(old, v);
     _trackShowWindow(old, v);
     _scheduleAutoPlay(v);
 
@@ -281,6 +282,31 @@ class _TableScreenState extends ConsumerState<TableScreen>
 
   /// Starts the countdown when a show opens, announces each special shown,
   /// and tells the session when time is up.
+  /// Announces each special shown while the others are still arranging.
+  /// Which special it was stays hidden until everyone is ready.
+  void _trackArrangingShows(PlayerView? old, PlayerView v) {
+    if (v.phase != GamePhase.arranging) return;
+    final l = context.l10n;
+    final sameRound = old != null && old.round == v.round;
+    for (var seat = 0; seat < kSeatCount; seat++) {
+      final now = v.shows[seat];
+      final before = sameRound && old.phase == GamePhase.arranging
+          ? old.shows[seat]
+          : null;
+      if (now == null || now == kShowPass || now == before) continue;
+      if (seat != v.mySeat) {
+        audio.play(Sfx.achievement);
+        audio.haptic(HapticKind.heavy);
+      }
+      _flash(
+        seat == v.mySeat
+            ? l.youShowed(l.bonus(BonusType.values.byName(now)))
+            : l.showHiddenBy(v.seats[seat].name),
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
   void _trackShowWindow(PlayerView? old, PlayerView v) {
     if (v.phase != GamePhase.showing) {
       _showTicker?.cancel();
@@ -836,8 +862,14 @@ class _TableScreenState extends ConsumerState<TableScreen>
     );
   }
 
+  /// Whether this player is still arranging (not Ready and not shown).
+  bool _arranging(PlayerView v) =>
+      v.phase == GamePhase.arranging &&
+      v.myArrangement == null &&
+      (v.shows[v.mySeat] == null || v.shows[v.mySeat] == kShowPass);
+
   StripMode _stripMode(PlayerView v) {
-    if (v.phase == GamePhase.arranging && v.myArrangement == null) {
+    if (_arranging(v)) {
       return StripMode.arranging;
     }
     if (v.phase == GamePhase.playing) return StripMode.playing;
@@ -910,8 +942,12 @@ class _TableScreenState extends ConsumerState<TableScreen>
 
   /// A seat's answer to the open show, for its name plate.
   String? _showAnswer(PlayerView v, int seat) {
-    if (v.phase != GamePhase.showing) return null;
     final l = context.l10n;
+    if (v.phase == GamePhase.arranging) {
+      final shown = v.shows[seat];
+      return shown == null || shown == kShowPass ? null : l.showShowed;
+    }
+    if (v.phase != GamePhase.showing) return null;
     return switch (v.shows[seat]) {
       null => l.showDeciding,
       kShowPass => l.showPassed,
@@ -925,7 +961,19 @@ class _TableScreenState extends ConsumerState<TableScreen>
     if (v.phase == GamePhase.showing) {
       status = v.mustAnswerShow ? l.showAnswerPrompt : l.showWaitOthers;
     } else if (v.phase == GamePhase.arranging) {
-      status = v.myArrangement == null ? l.arrangeHint : l.waitingForOthers;
+      final mine = v.shows[v.mySeat];
+      final shownBy = [
+        for (var i = 0; i < kSeatCount; i++)
+          if (i != v.mySeat && v.shows[i] != null && v.shows[i] != kShowPass)
+            v.seats[i].name,
+      ];
+      status = mine != null && mine != kShowPass
+          ? l.showRevealWhenReady(l.bonus(BonusType.values.byName(mine)))
+          : v.myArrangement != null
+          ? l.waitingForOthers
+          : shownBy.isNotEmpty
+          ? l.showArrangeThenReady(shownBy.join(', '))
+          : l.arrangeHint;
     } else if (v.phase == GamePhase.playing) {
       status = v.isMyTurn
           ? l.revealing
@@ -981,7 +1029,7 @@ class _TableScreenState extends ConsumerState<TableScreen>
     final narrow = MediaQuery.sizeOf(context).width < 380;
     final iconWidth = narrow ? 32.0 : 40.0;
     Widget bar;
-    if (v.phase == GamePhase.arranging && v.myArrangement == null) {
+    if (_arranging(v)) {
       bar = Row(
         children: [
           _iconAction(

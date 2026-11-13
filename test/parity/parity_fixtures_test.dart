@@ -160,7 +160,10 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
         tryInvalid(const StartNextRound(1));
         var shown = false;
         for (var seat = 0; seat < 4; seat++) {
-          // A seat with a special hand shows it, ending the round.
+          // Seats that showed or tapped Ready are done arranging.
+          if (ChuchulaGameEngine.answered(s, seat)) continue;
+          // A seat with a special hand shows it; the others carry on and
+          // it is revealed when everyone is done.
           final specials = ChuchulaGameEngine.showable(s, seat);
           if (specials.isNotEmpty) {
             // Picking a special the hand lacks is refused.
@@ -204,7 +207,9 @@ Map<String, Object?> matchFixture(int seed, RuleConfig rules) {
           }
           apply(SubmitArrangement(seat, sorted));
         }
-        if (!shown) tryInvalid(SubmitArrangement(0, s.arrangements[0]!));
+        if (!shown && s.arrangements[0] != null) {
+          tryInvalid(SubmitArrangement(0, s.arrangements[0]!));
+        }
       case GamePhase.showing:
         // Other seats answer the show one at a time: a special is shown,
         // otherwise they pass. Every third round the window times out

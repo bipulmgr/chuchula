@@ -570,7 +570,7 @@
   "tutTieTitle": "Ties",
   "tutTie": "Equal groups compare card by card from the highest. If every rank matches, the player who played last of them wins the group. Suits never decide.",
   "tutScoreTitle": "Scoring",
-  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (the fan of cards with a crown) and pick the special you hold: four of a kind +4, six pairs +6 or three trails +9. The others can then show theirs or tap Ready. When everyone is ready the specials are revealed and the best one wins the round. Showing one card of every rank (A to K) wins the match, and so does a double run in your last group.",
+  "tutScore": "Each group won: 1 point. All four groups: 5 points in total. Special hands: while arranging, tap Show (the fan of cards with a crown) and pick the special you hold: four of a kind +4, six pairs +6 or three trails +9. The others keep arranging, with no time limit, and can show theirs too. When everyone has tapped Ready or shown, the specials are revealed and the best one wins the round. Showing one card of every rank (A to K) wins the match, and so does a double run in your last group.",
   "tutEndTitle": "Winning",
   "tutEnd": "The first player to reach {target} points wins. If several pass it in the same round, the highest total wins; an exact tie plays another round.",
   "@tutEnd": {
@@ -580,5 +580,29 @@
       }
     }
   },
-  "tutInterim": "Some house rules are still being confirmed and may change."
+  "tutInterim": "Some house rules are still being confirmed and may change.",
+  "showHiddenBy": "{name} has shown a special hand!",
+  "@showHiddenBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "showRevealWhenReady": "You showed {hand}. It is revealed when everyone is ready.",
+  "@showRevealWhenReady": {
+    "placeholders": {
+      "hand": {
+        "type": "String"
+      }
+    }
+  },
+  "showArrangeThenReady": "{names} showed a special hand. Arrange your cards and tap Ready. It is revealed when everyone is ready.",
+  "@showArrangeThenReady": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  }
 }

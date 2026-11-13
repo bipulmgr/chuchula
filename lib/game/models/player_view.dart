@@ -48,7 +48,12 @@ class PlayerView {
     history: s.history,
     result: s.result,
     version: s.version,
-    shows: s.shows,
+    shows: [
+      for (var i = 0; i < kSeatCount; i++)
+        s.phase == GamePhase.arranging && i != seat && s.shows[i] != null
+            ? kShowHidden
+            : s.shows[i],
+    ],
     showOpener: s.showOpener,
     showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   );

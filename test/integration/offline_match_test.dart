@@ -214,12 +214,11 @@ void main() {
         botTimeout: budget ?? const Duration(seconds: 5),
       );
       final deadline = DateTime.now().add(const Duration(seconds: 20));
-      // Done when every bot is ready, or one ended the round by showing a
-      // special hand.
+      // Done when every bot has tapped Ready or shown a special hand.
       bool waiting() {
         final v = session.view.value!;
         return (v.phase == GamePhase.arranging &&
-                v.ready.skip(1).any((r) => !r)) ||
+                [1, 2, 3].any((s) => !v.ready[s] && v.shows[s] == null)) ||
             session.thinking.value.isNotEmpty;
       }
 

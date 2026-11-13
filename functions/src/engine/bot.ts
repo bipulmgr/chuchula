@@ -90,10 +90,12 @@ export function botMove(view: PlayerView): GameMove | null {
   // Always show a special hand, and answer another player's show at once:
   // show a special if it has one, otherwise pass.
   const answering = view.phase === 'showing' && view.shows[seat] === null;
-  const special = view.phase === 'arranging' || answering ? bestSpecial(view.myHand) : null;
+  // A bot that showed or is ready waits for the others to finish arranging.
+  const arranging = view.phase === 'arranging' && !view.ready[seat] && view.shows[seat] === null;
+  const special = arranging || answering ? bestSpecial(view.myHand) : null;
   if (special) return { type: 'show', seat, bonus: special };
   if (answering) return { type: 'passShow', seat };
-  if (view.phase === 'arranging' && !view.ready[seat]) {
+  if (arranging) {
     return { type: 'arrange', seat, arrangement: arrangeHand(view.myHand) };
   }
   if (view.phase === 'playing' && view.turnSeat === seat) {
