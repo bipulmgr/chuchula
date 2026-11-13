@@ -25,6 +25,9 @@ const noBonus = RuleConfig(
   fourOfAKindPoints: 0,
 );
 
+/// The older timed show window, which stops arranging.
+const _timedShow = RuleConfig(fourCardWeakest: false, showWaitsForAll: false);
+
 void main() {
   group('dealing', () {
     test('every seat gets 13 unique cards covering the whole deck', () {
@@ -379,7 +382,7 @@ void main() {
 
     test('others may answer; the best special wins the round', () {
       final e = fixedEngine([deck()]);
-      var s = e.applyMove(start(e), const ShowHand(0));
+      var s = e.applyMove(start(e, rules: _timedShow), const ShowHand(0));
       expect(s.phase, GamePhase.showing);
       // Only answers are allowed now.
       expect(
@@ -424,7 +427,7 @@ void main() {
 
     test('the same special compares by rank', () {
       final e = fixedEngine([deck()]);
-      var s = e.applyMove(start(e), const ShowHand(0));
+      var s = e.applyMove(start(e, rules: _timedShow), const ShowHand(0));
       s = e.applyMove(s, const PassShow(1));
       s = e.applyMove(s, const ShowHand(2, BonusType.fourOfAKind));
       s = e.applyMove(s, const PassShow(3));
@@ -435,7 +438,10 @@ void main() {
 
     test('when time is up, silent seats count as passing', () {
       final e = fixedEngine([deck()]);
-      var s = e.applyMove(start(e), const ShowHand(2, BonusType.fourOfAKind));
+      var s = e.applyMove(
+        start(e, rules: _timedShow),
+        const ShowHand(2, BonusType.fourOfAKind),
+      );
       expect(e.validateMove(s, const CloseShow(0)).isValid, isTrue);
       s = e.applyMove(s, const CloseShow(0));
       expect(s.phase, GamePhase.roundOver);
@@ -455,7 +461,7 @@ void main() {
 
     test('state and moves survive JSON', () {
       final e = fixedEngine([deck()]);
-      final s = e.applyMove(start(e), const ShowHand(0));
+      final s = e.applyMove(start(e, rules: _timedShow), const ShowHand(0));
       final back = GameState.fromJson(
         jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>,
       );
@@ -491,7 +497,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['AS AH AD KS KH KD QS QH QD 5C 6C 7C 9D']),
       ]);
-      var s = arrangeAll(e, start(e), custom: custom);
+      var s = arrangeAll(e, start(e, rules: _timedShow), custom: custom);
       s = playRound(e, s);
       expect(s.phase, GamePhase.matchOver);
       expect(s.result!.reason, MatchEndReason.doubleRun);
@@ -519,7 +525,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
       ]);
-      final s = start(e);
+      final s = start(e, rules: _timedShow);
       expect(ChuchulaGameEngine.showable(s, 0), [
         const Bonus(BonusType.fourOfAKind, 4),
       ]);
@@ -558,7 +564,7 @@ void main() {
       expect(
         closed(
           pairs,
-          pairs.applyMove(start(pairs), const ShowHand(0)),
+          pairs.applyMove(start(pairs, rules: _timedShow), const ShowHand(0)),
         ).scores[0],
         6,
       );
@@ -568,7 +574,7 @@ void main() {
       expect(
         closed(
           trails,
-          trails.applyMove(start(trails), const ShowHand(0)),
+          trails.applyMove(start(trails, rules: _timedShow), const ShowHand(0)),
         ).scores[0],
         9,
       );
@@ -578,7 +584,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
       ]);
-      final s = start(e);
+      final s = start(e, rules: _timedShow);
       expect(s.phase, GamePhase.arranging, reason: 'not automatic');
       final next = e.applyMove(s, const ShowHand(1));
       expect(next.phase, GamePhase.matchOver);
@@ -590,7 +596,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['9S 9H 9D 9C 2S 3H 5D 7C JS QH KD AC 4S']),
       ]);
-      final s = playRound(e, arrangeAll(e, start(e)));
+      final s = playRound(e, arrangeAll(e, start(e, rules: _timedShow)));
       expect(s.lastRound!.bonuses[0], isEmpty);
     });
 
@@ -609,7 +615,7 @@ void main() {
       final e = fixedEngine([
         deckFor(['9S 9H 9D 9C 2S 2H 2D 3S 3H 3D 4S 4H 4D']),
       ]);
-      final s = start(e);
+      final s = start(e, rules: _timedShow);
       expect(
         e.validateMove(s, const ShowHand(0, BonusType.sixPairs)).error,
         RuleError.nothingToShow,
@@ -630,6 +636,97 @@ void main() {
         ChuchulaGameEngine.bestShow(ChuchulaGameEngine.showable(s, 0)),
         BonusType.threeTrails,
       );
+    });
+  });
+
+  group('show while the others arrange (default)', () {
+    // Seat 0: four nines. Seat 1: six pairs. Seat 2: four kings.
+    List<int> deck() => deckFor([
+      '9S 9H 9D 9C 2S 3H 5D 7C JS QH 4D AC 4S',
+      '2D 2H 3S 3D 5S 5H 6S 6H 7S 7H 8S 8H 10D',
+      'KS KH KD KC 2C 3C 5C 6C 8C 10C JC QC AH',
+    ]);
+    GameState ready(ChuchulaGameEngine e, GameState s, int seat) => e.applyMove(
+      s,
+      SubmitArrangement(seat, Arrangement.fromOrderedCards(s.hands[seat])),
+    );
+
+    test('a show keeps arranging open, with no window and no timer', () {
+      final e = fixedEngine([deck()]);
+      var s = e.applyMove(start(e), const ShowHand(0));
+      expect(s.phase, GamePhase.arranging);
+      expect(s.showOpener, 0);
+      // The shower is done; the others still arrange and tap Ready.
+      expect(
+        e
+            .validateMove(
+              s,
+              SubmitArrangement(0, Arrangement.fromOrderedCards(s.hands[0])),
+            )
+            .error,
+        RuleError.alreadyAnswered,
+      );
+      expect(
+        e.validateMove(s, const ShowHand(0)).error,
+        RuleError.alreadyAnswered,
+      );
+      expect(e.validateMove(s, const CloseShow(1)).error, RuleError.wrongPhase);
+      s = ready(e, s, 1);
+      s = ready(e, s, 3);
+      // A seat that tapped Ready cannot show any more.
+      expect(
+        e.validateMove(s, const ShowHand(1)).error,
+        RuleError.alreadyReady,
+      );
+      expect(s.phase, GamePhase.arranging);
+      s = ready(e, s, 2);
+      // Everyone is ready: the special is revealed and ends the round.
+      expect(s.phase, GamePhase.roundOver);
+      expect(s.scores, [4, 0, 0, 0]);
+      expect(s.lastRound!.shownSeat, 0);
+      expect(s.lastRound!.groupWinners, isEmpty);
+      expect(s.shows, [null, null, null, null]);
+    });
+
+    test('others may show too; the best special wins when all are ready', () {
+      final e = fixedEngine([deck()]);
+      var s = e.applyMove(start(e), const ShowHand(2, BonusType.fourOfAKind));
+      s = e.applyMove(s, const ShowHand(1, BonusType.sixPairs));
+      s = ready(e, s, 3);
+      expect(s.phase, GamePhase.arranging);
+      s = e.applyMove(s, const ShowHand(0));
+      expect(s.phase, GamePhase.roundOver);
+      expect(s.lastRound!.shownSeat, 1);
+      expect(s.scores, [0, 6, 0, 0]);
+      expect(s.lastRound!.shownHands[3], isNull);
+    });
+
+    test('the others only learn that a special was shown, not which', () {
+      final e = fixedEngine([deck()]);
+      final s = e.applyMove(start(e), const ShowHand(2, BonusType.fourOfAKind));
+      expect(PlayerView.of(s, 0).shows, [null, null, kShowHidden, null]);
+      expect(PlayerView.of(s, 2).shows, [null, null, 'fourOfAKind', null]);
+      expect(PlayerView.of(s, 0).mustAnswerShow, isFalse);
+    });
+
+    test('all thirteen ranks wins the match once everyone is ready', () {
+      final e = fixedEngine([
+        deckFor(['', 'AS 2H 3D 4C 5S 6H 7D 8C 9S 10H JD QC KS']),
+      ]);
+      var s = e.applyMove(start(e), const ShowHand(1));
+      expect(s.phase, GamePhase.arranging);
+      for (final seat in [0, 2, 3]) {
+        s = ready(e, s, seat);
+      }
+      expect(s.phase, GamePhase.matchOver);
+      expect(s.result!.winnerSeat, 1);
+      expect(s.result!.reason, MatchEndReason.instantWin);
+    });
+
+    test('with nothing shown, play starts when all are ready', () {
+      final e = fixedEngine([deck()]);
+      final s = arrangeAll(e, start(e));
+      expect(s.phase, GamePhase.playing);
     });
   });
 

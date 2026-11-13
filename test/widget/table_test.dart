@@ -241,8 +241,10 @@ void main() {
     await session.dispose();
   });
 
-  testWidgets('a bot shows a special: I get a window to answer, and only '
-      'the special cards are highlighted', (tester) async {
+  testWidgets('a bot shows a special: I keep arranging, it is revealed when '
+      'I tap Ready, and only the special cards are highlighted', (
+    tester,
+  ) async {
     // Seat 1 holds four 10s and shows them at once.
     final deal = [
       _hand,
@@ -258,28 +260,24 @@ void main() {
       timing: const BotTiming.instant(),
       botRunner: inlineBotRunner,
     );
-    await pumpApp(tester, home: TableScreen(session: session));
+    await pumpApp(
+      tester,
+      home: TableScreen(session: session, showSuggest: true),
+    );
     await _settle(tester);
     final v = session.view.value!;
-    expect(v.phase, GamePhase.showing);
-    expect(v.showOpener, 1);
-    expect(v.mustAnswerShow, isTrue);
-    expect(find.byKey(const Key('showWindowPanel')), findsOneWidget);
-    // No countdown: the window waits until everyone is ready.
+    // No window and no timer: I am still arranging.
+    expect(v.phase, GamePhase.arranging);
+    expect(v.shows[1], kShowHidden, reason: 'which special stays hidden');
+    expect(find.byKey(const Key('showWindowPanel')), findsNothing);
     expect(find.byKey(const Key('showCountdown')), findsNothing);
-    expect(find.byKey(const Key('showWaitAll')), findsOneWidget);
-    expect(find.byKey(const Key('passShowButton')), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('passShowButton')),
-        matching: find.text('Ready'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.textContaining('showed a special hand'), findsWidgets);
     await tester.pump(const Duration(seconds: 60));
     await _settle(tester);
-    expect(session.view.value!.phase, GamePhase.showing);
-    await tester.tap(find.byKey(const Key('passShowButton')));
+    expect(session.view.value!.phase, GamePhase.arranging);
+    await tester.tap(find.byTooltip('Suggest'));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('readyButton')));
     await _settle(tester);
     expect(session.view.value!.phase, GamePhase.roundOver);
     expect(session.view.value!.lastRound!.shownSeat, 1);

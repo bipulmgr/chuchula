@@ -258,7 +258,8 @@ class AuthorityGameSession extends BaseGameSession {
       _scheduleShowWindow(s);
     } else if (s.phase == GamePhase.arranging) {
       for (final seat in _bots.keys) {
-        if (!s.isReady(seat) && !_arranging.contains(seat)) {
+        if (!ChuchulaGameEngine.answered(s, seat) &&
+            !_arranging.contains(seat)) {
           _arrangeBot(seat, s.round);
         }
       }
@@ -340,7 +341,9 @@ class AuthorityGameSession extends BaseGameSession {
     _arranging.add(seat);
     if (timing.deal > Duration.zero) {
       await Future<void>.delayed(timing.deal);
-      if (disposed || _state.round != round || _state.isReady(seat)) {
+      if (disposed ||
+          _state.round != round ||
+          ChuchulaGameEngine.answered(_state, seat)) {
         _arranging.remove(seat);
         return;
       }

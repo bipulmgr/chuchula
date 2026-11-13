@@ -18,6 +18,10 @@ enum GamePhase { arranging, showing, playing, roundOver, matchOver }
 /// [GameState.shows] entry for a player who chose not to show.
 const String kShowPass = 'pass';
 
+/// In a [PlayerView], another seat's show while arranging: it has shown a
+/// special, but which one stays hidden until everyone is ready.
+const String kShowHidden = 'shown';
+
 enum MatchEndReason { targetReached, instantWin, maxRounds, doubleRun }
 
 List<String> _codes(List<PlayingCard> cards) =>

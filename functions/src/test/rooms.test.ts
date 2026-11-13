@@ -90,7 +90,15 @@ describe('rooms', () => {
     const used = new Set(['9S', '9H', '9D', '9C']);
     const rest = state!.hands.flat().filter((c) => !used.has(c));
     const hands = [['9S', '9H', '9D', '9C', ...rest.slice(0, 9)], ...[0, 1, 2].map((i) => rest.slice(9 + i * 13, 22 + i * 13))];
-    const arranging = { ...state!, phase: 'arranging' as const, hands, arrangements: [null, null, null, null], shows: [null, null, null, null], showOpener: null };
+    const arranging = {
+      ...state!,
+      phase: 'arranging' as const,
+      hands,
+      arrangements: [null, null, null, null],
+      shows: [null, null, null, null],
+      showOpener: null,
+      rules: { ...state!.rules, showWaitsForAll: false },
+    };
     const opened = rooms.submitMove({ ...room!, showOpenedAt: null }, arranging, 'host', { type: 'show', seat: 0, bonus: 'fourOfAKind' }, 1000, engine);
     assert.equal(opened.state!.phase, 'showing');
     assert.equal(opened.room!.showOpenedAt, 1000);

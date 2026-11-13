@@ -140,6 +140,8 @@ class ChuchulaGameEngine {
       phase: GamePhase.matchOver,
       turnSeat: () => null,
       history: [...s.history, rr],
+      shows: const [null, null, null, null],
+      showOpener: () => null,
       result: () => MatchResult(
         winnerSeat: seat,
         reason: MatchEndReason.instantWin,
@@ -152,9 +154,18 @@ class ChuchulaGameEngine {
   /// show window for the other players; in the window it is [seat]'s
   /// answer. All thirteen ranks wins the match at once: nothing beats it.
   GameState _show(GameState s, int seat, BonusType kind) {
-    if (kind == BonusType.allRanks) return _instantWin(s, seat);
     final shows = List<String?>.of(s.shows);
     shows[seat] = kind.name;
+    if (s.phase == GamePhase.arranging &&
+        s.rules.showWaitsForAll &&
+        s.rules.showWindowSeconds > 0) {
+      // The others carry on arranging. Nothing is revealed until every
+      // seat has either shown or tapped Ready.
+      return _afterArranging(
+        s.copyWith(shows: shows, showOpener: () => s.showOpener ?? seat),
+      );
+    }
+    if (kind == BonusType.allRanks) return _instantWin(s, seat);
     if (s.phase == GamePhase.arranging) {
       final opened = s.copyWith(
         phase: GamePhase.showing,
@@ -167,6 +178,27 @@ class ChuchulaGameEngine {
       return opened;
     }
     return _afterAnswer(s.copyWith(shows: shows));
+  }
+
+  /// Whether [seat] is done with arranging: it tapped Ready or showed.
+  static bool answered(GameState s, int seat) =>
+      s.isReady(seat) || (s.shows[seat] != null && s.shows[seat] != kShowPass);
+
+  /// Once every seat has tapped Ready or shown: the specials shown (if
+  /// any) are revealed and decide the round, otherwise play starts.
+  GameState _afterArranging(GameState s) {
+    for (var i = 0; i < kSeatCount; i++) {
+      if (!answered(s, i)) return s;
+    }
+    if (s.shows.every((x) => x == null || x == kShowPass)) {
+      return s.copyWith(
+        phase: GamePhase.playing,
+        groupIndex: 0,
+        turnSeat: () => s.firstLeader,
+        roundPlays: [List.filled(kSeatCount, null)],
+      );
+    }
+    return _resolveShows(s);
   }
 
   GameState _afterAnswer(GameState s) =>
@@ -194,6 +226,8 @@ class ChuchulaGameEngine {
       }
     }
     final w = winner!;
+    // All thirteen ranks wins the match outright.
+    if (kinds[w] == BonusType.allRanks) return _instantWin(s, w);
     final bonuses = [
       for (final b in BonusDetector.detect(s.hands[w], s.rules))
         if (b.type == kinds[w]) b,
@@ -239,7 +273,7 @@ class ChuchulaGameEngine {
   /// none, or if bonuses are scored automatically.
   static List<Bonus> showable(GameState s, int seat) =>
       s.rules.declareBonuses &&
-          (s.phase == GamePhase.arranging ||
+          ((s.phase == GamePhase.arranging && !answered(s, seat)) ||
               (s.phase == GamePhase.showing && s.shows[seat] == null))
       ? BonusDetector.detect(s.hands[seat], s.rules)
       : const [];
@@ -320,6 +354,9 @@ class ChuchulaGameEngine {
         if (state.isReady(seat)) {
           return const ValidationResult.fail(RuleError.alreadyReady);
         }
+        if (state.shows[seat] != null) {
+          return const ValidationResult.fail(RuleError.alreadyAnswered);
+        }
         return validateArrangement(state, seat, arrangement);
       case PlayGroup(:final seat, :final group):
         if (state.phase != GamePhase.playing) {
@@ -342,8 +379,11 @@ class ChuchulaGameEngine {
             state.phase != GamePhase.showing) {
           return const ValidationResult.fail(RuleError.wrongPhase);
         }
-        if (state.phase == GamePhase.showing && state.shows[seat] != null) {
+        if (state.shows[seat] != null) {
           return const ValidationResult.fail(RuleError.alreadyAnswered);
+        }
+        if (state.phase == GamePhase.arranging && state.isReady(seat)) {
+          return const ValidationResult.fail(RuleError.alreadyReady);
         }
         if (!showable(
           state,
@@ -386,16 +426,7 @@ class ChuchulaGameEngine {
         arrangements[seat] = state.rules.strongestFirst
             ? Arrangement(HandEvaluator.playOrder(arrangement.groups))
             : arrangement;
-        var next = state.copyWith(arrangements: arrangements);
-        if (next.allReady) {
-          next = next.copyWith(
-            phase: GamePhase.playing,
-            groupIndex: 0,
-            turnSeat: () => next.firstLeader,
-            roundPlays: [List.filled(kSeatCount, null)],
-          );
-        }
-        return next;
+        return _afterArranging(state.copyWith(arrangements: arrangements));
 
       case PlayGroup(:final seat):
         final g = state.groupIndex;

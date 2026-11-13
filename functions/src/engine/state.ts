@@ -12,6 +12,8 @@ export type MatchEndReason = 'targetReached' | 'instantWin' | 'maxRounds' | 'dou
 
 /** GameState.shows entry for a seat that chose not to show. */
 export const SHOW_PASS = 'pass';
+/** In a PlayerView, another seat's show while arranging (the kind stays hidden). */
+export const SHOW_HIDDEN = 'shown';
 
 export interface SeatInfo {
   id: string;
@@ -145,7 +147,8 @@ export function playerView(s: GameState, seat: number): PlayerView {
     history: s.history,
     result: s.result,
     version: s.version,
-    shows: s.shows,
+    // While arranging, another seat's show is hidden until everyone is ready.
+    shows: s.shows.map((x, i) => (s.phase === 'arranging' && i !== seat && x !== null ? SHOW_HIDDEN : x)),
     showOpener: s.showOpener,
     showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   };
