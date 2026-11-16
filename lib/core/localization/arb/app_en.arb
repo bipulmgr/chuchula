@@ -581,26 +581,10 @@
     }
   },
   "tutInterim": "Some house rules are still being confirmed and may change.",
-  "showHiddenBy": "{name} has shown a special hand!",
-  "@showHiddenBy": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "showRevealWhenReady": "You showed {hand}. It is revealed when everyone is ready.",
   "@showRevealWhenReady": {
     "placeholders": {
       "hand": {
-        "type": "String"
-      }
-    }
-  },
-  "showArrangeThenReady": "{names} showed a special hand. Arrange your cards and tap Ready. It is revealed when everyone is ready.",
-  "@showArrangeThenReady": {
-    "placeholders": {
-      "names": {
         "type": "String"
       }
     }

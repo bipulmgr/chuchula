@@ -40,7 +40,13 @@ class PlayerView {
     phase: s.phase,
     myHand: s.hands[seat],
     myArrangement: s.arrangements[seat],
-    ready: [for (var i = 0; i < kSeatCount; i++) s.isReady(i)],
+    // While arranging, a seat that showed a special looks just like a seat
+    // that tapped Ready: nobody else may know a special was shown until
+    // everyone has arranged.
+    ready: [
+      for (var i = 0; i < kSeatCount; i++)
+        s.isReady(i) || (_hidesShow(s, seat, i) && s.shows[i] != kShowPass),
+    ],
     groupIndex: s.groupIndex,
     turnSeat: s.turnSeat,
     roundPlays: s.roundPlays,
@@ -50,13 +56,17 @@ class PlayerView {
     version: s.version,
     shows: [
       for (var i = 0; i < kSeatCount; i++)
-        s.phase == GamePhase.arranging && i != seat && s.shows[i] != null
-            ? kShowHidden
-            : s.shows[i],
+        _hidesShow(s, seat, i) ? null : s.shows[i],
     ],
     showOpener: s.showOpener,
     showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   );
+
+  /// Whether [viewer] must not see that [other] showed a special hand.
+  static bool _hidesShow(GameState s, int viewer, int other) =>
+      s.phase == GamePhase.arranging &&
+      other != viewer &&
+      s.shows[other] != null;
 
   final int mySeat;
   final String matchId;

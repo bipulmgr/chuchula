@@ -452,7 +452,10 @@ void main() {
     test('a window of 0 seconds ends the round at the first show', () {
       final e = fixedEngine([deck()]);
       final s = e.applyMove(
-        start(e, rules: const RuleConfig(showWindowSeconds: 0)),
+        start(
+          e,
+          rules: const RuleConfig(showWindowSeconds: 0, showWaitsForAll: false),
+        ),
         const ShowHand(0),
       );
       expect(s.phase, GamePhase.roundOver);
@@ -701,10 +704,13 @@ void main() {
       expect(s.lastRound!.shownHands[3], isNull);
     });
 
-    test('the others only learn that a special was shown, not which', () {
+    test('the others are not told that a special was shown', () {
       final e = fixedEngine([deck()]);
       final s = e.applyMove(start(e), const ShowHand(2, BonusType.fourOfAKind));
-      expect(PlayerView.of(s, 0).shows, [null, null, kShowHidden, null]);
+      expect(s.phase, GamePhase.arranging);
+      expect(PlayerView.of(s, 0).shows, [null, null, null, null]);
+      // The seat that showed just looks ready to the others.
+      expect(PlayerView.of(s, 0).ready, [false, false, true, false]);
       expect(PlayerView.of(s, 2).shows, [null, null, 'fourOfAKind', null]);
       expect(PlayerView.of(s, 0).mustAnswerShow, isFalse);
     });

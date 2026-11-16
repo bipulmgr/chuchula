@@ -12,8 +12,6 @@ export type MatchEndReason = 'targetReached' | 'instantWin' | 'maxRounds' | 'dou
 
 /** GameState.shows entry for a seat that chose not to show. */
 export const SHOW_PASS = 'pass';
-/** In a PlayerView, another seat's show while arranging (the kind stays hidden). */
-export const SHOW_HIDDEN = 'shown';
 
 export interface SeatInfo {
   id: string;
@@ -123,6 +121,11 @@ export interface PlayerView {
   showWindowSeconds: number;
 }
 
+/** Whether [viewer] must not see that [other] showed a special hand. */
+function hidesShow(s: GameState, viewer: number, other: number): boolean {
+  return s.phase === 'arranging' && other !== viewer && s.shows[other] !== null;
+}
+
 /**
  * What one seat may know. Never includes another seat's hand or
  * unrevealed arrangement; mirrors PlayerView.of in Dart.
@@ -139,7 +142,9 @@ export function playerView(s: GameState, seat: number): PlayerView {
     phase: s.phase,
     myHand: s.hands[seat],
     myArrangement: s.arrangements[seat],
-    ready: s.arrangements.map((a) => a !== null),
+    // While arranging, a seat that showed a special looks just like a seat
+    // that tapped Ready: nobody else may know until everyone has arranged.
+    ready: s.arrangements.map((a, i) => a !== null || (hidesShow(s, seat, i) && s.shows[i] !== SHOW_PASS)),
     groupIndex: s.groupIndex,
     turnSeat: s.turnSeat,
     roundPlays: s.roundPlays,
@@ -148,7 +153,7 @@ export function playerView(s: GameState, seat: number): PlayerView {
     result: s.result,
     version: s.version,
     // While arranging, another seat's show is hidden until everyone is ready.
-    shows: s.shows.map((x, i) => (s.phase === 'arranging' && i !== seat && x !== null ? SHOW_HIDDEN : x)),
+    shows: s.shows.map((x, i) => (hidesShow(s, seat, i) ? null : x)),
     showOpener: s.showOpener,
     showWindowSeconds: s.rules.showWaitsForAll ? 0 : s.rules.showWindowSeconds,
   };
