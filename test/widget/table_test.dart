@@ -5,8 +5,10 @@ import 'package:chuchula/features/table/hand_strip.dart';
 import 'package:chuchula/features/table/seat_plate.dart';
 import 'package:chuchula/features/table/table_screen.dart';
 import 'package:chuchula/game/models/card.dart';
+import 'package:chuchula/game/models/moves.dart';
 import 'package:chuchula/game/models/game_state.dart';
 import 'package:chuchula/game/models/player_view.dart';
+import 'package:chuchula/game/rules/bonuses.dart';
 import 'package:chuchula/game/rules/hand_evaluator.dart';
 import 'package:chuchula/game/rules/rule_config.dart';
 import 'package:chuchula/game/state/authority_session.dart';
@@ -268,10 +270,12 @@ void main() {
     final v = session.view.value!;
     // No window and no timer: I am still arranging.
     expect(v.phase, GamePhase.arranging);
-    expect(v.shows[1], kShowHidden, reason: 'which special stays hidden');
+    expect(v.shows, [null, null, null, null], reason: 'nobody is told');
+    expect(v.ready[1], isTrue, reason: 'the show looks like Ready');
     expect(find.byKey(const Key('showWindowPanel')), findsNothing);
     expect(find.byKey(const Key('showCountdown')), findsNothing);
-    expect(find.textContaining('showed a special hand'), findsWidgets);
+    expect(find.textContaining('special hand'), findsNothing);
+    expect(find.text('Showed'), findsNothing);
     await tester.pump(const Duration(seconds: 60));
     await _settle(tester);
     expect(session.view.value!.phase, GamePhase.arranging);
@@ -292,6 +296,40 @@ void main() {
       for (final f in faces)
         if (f.highlight != null) f.card,
     }, parseCards('10S 10H 10D 10C').toSet());
+    await session.dispose();
+  });
+
+  testWidgets('I show a special: the bots are not told, keep arranging, '
+      'and it is revealed once they are all ready', (tester) async {
+    // I hold four 10s; the bots hold nothing special.
+    final deal = [
+      '10S 10H 10D 10C AH KH QH JH 9H 3H 2H 3S 4S',
+      _hand,
+      'AD KD QD JD 9D 8D 6D 5D 2S 5S 8S KS 7S',
+    ];
+    final engine = fixedEngine([deckFor(deal), deckFor(deal)]);
+    final session = AuthorityGameSession(
+      engine: engine,
+      initialState: start(engine),
+      localSeat: 0,
+      bots: {for (var s = 1; s < 4; s++) s: const MediumBot()},
+      timing: const BotTiming.instant(),
+      botRunner: inlineBotRunner,
+    );
+    await pumpApp(tester, home: TableScreen(session: session));
+    await session.showHand(BonusType.fourOfAKind);
+    // What a bot would see right after my show: nothing at all.
+    final hidden = PlayerView.of(
+      engine.applyMove(start(engine), const ShowHand(0, BonusType.fourOfAKind)),
+      1,
+    );
+    expect(hidden.shows, [null, null, null, null]);
+    expect(hidden.ready[0], isTrue);
+    await _settle(tester);
+    final v = session.view.value!;
+    expect(v.phase, GamePhase.roundOver, reason: 'the bots were not stuck');
+    expect(v.lastRound!.shownSeat, 0);
+    expect(v.scores[0], 4);
     await session.dispose();
   });
 

@@ -176,8 +176,9 @@ export class ChuchulaEngine {
   private show(s: GameState, seat: number, kind: BonusType): GameState {
     const shows = [...s.shows];
     shows[seat] = kind;
-    if (s.phase === 'arranging' && s.rules.showWaitsForAll && s.rules.showWindowSeconds > 0) {
-      // The others carry on arranging; nothing is revealed until all are done.
+    if (s.phase === 'arranging' && s.rules.showWaitsForAll) {
+      // The others carry on arranging and are not told; nothing is revealed
+      // until all are done.
       return this.afterArranging(bump(s, { shows, showOpener: s.showOpener ?? seat }));
     }
     if (kind === 'allRanks') return this.instantWin(s, seat);

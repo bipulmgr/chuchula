@@ -4,7 +4,7 @@ import { arrangeHand, botMove } from '../engine/bot';
 import { cardCode, fullDeck, parseCards } from '../engine/card';
 import { ChuchulaEngine, InvalidMoveError, dealHands, secureDecks } from '../engine/engine';
 import { evaluate, fourCardIsWeakest } from '../engine/evaluator';
-import { GameState, SHOW_HIDDEN, SeatInfo, parseMove, playerView } from '../engine/state';
+import { GameState, SeatInfo, parseMove, playerView } from '../engine/state';
 
 const seats: SeatInfo[] = [0, 1, 2, 3].map((i) => ({ id: `p${i}`, name: `P${i}`, isBot: false, avatar: i }));
 
@@ -141,7 +141,9 @@ describe('engine', () => {
     const s: GameState = { ...started, phase: 'arranging', hands, rules: { ...started.rules, fourCardWeakest: false } };
     let x = engine.applyMove(s, { type: 'show', seat: 0, bonus: 'fourOfAKind' });
     assert.equal(x.phase, 'arranging');
-    assert.deepEqual(playerView(x, 1).shows, [SHOW_HIDDEN, null, null, null]);
+    // Nobody else is told: the seat that showed just looks ready.
+    assert.deepEqual(playerView(x, 1).shows, [null, null, null, null]);
+    assert.deepEqual(playerView(x, 1).ready, [true, false, false, false]);
     assert.equal(engine.validateMove(x, { type: 'arrange', seat: 0, arrangement: arrangeHand(hands[0]) })?.error, 'alreadyAnswered');
     for (const seat of [1, 2, 3]) {
       if (x.phase !== 'arranging') break;

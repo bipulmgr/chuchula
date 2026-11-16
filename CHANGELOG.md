@@ -10,6 +10,10 @@ First version.
 - Special hands: the show window no longer closes after 20 seconds. After
   a show, the others can show theirs or tap Ready; when everyone is
   ready the specials are revealed automatically.
+- Special hands are secret until everyone has arranged: the others get no
+  popup, no "Showed" badge and no hint, and the player who showed simply
+  looks Ready. The specials are revealed when the last player is ready,
+  instead of group play starting.
 - A new Show icon (a fan of cards with a crown) replaces the sparkle.
 - An interstitial ad shows once after a whole match, as the player leaves
   the result (`ADMOB_INTERSTITIAL_ID`, `ADMOB_INTERSTITIAL_ID_IOS`).

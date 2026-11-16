@@ -156,11 +156,9 @@ class ChuchulaGameEngine {
   GameState _show(GameState s, int seat, BonusType kind) {
     final shows = List<String?>.of(s.shows);
     shows[seat] = kind.name;
-    if (s.phase == GamePhase.arranging &&
-        s.rules.showWaitsForAll &&
-        s.rules.showWindowSeconds > 0) {
-      // The others carry on arranging. Nothing is revealed until every
-      // seat has either shown or tapped Ready.
+    if (s.phase == GamePhase.arranging && s.rules.showWaitsForAll) {
+      // The others carry on arranging and are not told. Nothing is
+      // revealed until every seat has either shown or tapped Ready.
       return _afterArranging(
         s.copyWith(shows: shows, showOpener: () => s.showOpener ?? seat),
       );
